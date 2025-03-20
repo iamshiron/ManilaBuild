@@ -1,10 +1,11 @@
+namespace Shiron.Manila.Utils;
+
 using System.Collections;
 using Spectre.Console;
 using Microsoft.ClearScript;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
-namespace Shiron.Manila.Utils;
+using Shiron.Manila.Ext;
 
 public static class Logger {
 	private static bool verbose;
@@ -65,9 +66,9 @@ public static class Logger {
 
 	private static string escapeMarkup(string message) {
 		return message
-				.Replace("[", "[[")
-				.Replace("]", "]]")
-				.Replace("\n", "\n    "); // Indent multiline output
+			.Replace("[", "[[")
+			.Replace("]", "]]")
+			.Replace("\n", "\n    "); // Indent multiline output
 	}
 
 	public enum LogLevel {
@@ -78,7 +79,7 @@ public static class Logger {
 		Headless
 	}
 
-	public static void log(object[] message, LogLevel level) {
+	public static void log(object[] message, LogLevel level, ManilaPlugin? plugin = null) {
 		string formattedMessage = formatMessage(message);
 		if (level == LogLevel.Headless) {
 			Console.WriteLine(formattedMessage);
@@ -102,8 +103,9 @@ public static class Logger {
 
 		var levelStr = escapeMarkup(level.ToString().ToUpper());
 		string timestamp = DateTime.Now.ToString("hh:mm tt").ToLower();
+		string pluginStr = plugin != null ? $"/{escapeMarkup($"{plugin.group}:{plugin.name}:{plugin.version}")}" : "";
 
-		AnsiConsole.MarkupLine($"<[blue]{timestamp}[/]>[[[{color}]{levelStr}[/]]]: [{messageColor}]{escapeMarkup(formattedMessage)}[/]");
+		AnsiConsole.MarkupLine($"<[blue]{timestamp}[/]>[[[{color}]{levelStr}[/]{pluginStr}]]: [{messageColor}]{escapeMarkup(formattedMessage)}[/]");
 	}
 
 	public static void scriptLog(params object[] messages) {
@@ -129,6 +131,25 @@ public static class Logger {
 	public static void error(params object[] messages) {
 		if (!verbose || quiet) return;
 		log(messages, LogLevel.Error);
+	}
+
+	public static void pluginInfo(ManilaPlugin plugin, params object[] messages) {
+		if (!verbose || quiet) return;
+		log(messages, LogLevel.Info, plugin);
+	}
+	public static void pluginDebug(ManilaPlugin plugin, params object[] messages) {
+		if (!verbose || quiet) return;
+		log(messages, LogLevel.Debug, plugin);
+	}
+
+	public static void pluginWarn(ManilaPlugin plugin, params object[] messages) {
+		if (!verbose || quiet) return;
+		log(messages, LogLevel.Warning, plugin);
+	}
+
+	public static void pluginError(ManilaPlugin plugin, params object[] messages) {
+		if (!verbose || quiet) return;
+		log(messages, LogLevel.Error, plugin);
 	}
 
 	public static void print(params object[] messages) {

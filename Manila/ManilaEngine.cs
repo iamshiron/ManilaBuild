@@ -11,7 +11,7 @@ public sealed class ManilaEngine {
 	public string root { get; private set; }
 	public API.Workspace? workspace { get; }
 	public API.Project? currentProject { get; private set; }
-	public ScriptContext currentContext { get; private set; }
+	public ScriptContext? currentContext { get; private set; }
 
 	internal ManilaEngine() {
 		root = Directory.GetCurrentDirectory();
@@ -48,5 +48,6 @@ public sealed class ManilaEngine {
 		currentContext.execute();
 
 		currentProject = null;
+		currentContext = null;
 	}
 }
