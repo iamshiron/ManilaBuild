@@ -14,5 +14,6 @@ var extensionManager = ExtensionManager.getInstance();
 extensionManager.init("./.manila/plugins");
 extensionManager.loadPlugins();
 extensionManager.initPlugins();
+
 engine.run();
 extensionManager.releasePlugins();

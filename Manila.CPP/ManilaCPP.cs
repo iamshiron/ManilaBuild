@@ -8,6 +8,9 @@ public class ManilaCPP : ManilaPlugin {
 
 	public override void init() {
 		debug("Init");
+
+		registerComponent(new Components.StaticLibComponent());
+		registerComponent(new Components.ConsoleComponent());
 	}
 	public override void release() {
 		debug("Release");
