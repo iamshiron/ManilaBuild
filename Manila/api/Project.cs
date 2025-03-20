@@ -21,6 +21,7 @@ public class Project : DynamicObject, IScriptableObject {
 	}
 
 	public Dictionary<Type, PluginComponent> pluginComponents { get; } = new();
+	public List<Type> plugins { get; } = new();
 
 	[ScriptProperty]
 	public string? version { get; set; }
@@ -116,9 +117,29 @@ public class Project : DynamicObject, IScriptableObject {
 			ManilaEngine.getInstance().currentContext.applyEnum(e);
 		}
 
+		applyPlugin(component.plugin);
+
 		foreach (var prop in component.GetType().GetProperties()) {
-			System.Console.WriteLine(prop);
 			addScriptProperty(prop, component);
 		}
+	}
+
+	public void applyPlugin(ManilaPlugin plugin) {
+		if (plugins.Contains(plugin.GetType())) {
+			Logger.warn($"Plugin '{plugin}' already applied.");
+			return;
+		}
+
+		plugins.Add(plugin.GetType());
+
+		ManilaEngine.getInstance().currentContext.scriptEngine.AddHostType(plugin.GetType().Name, plugin.GetType());
+	}
+
+	public bool hasComponent<T>() where T : PluginComponent {
+		return pluginComponents.ContainsKey(typeof(T));
+	}
+	public T getComponent<T>() where T : PluginComponent {
+		if (!pluginComponents.ContainsKey(typeof(T))) throw new Exception($"Component '{typeof(T)}' not found.");
+		return (T) pluginComponents[typeof(T)];
 	}
 }

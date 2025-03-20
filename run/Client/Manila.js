@@ -29,3 +29,5 @@ runDir(workspace.path().join('bin', config.getPlatform(), `${config.getConfig()}
 // 	})
 
 print('Version:', project.version())
+
+ManilaCPP.build(workspace, project, config)

@@ -38,6 +38,10 @@ public class ExtensionManager {
 					var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
 					if (plugin == null) throw new Exception("Failed to create plugin instance of type " + type + " loaded from " + file);
 					plugins.Add(plugin);
+
+					foreach (var prop in type.GetProperties())
+						if (prop.GetCustomAttribute<PluginInstance>() != null)
+							prop.SetValue(null, plugin);
 				}
 			}
 		}

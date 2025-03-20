@@ -103,7 +103,7 @@ public static class Logger {
 
 		var levelStr = escapeMarkup(level.ToString().ToUpper());
 		string timestamp = DateTime.Now.ToString("hh:mm tt").ToLower();
-		string pluginStr = plugin != null ? $"/{escapeMarkup($"{plugin.group}:{plugin.name}:{plugin.version}")}" : "";
+		string pluginStr = plugin != null ? $"/{escapeMarkup($"{plugin.group}:{plugin.name}@{plugin.version}")}" : "";
 
 		AnsiConsole.MarkupLine($"<[blue]{timestamp}[/]>[[[{color}]{levelStr}[/]{pluginStr}]]: [{messageColor}]{escapeMarkup(formattedMessage)}[/]");
 	}

@@ -23,3 +23,5 @@ objDir(workspace.path().join('bin-int', config.getPlatform(), `${config.getConfi
 // 	.execute(() => {
 // 		print('Runnin tests...')
 // 	})
+
+ManilaCPP.build(workspace, project, config)
