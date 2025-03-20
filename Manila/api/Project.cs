@@ -5,17 +5,22 @@ using System.Reflection;
 using Microsoft.ClearScript;
 using Microsoft.VisualBasic;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Ext;
 using Shiron.Manila.Utils;
 
 public class Project : DynamicObject, IScriptableObject {
+	[ScriptProperty(true)]
 	public string name { get; private set; }
-	public Dir location { get; private set; }
+
+	[ScriptProperty(true)]
+	public Dir path { get; private set; }
 
 	public string getIdentifier() {
-		string relativeDir = Path.GetRelativePath(ManilaEngine.getInstance().root, location.path);
+		string relativeDir = Path.GetRelativePath(ManilaEngine.getInstance().root, path.path);
 		return ":" + relativeDir.Replace(Path.DirectorySeparatorChar, ':').ToLower();
 	}
 
+	public Dictionary<Type, PluginComponent> pluginComponents { get; } = new();
 
 	[ScriptProperty]
 	public string? version { get; set; }
@@ -28,16 +33,29 @@ public class Project : DynamicObject, IScriptableObject {
 
 	public Project(string name, string location) {
 		this.name = name;
-		this.location = new Dir(location);
+		this.path = new Dir(location);
 	}
 
-	public void addScriptProperty(PropertyInfo prop) {
-		ManilaEngine.getInstance().currentContext.scriptEngine.AddHostObject(prop.Name, FunctionUtils.toDelegate(this, prop.GetSetMethod()!));
+	public void addScriptProperty(PropertyInfo prop, object? obj = null) {
+		if (obj == null) obj = this;
 
-		dynamicMethods.Add(prop.Name, new List<Delegate> {
-			FunctionUtils.toDelegate(this, prop.GetGetMethod()!),
-			FunctionUtils.toDelegate(this, prop.GetSetMethod()!)
-		});
+		Logger.debug($"Adding property '{prop.Name}' to script context.");
+		var scriptPropertyInfo = prop.GetCustomAttribute<ScriptProperty>();
+		if (scriptPropertyInfo == null) throw new Exception($"Property '{prop.Name}' is not a script property.");
+
+		var setMethod = prop.GetSetMethod();
+
+		if (setMethod != null && !scriptPropertyInfo.immutable)
+			ManilaEngine.getInstance().currentContext.scriptEngine.AddHostObject(prop.Name, FunctionUtils.toDelegate(obj, prop.GetSetMethod()!));
+
+
+		var methods = new List<Delegate> {
+			FunctionUtils.toDelegate(obj, prop.GetGetMethod()!)
+		};
+
+		if (setMethod != null && !scriptPropertyInfo.immutable) methods.Add(FunctionUtils.toDelegate(obj, setMethod));
+
+		dynamicMethods.Add(prop.Name, methods);
 	}
 
 	public void OnExposedToScriptCode(ScriptEngine engine) {
@@ -83,5 +101,24 @@ public class Project : DynamicObject, IScriptableObject {
 
 		Logger.debug($"Method '{binder.Name}' not found.");
 		return base.TryInvokeMember(binder, args, out result);
+	}
+
+	public void applyComponent(PluginComponent component) {
+		Logger.debug($"Applying component '{component}'.");
+
+		if (pluginComponents.ContainsKey(component.GetType())) {
+			Logger.warn($"Component '{component}' already applied.");
+			return;
+		}
+		pluginComponents.Add(component.GetType(), component);
+
+		foreach (var e in component.plugin.enums) {
+			ManilaEngine.getInstance().currentContext.applyEnum(e);
+		}
+
+		foreach (var prop in component.GetType().GetProperties()) {
+			System.Console.WriteLine(prop);
+			addScriptProperty(prop, component);
+		}
 	}
 }

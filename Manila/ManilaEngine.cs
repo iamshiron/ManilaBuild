@@ -1,4 +1,5 @@
 ﻿
+using Shiron.Manila.API;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
@@ -19,7 +20,7 @@ public sealed class ManilaEngine {
 	}
 
 	public void run() {
-		if (!File.Exists("Manila.js")) {
+		if (!System.IO.File.Exists("Manila.js")) {
 			Logger.error("No Manila.js file found in the current directory.");
 			return;
 		}
@@ -44,6 +45,9 @@ public sealed class ManilaEngine {
 		workspace!.projects.Add(name, currentProject);
 
 		currentContext = new ScriptContext(this, currentProject, path);
+		currentContext.applyEnum(typeof(EPlatform));
+		currentContext.applyEnum(typeof(EArchitecture));
+
 		currentContext.init();
 		currentContext.execute();
 

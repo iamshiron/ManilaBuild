@@ -8,6 +8,7 @@ public abstract class ManilaPlugin {
 	public readonly string name;
 	public readonly string version;
 	public readonly Dictionary<string, PluginComponent> components = new();
+	public readonly List<Type> enums = new();
 
 	public ManilaPlugin(string group, string name, string version) {
 		this.group = group;
@@ -26,6 +27,10 @@ public abstract class ManilaPlugin {
 	public void registerComponent(PluginComponent component) {
 		if (components.ContainsKey(component.name)) throw new Exception("Component with name " + component.name + " already registered");
 		components.Add(component.name, component);
+		component.plugin = this;
+	}
+	public void registerEnum(Type t) {
+		enums.Add(t);
 	}
 
 	public PluginComponent getComponent(string name) {

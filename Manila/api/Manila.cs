@@ -10,6 +10,7 @@ namespace Shiron.Manila.API;
 /// </summary>
 public sealed class Manila {
 	private ScriptContext context;
+	private BuildConfig buildConfig = new BuildConfig();
 
 
 	public Manila(ScriptContext context) {
@@ -28,6 +29,10 @@ public sealed class Manila {
 		return ManilaEngine.getInstance().workspace;
 	}
 
+	public BuildConfig getConfig() {
+		return buildConfig;
+	}
+
 	public SourceSet sourceSet(string origin) {
 		return new SourceSet();
 	}
@@ -38,7 +43,7 @@ public sealed class Manila {
 		return new Dir(path);
 	}
 	public File file(string path) {
-		return new File();
+		return new File(path);
 	}
 
 	public void import(string pluginKey) {
@@ -64,5 +69,6 @@ public sealed class Manila {
 	}
 	public void apply(PluginComponent component) {
 		Logger.debug("Applying: " + component);
+		getProject().applyComponent(component);
 	}
 }

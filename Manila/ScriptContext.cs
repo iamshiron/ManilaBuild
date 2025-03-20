@@ -5,6 +5,7 @@ using System.Reflection;
 using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Ext;
 using Shiron.Manila.Utils;
 
 public sealed class ScriptContext {
@@ -12,6 +13,8 @@ public sealed class ScriptContext {
 	public ManilaEngine engine { get; private set; }
 	public string scriptPath { get; private set; }
 	public readonly API.Project project;
+
+	public List<Type> enumComponents { get; } = new();
 
 	public ScriptContext(ManilaEngine engine, API.Project project, string scriptPath) {
 		scriptEngine = new V8ScriptEngine();
@@ -39,5 +42,20 @@ public sealed class ScriptContext {
 			Logger.info(e.Message);
 			throw;
 		}
+	}
+
+	public void applyEnum(Type t) {
+		Logger.debug($"Applying enum '{t}'.");
+
+
+		if (t.GetType().GetCustomAttributes<ScriptEnum>() == null) throw new Exception($"Object '{t}' is not a script enum.");
+
+		if (enumComponents.Contains(t)) {
+			Logger.warn($"Enum '{t}' already applied.");
+			return;
+		}
+
+		enumComponents.Add(t);
+		scriptEngine.AddHostType(t.Name[1..], t);
 	}
 }

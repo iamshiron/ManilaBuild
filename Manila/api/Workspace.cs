@@ -1,11 +1,17 @@
 namespace Shiron.Manila.API;
 
+using Shiron.Manila.Attributes;
+
 public class Workspace {
-	public Dir location { get; private set; }
+	public Dir _path { get; private set; }
 
 	public Dictionary<string, Project> projects { get; } = new();
 
 	public Workspace(string location) {
-		this.location = new Dir(location);
+		_path = new Dir(location);
+	}
+
+	public Dir path() {
+		return _path;
 	}
 }
