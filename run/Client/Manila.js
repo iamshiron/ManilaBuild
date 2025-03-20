@@ -2,6 +2,12 @@ const project = Manila.getProject()
 const workspace = Manila.getWorkspace()
 
 Manila.apply('shiron.manila:cpp@1.0.0:console')
+Manila.apply({
+	group: 'shiron.manila',
+	name: 'cpp',
+	component: 'console'
+})
+
 version('1.0.0')
 description('Demo Project Core')
 

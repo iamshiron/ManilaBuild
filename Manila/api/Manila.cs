@@ -1,4 +1,6 @@
 using Microsoft.ClearScript;
+using Microsoft.ClearScript.V8;
+using Shiron.Manila.Ext;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
@@ -12,16 +14,6 @@ public sealed class Manila {
 
 	public Manila(ScriptContext context) {
 		this.context = context;
-	}
-
-	public void apply(string identifier) {
-		Logger.debug("Applying: " + identifier);
-	}
-	public void apply(ScriptObject obj) {
-		Logger.debug("Applying: " + obj);
-	}
-	public void apply(string group, string name, string version, string component) {
-		Logger.debug("Applying: " + group + ":" + name + "@" + version + ":" + component + ":");
 	}
 
 	public Project getProject() {
@@ -47,5 +39,30 @@ public sealed class Manila {
 	}
 	public File file(string path) {
 		return new File();
+	}
+
+	public void import(string pluginKey) {
+		var plugin = ExtensionManager.getInstance().getPlugin(pluginKey);
+		import(plugin);
+	}
+	public void import(ScriptObject obj) {
+		var plugin = ExtensionManager.getInstance().getPlugin((string) obj["group"], (string) obj["name"], (string) obj["version"]);
+		import(plugin);
+	}
+	public void import(ManilaPlugin plugin) {
+		Logger.debug("Importing: " + plugin);
+	}
+
+	public void apply(string pluginComponentKey) {
+		var component = ExtensionManager.getInstance().getPluginComponent(pluginComponentKey);
+		apply(component);
+	}
+	public void apply(ScriptObject obj) {
+		var version = obj.GetProperty("version");
+		var component = ExtensionManager.getInstance().getPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
+		apply(component);
+	}
+	public void apply(PluginComponent component) {
+		Logger.debug("Applying: " + component);
 	}
 }
