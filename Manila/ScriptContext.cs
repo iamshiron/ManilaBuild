@@ -5,7 +5,7 @@ using System.Reflection;
 using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
 using Shiron.Manila.Attributes;
-using Shiron.Manila.Ext;
+using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
 public sealed class ScriptContext {
@@ -50,7 +50,6 @@ public sealed class ScriptContext {
 
 	public void applyEnum(Type t) {
 		Logger.debug($"Applying enum '{t}'.");
-
 
 		if (t.GetType().GetCustomAttributes<ScriptEnum>() == null) throw new Exception($"Object '{t}' is not a script enum.");
 

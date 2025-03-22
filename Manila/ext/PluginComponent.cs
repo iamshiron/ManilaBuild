@@ -1,14 +1,14 @@
-namespace Shiron.Manila.Ext;
+namespace Shiron.Manila.Attributes;
 
 public abstract class PluginComponent {
-	public readonly string name;
-	internal ManilaPlugin? plugin;
+    public readonly string name;
+    internal ManilaPlugin? plugin;
 
-	public PluginComponent(string name) {
-		this.name = name;
-	}
+    public PluginComponent(string name) {
+        this.name = name;
+    }
 
-	public override string ToString() {
-		return $"PluginComponent({name})";
-	}
+    public override string ToString() {
+        return $"PluginComponent({name})";
+    }
 }

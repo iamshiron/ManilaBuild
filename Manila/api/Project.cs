@@ -4,7 +4,7 @@ using System.Dynamic;
 using System.Reflection;
 using Microsoft.ClearScript;
 using Shiron.Manila.Attributes;
-using Shiron.Manila.Ext;
+using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
 public class Project : DynamicObject, IScriptableObject {

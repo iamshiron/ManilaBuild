@@ -2,7 +2,7 @@
 
 using Shiron.Manila.API;
 using Shiron.Manila.CPP.Components;
-using Shiron.Manila.Ext;
+using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
 public class ManilaCPP : ManilaPlugin {
@@ -17,6 +17,8 @@ public class ManilaCPP : ManilaPlugin {
 
 		registerComponent(new Components.StaticLibComponent());
 		registerComponent(new Components.ConsoleComponent());
+
+		registerEnum(typeof(EToolChain));
 	}
 	public override void release() {
 		debug("Release");

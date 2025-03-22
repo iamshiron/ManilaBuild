@@ -1,5 +1,5 @@
 ﻿using Shiron.Manila;
-using Shiron.Manila.Ext;
+using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
 #if DEBUG
