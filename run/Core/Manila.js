@@ -13,5 +13,3 @@ sourceSets({
 	main: Manila.sourceSet(project.path().join('src/main')).include('**/*.cpp'),
 	test: Manila.sourceSet(project.path().join('src/test')).include('**/*.cpp')
 })
-
-ManilaCPP.build(workspace, project, config)

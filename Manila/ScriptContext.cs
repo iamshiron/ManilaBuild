@@ -12,15 +12,15 @@ public sealed class ScriptContext {
 	public readonly ScriptEngine scriptEngine;
 	public ManilaEngine engine { get; private set; }
 	public string scriptPath { get; private set; }
-	public readonly API.Project project;
+	public readonly API.Component component;
 
 	public List<Type> enumComponents { get; } = new();
 
-	public ScriptContext(ManilaEngine engine, API.Project project, string scriptPath) {
+	public ScriptContext(ManilaEngine engine, API.Component component, string scriptPath) {
 		scriptEngine = new V8ScriptEngine();
 		this.engine = engine;
 		this.scriptPath = scriptPath;
-		this.project = project;
+		this.component = component;
 	}
 
 	public void init() {
@@ -29,13 +29,13 @@ public sealed class ScriptContext {
 			Logger.scriptLog(args);
 		});
 
-		foreach (var prop in project.GetType().GetProperties()) {
+		foreach (var prop in component.GetType().GetProperties()) {
 			if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
-			project.addScriptProperty(prop);
+			component.addScriptProperty(prop);
 		}
-		foreach (var func in project.GetType().GetMethods()) {
+		foreach (var func in component.GetType().GetMethods()) {
 			if (func.GetCustomAttribute<ScriptFunction>() == null) continue;
-			project.addScriptFunction(func, scriptEngine);
+			component.addScriptFunction(func, scriptEngine);
 		}
 	}
 	public void execute() {
@@ -43,6 +43,15 @@ public sealed class ScriptContext {
 			scriptEngine.Execute(File.ReadAllText(scriptPath));
 		} catch (ScriptEngineException e) {
 			Logger.error("Error in script: " + scriptPath);
+			Logger.info(e.Message);
+			throw;
+		}
+	}
+	public void executeWorkspace() {
+		try {
+			scriptEngine.Execute(File.ReadAllText("Manila.js"));
+		} catch (ScriptEngineException e) {
+			Logger.error("Error in workspace script!");
 			Logger.info(e.Message);
 			throw;
 		}

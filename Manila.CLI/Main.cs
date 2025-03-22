@@ -3,7 +3,7 @@ using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
 #if DEBUG
-Directory.SetCurrentDirectory("./run");
+Directory.SetCurrentDirectory("E:/dev/Manila./run");
 #endif
 
 Logger.init(true, false);

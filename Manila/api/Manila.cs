@@ -140,4 +140,9 @@ public sealed class Manila {
 		Logger.debug("Applying: " + component);
 		getProject().applyComponent(component);
 	}
+
+	public void project(object o, dynamic a) {
+		var filter = ProjectFilter.from(o);
+		getWorkspace().projectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
+	}
 }
