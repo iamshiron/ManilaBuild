@@ -33,6 +33,10 @@ public sealed class ScriptContext {
 			if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
 			project.addScriptProperty(prop);
 		}
+		foreach (var func in project.GetType().GetMethods()) {
+			if (func.GetCustomAttribute<ScriptFunction>() == null) continue;
+			project.addScriptFunction(func, scriptEngine);
+		}
 	}
 	public void execute() {
 		try {

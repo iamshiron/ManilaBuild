@@ -3,7 +3,6 @@ namespace Shiron.Manila.API;
 using System.Dynamic;
 using System.Reflection;
 using Microsoft.ClearScript;
-using Microsoft.VisualBasic;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Utils;
@@ -29,6 +28,16 @@ public class Project : DynamicObject, IScriptableObject {
 	public string? group { get; set; }
 	[ScriptProperty]
 	public string? description { get; set; }
+
+	public Dictionary<string, SourceSet> _sourceSets = new();
+
+	[ScriptFunction]
+	public void sourceSets(object obj) {
+		foreach (var pair in (IDictionary<string, object>) obj) {
+			if (_sourceSets.ContainsKey(pair.Key)) throw new Exception($"SourceSet '{pair.Key}' already exists.");
+			_sourceSets.Add(pair.Key, (SourceSet) pair.Value);
+		}
+	}
 
 	public Dictionary<string, List<Delegate>> dynamicMethods { get; } = new();
 
@@ -57,6 +66,21 @@ public class Project : DynamicObject, IScriptableObject {
 		if (setMethod != null && !scriptPropertyInfo.immutable) methods.Add(FunctionUtils.toDelegate(obj, setMethod));
 
 		dynamicMethods.Add(prop.Name, methods);
+	}
+	public void addScriptFunction(MethodInfo prop, ScriptEngine engine, object? obj = null) {
+		if (obj == null) obj = this;
+
+		Logger.debug($"Adding function '{prop.Name}' to script context.");
+		var scriptFunctionInfo = prop.GetCustomAttribute<ScriptFunction>();
+		if (scriptFunctionInfo == null) throw new Exception($"Method '{prop.Name}' is not a script function.");
+
+		var methods = dynamicMethods.ContainsKey(prop.Name) ? dynamicMethods[prop.Name] : new List<Delegate>();
+		methods.Add(FunctionUtils.toDelegate(obj, prop));
+		dynamicMethods[prop.Name] = methods;
+
+		engine.AddHostObject(prop.Name, FunctionUtils.toDelegate(obj, prop));
+
+		Logger.debug($"Added function '{prop.Name}' to script context.");
 	}
 
 	public void OnExposedToScriptCode(ScriptEngine engine) {

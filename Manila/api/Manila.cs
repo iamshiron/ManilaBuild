@@ -34,7 +34,7 @@ public sealed class Manila {
 	}
 
 	public SourceSet sourceSet(string origin) {
-		return new SourceSet();
+		return new SourceSet(origin);
 	}
 	public Task task(string name) {
 		return new Task(name, ManilaEngine.getInstance().currentProject, context);

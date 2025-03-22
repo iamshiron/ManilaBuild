@@ -13,6 +13,11 @@ binDir(workspace.path().join('bin', config.getPlatform(), `${config.getConfig()}
 objDir(workspace.path().join('bin-int', config.getPlatform(), `${config.getConfig()}-${config.getArchitecture()}`, project.name()))
 runDir(workspace.path().join('bin', config.getPlatform(), `${config.getConfig()}-${config.getArchitecture()}`, project.name()))
 
+sourceSets({
+	main: Manila.sourceSet(project.path().join('src/main')).include('**/*.cpp'),
+	test: Manila.sourceSet(project.path().join('src/test')).include('**/*.cpp')
+})
+
 // sourceSets({
 // 	main: Manila.sourceSet(project.getPath().join('src/main')).include('**/*.cpp'),
 // 	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
