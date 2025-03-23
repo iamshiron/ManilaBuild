@@ -1,6 +1,7 @@
 using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
@@ -22,7 +23,7 @@ public sealed class Manila {
 	/// <returns>The current project.</returns>
 	/// <exception cref="Exception">Thrown when not in a project context.</exception>
 	public Project getProject() {
-		if (ManilaEngine.getInstance().currentProject == null) throw new Exception("Not in project context.");
+		if (ManilaEngine.getInstance().currentProject == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
 		return ManilaEngine.getInstance().currentProject;
 	}
 
@@ -66,7 +67,12 @@ public sealed class Manila {
 	/// <param name="name">The name of the task to create.</param>
 	/// <returns>A new task with the specified name, associated with the current project and script context.</returns>
 	public Task task(string name) {
-		return new Task(name, ManilaEngine.getInstance().currentProject, context);
+		try {
+			return new Task(name, getProject(), context);
+		} catch (ContextException e) {
+			if (e.cIs != Context.WORKSPACE) throw;
+			return new Task(name, getWorkspace(), context);
+		}
 	}
 
 	/// <summary>

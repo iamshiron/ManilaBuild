@@ -5,18 +5,28 @@ namespace Shiron.Manila.API;
 public class Task {
 	public readonly string name;
 	public readonly List<string> dependencies = new();
-	private Action? action;
+	public Action? action { get; private set; }
 	private readonly ScriptContext context;
-	private readonly Project project;
+	private readonly Component component;
 
-	public Task(string name, Project project, ScriptContext context) {
+	public string getIdentifier() {
+		return $"{component.getIdentifier()}:{name}";
+	}
+
+	public Task(string name, Component component, ScriptContext context) {
 		this.name = name;
-		this.project = project;
+		this.component = component;
 		this.context = context;
+		this.component.tasks.Add(this);
 	}
 
 	public Task after(string task) {
-		dependencies.Add(task);
+		if (task.StartsWith(":")) {
+			dependencies.Add(task[1..]);
+		} else {
+			dependencies.Add($"{component.getIdentifier()}:{task}");
+		}
+
 		return this;
 	}
 	public Task execute(dynamic action) {
@@ -30,5 +40,25 @@ public class Task {
 			}
 		};
 		return this;
+	}
+
+	public List<string> getExecutionOrder() {
+		List<string> result = new();
+		foreach (string dependency in dependencies) {
+			Task? dependentTask = ManilaEngine.getInstance().workspace.getTask(dependency);
+			if (dependentTask == null) { Logger.warn("Task not found: " + dependency); continue; }
+			List<string> dependencyOrder = dependentTask.getExecutionOrder();
+			foreach (string depTask in dependencyOrder) {
+				if (!result.Contains(depTask)) {
+					result.Add(depTask);
+				}
+			}
+
+		}
+		if (!result.Contains(getIdentifier())) {
+			result.Add(getIdentifier());
+		}
+
+		return result;
 	}
 }

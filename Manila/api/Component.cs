@@ -14,8 +14,9 @@ public class Component : DynamicObject, IScriptableObject {
 	public Dictionary<Type, PluginComponent> pluginComponents { get; } = new();
 	public List<Type> plugins { get; } = new();
 	public Dictionary<string, List<Delegate>> dynamicMethods { get; } = new();
+	public List<Task> tasks { get; } = new();
 
-	public string getIdentifier() {
+	public virtual string getIdentifier() {
 		string relativeDir = Path.GetRelativePath(ManilaEngine.getInstance().root, path.path);
 		return ":" + relativeDir.Replace(Path.DirectorySeparatorChar, ':').ToLower();
 	}
