@@ -1,5 +1,3 @@
-namespace Shiron.Manila.Utils;
-
 using System.Collections;
 using Spectre.Console;
 using Microsoft.ClearScript;
@@ -7,16 +5,35 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Shiron.Manila.Attributes;
 
+namespace Shiron.Manila.Utils;
+
+/// <summary>
+/// The internal logger for Manila. Plugins should use their own logger:
+/// See <see cref="pluginInfo(Attributes.ManilaPlugin, object[])"/> as an example.
+/// </summary>
 public static class Logger {
     private static bool verbose;
     private static bool quiet;
 
-    public static void init(bool verbose, bool quiet) {
+    /// <summary>
+    /// Initializes the logger.
+    /// </summary>
+    /// <param name="verbose">Enables verbose logging</param>
+    /// <param name="quiet">Disables logging</param>
+    /// <exception cref="ArgumentException">Cannot enable both verbose and quiet logging</exception>
+    public static void Init(bool verbose, bool quiet) {
+        if (verbose && quiet) throw new ArgumentException("Cannot enable both verbose and quiet logging");
+
         Logger.verbose = verbose;
         Logger.quiet = quiet;
     }
 
-    private static string formatMessage(object message) {
+    /// <summary>
+    /// Formats a message for logging.
+    /// </summary>
+    /// <param name="message">The message</param>
+    /// <returns>A formatted string representation of the message</returns>
+    internal static string formatMessage(object message) {
         if (message is object[] array)
             return string.Join(" ", array.Select(item => formatMessage(item)));
 
@@ -64,22 +81,41 @@ public static class Logger {
         return message.ToString();
     }
 
-    private static string escapeMarkup(string message) {
+    /// <summary>
+    /// Escapes markup characters in a message for console output.
+    /// </summary>
+    /// <param name="message">The message to escape</param>
+    /// <returns>The escaped message with proper indentation for multiline output</returns>
+    internal static string escapeMarkup(string message) {
         return message
             .Replace("[", "[[")
             .Replace("]", "]]")
             .Replace("\n", "\n    "); // Indent multiline output
     }
 
-    public enum LogLevel {
+    /// <summary>
+    /// Defines the log levels used by the logger.
+    /// </summary>
+    internal enum LogLevel {
+        /// <summary>Debug level for detailed troubleshooting information</summary>
         Debug,
+        /// <summary>Info level for general information</summary>
         Info,
+        /// <summary>Warning level for potential issues</summary>
         Warning,
+        /// <summary>Error level for error conditions</summary>
         Error,
+        /// <summary>Headless level for plain console output without formatting</summary>
         Headless
     }
 
-    public static void log(object[] message, LogLevel level, ManilaPlugin? plugin = null) {
+    /// <summary>
+    /// Logs a message to the console.
+    /// </summary>
+    /// <param name="message">The message to log</param>
+    /// <param name="level">The log level</param>
+    /// <param name="plugin">Optional plugin information to include in the log message</param>
+    internal static void log(object[] message, LogLevel level, ManilaPlugin? plugin = null) {
         string formattedMessage = formatMessage(message);
         if (level == LogLevel.Headless) {
             Console.WriteLine(formattedMessage);
@@ -103,55 +139,109 @@ public static class Logger {
 
         var levelStr = escapeMarkup(level.ToString().ToUpper());
         string timestamp = DateTime.Now.ToString("hh:mm tt").ToLower();
-        string pluginStr = plugin != null ? $"/{escapeMarkup($"{plugin.group}:{plugin.name}@{plugin.version}")}" : "";
+        string pluginStr = plugin != null ? $"/{escapeMarkup($"{plugin.Group}:{plugin.Name}@{plugin.Version}")}" : "";
 
         AnsiConsole.MarkupLine($"<[blue]{timestamp}[/]>[[[{color}]{levelStr}[/]{pluginStr}]]: [{messageColor}]{escapeMarkup(formattedMessage)}[/]");
     }
 
-    public static void scriptLog(params object[] messages) {
+    /// <summary>
+    /// Logs a message to the console, called from scripts.
+    /// </summary>
+    /// <param name="messages">The messages to log</param>
+    internal static void scriptLog(params object[] messages) {
         if (quiet) return;
         log(messages, LogLevel.Headless);
     }
 
+    /// <summary>
+    /// Logs an informational message to the console.
+    /// Only logs if verbose mode is enabled and quiet mode is disabled.
+    /// </summary>
+    /// <param name="messages">The messages to log</param>
     public static void info(params object[] messages) {
         if (!verbose || quiet) return;
         log(messages, LogLevel.Info);
     }
 
+    /// <summary>
+    /// Logs a debug message to the console.
+    /// Only logs if verbose mode is enabled and quiet mode is disabled.
+    /// </summary>
+    /// <param name="messages">The messages to log</param>
     public static void debug(params object[] messages) {
         if (!verbose || quiet) return;
         log(messages, LogLevel.Debug);
     }
 
+    /// <summary>
+    /// Logs a warning message to the console.
+    /// Only logs if verbose mode is enabled and quiet mode is disabled.
+    /// </summary>
+    /// <param name="messages">The messages to log</param>
     public static void warn(params object[] messages) {
         if (!verbose || quiet) return;
         log(messages, LogLevel.Warning);
     }
 
+    /// <summary>
+    /// Logs an error message to the console.
+    /// Only logs if verbose mode is enabled and quiet mode is disabled.
+    /// </summary>
+    /// <param name="messages">The messages to log</param>
     public static void error(params object[] messages) {
         if (!verbose || quiet) return;
         log(messages, LogLevel.Error);
     }
 
+    /// <summary>
+    /// Logs an informational message from a plugin to the console.
+    /// Only logs if verbose mode is enabled and quiet mode is disabled.
+    /// </summary>
+    /// <param name="plugin">The plugin that is logging the message</param>
+    /// <param name="messages">The messages to log</param>
     public static void pluginInfo(ManilaPlugin plugin, params object[] messages) {
         if (!verbose || quiet) return;
         log(messages, LogLevel.Info, plugin);
     }
+
+    /// <summary>
+    /// Logs a debug message from a plugin to the console.
+    /// Only logs if verbose mode is enabled and quiet mode is disabled.
+    /// </summary>
+    /// <param name="plugin">The plugin that is logging the message</param>
+    /// <param name="messages">The messages to log</param>
     public static void pluginDebug(ManilaPlugin plugin, params object[] messages) {
         if (!verbose || quiet) return;
         log(messages, LogLevel.Debug, plugin);
     }
 
+    /// <summary>
+    /// Logs a warning message from a plugin to the console.
+    /// Only logs if verbose mode is enabled and quiet mode is disabled.
+    /// </summary>
+    /// <param name="plugin">The plugin that is logging the message</param>
+    /// <param name="messages">The messages to log</param>
     public static void pluginWarn(ManilaPlugin plugin, params object[] messages) {
         if (!verbose || quiet) return;
         log(messages, LogLevel.Warning, plugin);
     }
 
+    /// <summary>
+    /// Logs an error message from a plugin to the console.
+    /// Only logs if verbose mode is enabled and quiet mode is disabled.
+    /// </summary>
+    /// <param name="plugin">The plugin that is logging the message</param>
+    /// <param name="messages">The messages to log</param>
     public static void pluginError(ManilaPlugin plugin, params object[] messages) {
         if (!verbose || quiet) return;
         log(messages, LogLevel.Error, plugin);
     }
 
+    /// <summary>
+    /// Prints a message directly to the console without formatting.
+    /// Only logs if quiet mode is disabled.
+    /// </summary>
+    /// <param name="messages">The messages to print</param>
     public static void print(params object[] messages) {
         if (quiet) return;
         log(messages, LogLevel.Headless);

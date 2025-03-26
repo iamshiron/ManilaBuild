@@ -7,13 +7,13 @@ Manila.apply('shiron.manila:cpp@1.0.0:console')
 version('1.0.0')
 description('Demo Project Core')
 
-binDir(workspace.path().join('bin', config.getPlatform(), `${config.getConfig()}-${config.getArchitecture()}`, project.name()))
-objDir(workspace.path().join('bin-int', config.getPlatform(), `${config.getConfig()}-${config.getArchitecture()}`, project.name()))
-runDir(workspace.path().join('bin', config.getPlatform(), `${config.getConfig()}-${config.getArchitecture()}`, project.name()))
+binDir(workspace.getPath().join('bin', config.getPlatform(), `${config.getConfig()}-${config.getArchitecture()}`, project.getName()))
+objDir(workspace.getPath().join('bin-int', config.getPlatform(), `${config.getConfig()}-${config.getArchitecture()}`, project.getName()))
+runDir(workspace.getPath().join('bin', config.getPlatform(), `${config.getConfig()}-${config.getArchitecture()}`, project.getName()))
 
 sourceSets({
-	main: Manila.sourceSet(project.path().join('src/main')).include('**/*.cpp'),
-	test: Manila.sourceSet(project.path().join('src/test')).include('**/*.cpp')
+	main: Manila.sourceSet(project.getPath().join('src/main')).include('**/*.cpp'),
+	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
 })
 
 Manila.task('build').execute(() => {

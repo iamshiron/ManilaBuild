@@ -1,7 +1,8 @@
 namespace Shiron.Manila.API;
 
-using Shiron.Manila.Utils;
-
+/// <summary>
+/// A storage class for build configurations. Used to be exposed to the scripting environment.
+/// </summary>
 public class BuildConfig {
     public BuildConfig() {
         config = "Debug";

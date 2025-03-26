@@ -1,84 +1,93 @@
-﻿
-using Shiron.Manila.API;
+﻿using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
 public sealed class ManilaEngine {
-	internal static ManilaEngine? instance = null;
-	public static ManilaEngine getInstance() { if (instance == null) instance = new ManilaEngine(); return instance; }
+    internal static ManilaEngine? instance = null;
+    public static ManilaEngine GetInstance() { if (instance == null) instance = new ManilaEngine(); return instance; }
 
-	public string root { get; private set; }
-	public API.Workspace? workspace { get; }
-	public API.Project? currentProject { get; private set; }
-	public ScriptContext? currentContext { get; private set; }
-	public ScriptContext workspaceContext { get; }
+    public string Root { get; private set; }
+    public Workspace? Workspace { get; }
+    public Project? CurrentProject { get; private set; }
+    public ScriptContext? CurrentContext { get; private set; }
+    public ScriptContext WorkspaceContext { get; }
 
-	internal ManilaEngine() {
-		root = Directory.GetCurrentDirectory();
-		workspace = new API.Workspace(root);
-		workspaceContext = new ScriptContext(this, workspace, Path.Join(root, "Manila.js"));
-	}
+    internal ManilaEngine() {
+        Root = Directory.GetCurrentDirectory();
+        Workspace = new Workspace(Root);
+        WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(Root, "Manila.js"));
+    }
 
-	public void run() {
-		if (!System.IO.File.Exists("Manila.js")) {
-			Logger.error("No Manila.js file found in the current directory.");
-			return;
-		}
+    /// <summary>
+    /// Main entry point for the engine. Runs the workspace script and all project scripts.
+    /// </summary>
+    public void Run() {
+        if (!System.IO.File.Exists("Manila.js")) {
+            Logger.error("No Manila.js file found in the current directory.");
+            return;
+        }
 
-		var workspaceScript = Path.Join(root, "Manila.js");
-		var files = Directory.GetFiles(".", "Manila.js", SearchOption.AllDirectories)
-			.Where(f => !Path.GetFullPath(f).Equals(Path.GetFullPath("Manila.js")))
-			.ToList();
+        var workspaceScript = Path.Join(Root, "Manila.js");
+        var files = Directory.GetFiles(".", "Manila.js", SearchOption.AllDirectories)
+            .Where(f => !Path.GetFullPath(f).Equals(Path.GetFullPath("Manila.js")))
+            .ToList();
 
-		runWorkspaceScript();
-		foreach (var script in files) {
-			runProjectScript(script);
-		}
+        RunWorkspaceScript();
+        foreach (var script in files) {
+            RunProjectScript(script);
+        }
 
-		foreach (var f in workspace!.projectFilters) {
-			foreach (var p in workspace.projects.Values) {
-				if (f.Item1.predicate(p)) {
-					foreach (var type in p.plugins) {
-						var plugin = ExtensionManager.getInstance().getPlugin(type);
-						foreach (var e in plugin.enums) {
-							// Might apply enums multiple times, but that's fine as it's already checked in the applyEnum method
-							workspaceContext.applyEnum(e);
-						}
-					}
-					f.Item2.Invoke(p);
-				}
-			}
-		}
-	}
+        foreach (var f in Workspace!.ProjectFilters) {
+            foreach (var p in Workspace.Projects.Values) {
+                if (f.Item1.Predicate(p)) {
+                    foreach (var type in p.plugins) {
+                        var plugin = ExtensionManager.GetInstance().GetPlugin(type);
+                        foreach (var e in plugin.enums) {
+                            // Applying duplicate enums is already handled in the ApplyEnum method.
+                            WorkspaceContext.ApplyEnum(e);
+                        }
+                    }
+                    f.Item2.Invoke(p);
+                }
+            }
+        }
+    }
 
-	public void runProjectScript(string path) {
-		Logger.debug("Running project script: " + path);
-		string projectPath = Path.GetDirectoryName(Path.GetRelativePath(root, path));
-		string name = projectPath.ToLower().Replace(Path.DirectorySeparatorChar, ':');
+    /// <summary>
+    /// Runs a project script.
+    /// </summary>
+    /// <param name="path">The relative path from the root</param>
+    public void RunProjectScript(string path) {
+        Logger.debug("Running project script: " + path);
+        string projectPath = Path.GetDirectoryName(Path.GetRelativePath(Root, path));
+        string name = projectPath.ToLower().Replace(Path.DirectorySeparatorChar, ':');
 
-		currentProject = new API.Project(name, projectPath);
-		workspace!.projects.Add(name, currentProject);
-		currentContext = new ScriptContext(this, currentProject, Path.Join(root, path));
+        CurrentProject = new API.Project(name, projectPath);
+        Workspace!.Projects.Add(name, CurrentProject);
+        CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(Root, path));
 
-		currentContext.applyEnum(typeof(EPlatform));
-		currentContext.applyEnum(typeof(EArchitecture));
+        CurrentContext.ApplyEnum(typeof(EPlatform));
+        CurrentContext.ApplyEnum(typeof(EArchitecture));
 
-		currentContext.init();
-		currentContext.execute();
+        CurrentContext.Init();
+        CurrentContext.Execute();
 
-		currentProject = null;
-		currentContext = null;
-	}
-	public void runWorkspaceScript() {
-		string path = "Manila.js";
-		Logger.debug("Running workspace script: " + path);
+        CurrentProject = null;
+        CurrentContext = null;
+    }
+    /// <summary>
+    /// Runs the workspace script. Always Manila.js in the root directory.
+    /// </summary>
+    public void RunWorkspaceScript() {
+        string path = "Manila.js";
+        Logger.debug("Running workspace script: " + path);
 
-		workspaceContext.applyEnum(typeof(EPlatform));
-		workspaceContext.applyEnum(typeof(EArchitecture));
+        WorkspaceContext.ApplyEnum<EPlatform>();
+        WorkspaceContext.ApplyEnum<EArchitecture>();
 
-		workspaceContext.init();
-		workspaceContext.execute();
-	}
+        WorkspaceContext.Init();
+        WorkspaceContext.Execute();
+    }
 }

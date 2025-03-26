@@ -2,48 +2,53 @@ using Shiron.Manila.Attributes;
 
 namespace Shiron.Manila.API;
 
+/// <summary>
+/// A enum class containing the different platforms that Manila supports. Used to be exposed to the scripting environment.
+/// </summary>
+/// <param name="name">The stringified name of the platform</param>
 [ScriptEnum]
-public class EPlatform {
-	public readonly string name;
+public class EPlatform(string name) {
+    public readonly string name = name;
+    public static readonly EPlatform Windows = new EPlatform("windows");
+    public static readonly EPlatform Linux = new EPlatform("linux");
 
-	public EPlatform(string name) {
-		this.name = name;
-	}
+    public static implicit operator string(EPlatform p) {
+        return p.name;
+    }
 
-	public static readonly EPlatform Windows = new EPlatform("windows");
-	public static readonly EPlatform Linux = new EPlatform("linux");
+    public override bool Equals(object? obj) {
+        return obj is EPlatform platform && name == platform.name;
+    }
+    public override string ToString() {
+        return name;
+    }
 
-	public static implicit operator string(EPlatform p) {
-		return p.name;
-	}
-
-	public override bool Equals(object? obj) {
-		return obj is EPlatform platform && name == platform.name;
-	}
-	public override string ToString() {
-		return name;
-	}
+    public override int GetHashCode() {
+        return name.GetHashCode();
+    }
 }
 
+/// <summary>
+/// A enum class containing the different architectures that Manila supports. Used to be exposed to the scripting environment.
+/// </summary>
+/// <param name="name">The stringified name of the architecture</param>
 [ScriptEnum]
-public class EArchitecture {
-	public readonly string name;
+public class EArchitecture(string name) {
+    public readonly string name = name;
+    public static readonly EArchitecture X86 = new EArchitecture("x86");
+    public static readonly EArchitecture X64 = new EArchitecture("x64");
 
-	public EArchitecture(string name) {
-		this.name = name;
-	}
+    public static implicit operator string(EArchitecture a) {
+        return a.name;
+    }
 
-	public static readonly EArchitecture X86 = new EArchitecture("x86");
-	public static readonly EArchitecture X64 = new EArchitecture("x64");
-
-	public static implicit operator string(EArchitecture a) {
-		return a.name;
-	}
-
-	public override bool Equals(object? obj) {
-		return obj is EArchitecture architecture && name == architecture.name;
-	}
-	public override string ToString() {
-		return name;
-	}
+    public override bool Equals(object? obj) {
+        return obj is EArchitecture architecture && name == architecture.name;
+    }
+    public override string ToString() {
+        return name;
+    }
+    public override int GetHashCode() {
+        return name.GetHashCode();
+    }
 }

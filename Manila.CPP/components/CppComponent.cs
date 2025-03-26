@@ -2,16 +2,18 @@ namespace Shiron.Manila.CPP.Components;
 
 using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
-using Shiron.Manila.Attributes;
 
+/// <summary>
+/// Represents a C++ project.
+/// </summary>
 public class CppComponent : PluginComponent {
-	public CppComponent(string name) : base(name) {
-	}
+    public CppComponent(string name) : base(name) {
+    }
 
-	[ScriptProperty]
-	public Dir binDir { get; set; }
-	[ScriptProperty]
-	public Dir objDir { get; set; }
-	[ScriptProperty]
-	public EToolChain toolChain { get; set; }
+    [ScriptProperty]
+    public Dir? BinDir { get; set; }
+    [ScriptProperty]
+    public Dir? ObjDir { get; set; }
+    [ScriptProperty]
+    public EToolChain? ToolChain { get; set; }
 }

@@ -4,86 +4,173 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Shiron.Manila.Utils;
 
+/// <summary>
+/// Class for loading and managing plugins. Global singleton.
+/// </summary>
 public class ExtensionManager {
-	private static readonly ExtensionManager instance = new ExtensionManager();
+    /// <summary>
+    /// Private constructor to prevent instantiation.
+    /// </summary>
+    private ExtensionManager() { }
 
-	public static readonly string DEFAULT_GROUP = "shiron.manila";
+    /// <summary>
+    /// Singleton instance of the extension manager.
+    /// </summary>
+    private static readonly ExtensionManager _instance = new();
+    /// <summary>
+    /// Default group for plugins. Used when no group is specified.
+    /// </summary>
+    public static readonly string DEFAULT_GROUP = "shiron.manila";
 
-	public static readonly Regex pluginPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?");
-	public static readonly Regex componentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)");
+    /// <summary>
+    /// Regular expression pattern for matching plugin keys.
+    /// </summary>
+    public static readonly Regex pluginPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?");
+    /// <summary>
+    /// Regular expression pattern for matching component keys inside of plugins.
+    /// </summary>
+    public static readonly Regex componentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)");
 
-	public static ExtensionManager getInstance() {
-		return instance;
-	}
+    /// <summary>
+    /// Returns the singleton instance of the extension manager.
+    /// </summary>
+    /// <returns></returns>
+    public static ExtensionManager GetInstance() {
+        if (_instance == null) throw new Exception("Extension manager not initialized");
+        return _instance;
+    }
 
-	public string? pluginDir { get; private set; }
-	public List<ManilaPlugin> plugins = new();
+    /// <summary>
+    /// The directory where plugins are located.
+    /// </summary>
+    public string? PluginDir { get; private set; }
+    /// <summary>
+    /// List of loaded plugins.
+    /// </summary>
+    public List<ManilaPlugin> plugins = [];
 
-	public void init(string pluginDir) {
-		this.pluginDir = pluginDir;
-	}
-	public void loadPlugins() {
-		if (pluginDir == null) throw new Exception("Plugin directory not set");
+    /// <summary>
+    /// Initializes the extension manager with the plugin directory.
+    /// </summary>
+    /// <param name="pluginDir">The directory that will be searched. Does not support recursive search of subdirectories.</param>
+    public void Init(string pluginDir) {
+        this.PluginDir = pluginDir;
+    }
+    /// <summary>
+    /// Loads all plugins from the plugin directory.
+    /// </summary>
+    /// <exception cref="Exception">Plugin instance could not be created.</exception>
+    public void LoadPlugins() {
+        if (PluginDir == null) throw new Exception("Plugin directory not set");
 
-		if (!Directory.Exists(pluginDir)) {
-			Logger.warn("Plugin directory does not exist: " + pluginDir);
-			Logger.info("Skipping plugin loading");
-			return;
-		}
+        if (!Directory.Exists(PluginDir)) {
+            Logger.warn("Plugin directory does not exist: " + PluginDir);
+            Logger.info("Skipping plugin loading");
+            return;
+        }
 
-		foreach (var file in Directory.GetFiles(pluginDir, "*.dll")) {
-			var assembly = Assembly.LoadFile(Path.Join(Directory.GetCurrentDirectory(), file));
-			foreach (var type in assembly.GetTypes()) {
-				if (type.IsSubclassOf(typeof(ManilaPlugin))) {
-					var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
-					if (plugin == null) throw new Exception("Failed to create plugin instance of type " + type + " loaded from " + file);
-					plugins.Add(plugin);
+        foreach (var file in Directory.GetFiles(PluginDir, "*.dll")) {
+            var assembly = Assembly.LoadFile(Path.Join(Directory.GetCurrentDirectory(), file));
+            foreach (var type in assembly.GetTypes()) {
+                if (type.IsSubclassOf(typeof(ManilaPlugin))) {
+                    var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
+                    if (plugin == null) throw new Exception("Failed to create plugin instance of type " + type + " loaded from " + file);
+                    plugins.Add(plugin);
 
-					foreach (var prop in type.GetProperties())
-						if (prop.GetCustomAttribute<PluginInstance>() != null)
-							prop.SetValue(null, plugin);
-				}
-			}
-		}
-	}
+                    foreach (var prop in type.GetProperties())
+                        if (prop.GetCustomAttribute<PluginInstance>() != null)
+                            prop.SetValue(null, plugin);
+                }
+            }
+        }
+    }
 
-	public void initPlugins() {
-		foreach (var plugin in plugins) {
-			plugin.init();
-		}
-	}
-	public void releasePlugins() {
-		foreach (var plugin in plugins) {
-			plugin.release();
-		}
-	}
+    /// <summary>
+    /// Initializes all loaded plugins.
+    /// </summary>
+    public void InitPlugins() {
+        foreach (var plugin in plugins) {
+            plugin.Init();
+        }
+    }
+    /// <summary>
+    /// Releases all loaded plugins.
+    /// </summary>
+    public void ReleasePlugins() {
+        foreach (var plugin in plugins) {
+            plugin.Release();
+        }
+    }
 
-	public ManilaPlugin getPlugin(Type t) {
-		foreach (var plugin in plugins) {
-			if (plugin.GetType() == t) return plugin;
-		}
-		throw new Exception("Plugin not found: " + t);
-	}
+    /// <summary>
+    /// Returns a plugin by its type by using a generic.
+    /// </summary>
+    /// <typeparam name="T">The plugin type</typeparam>
+    /// <returns>The plugin instance</returns>
+    /// <exception cref="Exception">Plugin has noot been found.</exception>
+    public ManilaPlugin GetPlugin<T>() {
+        return GetPlugin(typeof(T));
+    }
+    /// <summary>
+    /// Returns a plugin by its type by passing the type as a parameter.
+    /// </summary>
+    /// <param name="type">The type</param>
+    /// <returns>The plugin instance</returns>
+    /// <exception cref="Exception"></exception>
+    public ManilaPlugin GetPlugin(Type type) {
+        foreach (var plugin in plugins) {
+            if (plugin.GetType() == type) return plugin;
+        }
+        throw new Exception("Plugin not found: " + type);
+    }
 
-	public ManilaPlugin getPlugin(string group, string name, string? version = null) {
-		if (version == String.Empty) version = null;
-		foreach (var plugin in plugins) {
-			if (plugin.group == group && plugin.name == name && (version == null || plugin.version == version)) return plugin;
-		}
-		throw new Exception("Plugin not found: " + group + ":" + name + (version == null ? "" : "." + version));
-	}
-	public PluginComponent getPluginComponent(string group, string name, string component, string? version = null) {
-		return getPlugin(group, name, version).getComponent(component);
-	}
+    /// <summary>
+    /// Returns a plugin by its group, name and version.
+    /// </summary>
+    /// <param name="group">The group</param>
+    /// <param name="name">The name</param>
+    /// <param name="version">The version</param>
+    /// <returns>The instance of the plugin</returns>
+    /// <exception cref="Exception">Plugin has not been found.</exception>
+    public ManilaPlugin GetPlugin(string group, string name, string? version = null) {
+        if (version == String.Empty) version = null;
+        foreach (var plugin in plugins) {
+            if (plugin.Group == group && plugin.Name == name && (version == null || plugin.Version == version)) return plugin;
+        }
+        throw new Exception("Plugin not found: " + group + ":" + name + (version == null ? "" : "." + version));
+    }
+    /// <summary>
+    /// Returns a plugin component by its group, name, component and version.
+    /// </summary>
+    /// <param name="group">The group</param>
+    /// <param name="name">The name</param>
+    /// <param name="component">The component name</param>
+    /// <param name="version">The version</param>
+    /// <returns>The instance of the plugin component</returns>
+    public PluginComponent GetPluginComponent(string group, string name, string component, string? version = null) {
+        return GetPlugin(group, name, version).GetComponent(component);
+    }
 
-	public ManilaPlugin getPlugin(string key) {
-		var match = pluginPattern.Match(key);
-		if (!match.Success) throw new Exception("Invalid plugin key: " + key);
-		return getPlugin(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["version"].Value);
-	}
-	public PluginComponent getPluginComponent(string key) {
-		var match = componentPattern.Match(key);
-		if (!match.Success) throw new Exception("Invalid component key: " + key);
-		return getPluginComponent(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["component"].Value, match.Groups["version"].Value);
-	}
+    /// <summary>
+    /// Returns a plugin by its key.
+    /// </summary>
+    /// <param name="key">Key compliant to the regex <see cref="pluginPattern"/></param>
+    /// <returns>The instance of the plugin</returns>
+    /// <exception cref="Exception">Plugin key was invalid</exception>
+    public ManilaPlugin GetPlugin(string key) {
+        var match = pluginPattern.Match(key);
+        if (!match.Success) throw new Exception("Invalid plugin key: " + key);
+        return GetPlugin(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["version"].Value);
+    }
+    /// <summary>
+    /// Returns a plugin component by its key.
+    /// </summary>
+    /// <param name="key">Key compliant to the regex <see cref="componentPattern"/></param>
+    /// <returns>The instance of the component</returns>
+    /// <exception cref="Exception">Component key was invalid</exception>
+    public PluginComponent GetPluginComponent(string key) {
+        var match = componentPattern.Match(key);
+        if (!match.Success) throw new Exception("Invalid component key: " + key);
+        return GetPluginComponent(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["component"].Value, match.Groups["version"].Value);
+    }
 }

@@ -1,14 +1,19 @@
 namespace Shiron.Manila.Attributes;
 
-public abstract class PluginComponent {
-    public readonly string name;
+/// <summary>
+/// Represents a component of a plugin.
+/// </summary>
+public abstract class PluginComponent(string name) {
+    /// <summary>
+    /// The name of the component.
+    /// </summary>
+    public readonly string Name = name;
+    /// <summary>
+    /// The plugin this component is registered to. Only set after registration.
+    /// </summary>
     internal ManilaPlugin? plugin;
 
-    public PluginComponent(string name) {
-        this.name = name;
-    }
-
     public override string ToString() {
-        return $"PluginComponent({name})";
+        return $"PluginComponent({Name})";
     }
 }
