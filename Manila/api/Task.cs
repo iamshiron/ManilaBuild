@@ -7,24 +7,24 @@ namespace Shiron.Manila.API;
 /// </summary>
 public class Task {
     public readonly string name;
-    public readonly List<string> dependencies = new();
+    public readonly List<string> dependencies = [];
     public Action? Action { get; private set; }
-    private readonly ScriptContext context;
-    private readonly Component component;
+    private readonly ScriptContext _context;
+    public Component Component { get; init; }
 
     /// <summary>
     /// Get the identifier of the task.
     /// </summary>
     /// <returns>The unique identifier of the task</returns>
     public string GetIdentifier() {
-        return $"{component.GetIdentifier()}:{name}";
+        return $"{Component.GetIdentifier()}:{name}";
     }
 
     public Task(string name, Component component, ScriptContext context) {
         this.name = name;
-        this.component = component;
-        this.context = context;
-        this.component.tasks.Add(this);
+        this.Component = component;
+        this._context = context;
+        this.Component.tasks.Add(this);
     }
 
     /// <summary>
@@ -36,7 +36,7 @@ public class Task {
         if (task.StartsWith(":")) {
             dependencies.Add(task[1..]);
         } else {
-            dependencies.Add($"{component.GetIdentifier()}:{task}");
+            dependencies.Add($"{Component.GetIdentifier()}:{task}");
         }
 
         return this;
