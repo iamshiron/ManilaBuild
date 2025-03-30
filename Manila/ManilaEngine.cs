@@ -14,6 +14,8 @@ public sealed class ManilaEngine {
     public ScriptContext? CurrentContext { get; private set; }
     public ScriptContext WorkspaceContext { get; }
 
+    public static readonly string VERSION = "0.0.0";
+
     internal ManilaEngine() {
         Root = Directory.GetCurrentDirectory();
         Workspace = new Workspace(Root);

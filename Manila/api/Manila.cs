@@ -160,6 +160,11 @@ public sealed class Manila {
         getWorkspace().ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
     }
 
+    /// <summary>
+    /// Runs a task with the specified key.
+    /// </summary>
+    /// <param name="key">The key</param>
+    /// <exception cref="Exception">Thrown if task was not found</exception>
     public void runTask(string key) {
         var task = getWorkspace().GetTask(key);
         if (task == null) throw new Exception("Task not found: " + key);
