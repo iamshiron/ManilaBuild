@@ -12,7 +12,7 @@ public static class ApplicationLogger {
     private static bool _quiet = false;
 
     private static long _buildStartTime = 0;
-    private static TaskInfo? _runningTask = null;
+    private static Stack<TaskInfo> _runningTask = new();
 
     public record TaskInfo {
         public required API.Task Task { get; init; }
@@ -33,21 +33,15 @@ public static class ApplicationLogger {
     }
     public static void TaskStarted(API.Task task) {
         var info = new TaskInfo { Task = task, };
-        if (_runningTask == null) _runningTask = info;
-        else _runningTask.SubTasks.Add(info);
-
-        AnsiConsole.MarkupLine($"[blue]→[/] Task: {task.name} [grey]({(task.Component is Workspace ? "Workspace" : (task.Component as Project)!.Name)})[/]");
+        WriteLine($"[blue]→[/] Task: {task.name} [grey]({(task.Component is Workspace ? "Workspace" : (task.Component as Project)!.Name)})[/]");
+        _runningTask.Push(info);
     }
     public static void TaskFinished() {
         if (_runningTask == null) throw new InvalidOperationException("No task is running.");
-        TaskInfo current = _runningTask;
-        var duration = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - current.StartTime;
+        var task = _runningTask.Pop();
+        var duration = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - task.StartTime;
 
-        while (current.SubTasks.Count > 0) {
-            current = current.SubTasks[^1];
-        }
-
-        AnsiConsole.MarkupLine($"[green]SUCCESS[/] [bold]{_runningTask?.Task.name}[/] completed in {Math.Round(duration / 1000f, 1)}s");
+        WriteLine($"[green]SUCCESS[/] [bold]{task.Task.name}[/] completed in {Math.Round(duration / 1000f, 1)}s");
     }
     public static void BuildFinished(Exception? e = null) {
         var duration = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _buildStartTime;
@@ -55,7 +49,8 @@ public static class ApplicationLogger {
         if (e == null) {
             AnsiConsole.MarkupLine($"[green]━━━━━━━━━━━━━━━━━━━━━━━━━━ Build Successful ━━━━━━━━━━━━━━━━━━━━━━━━━━[/]");
         } else {
-            AnsiConsole.MarkupLine($"[red]FAILED[/] [bold]{_runningTask?.Task.name}[/] failed in {Math.Round(duration / 1000f, 1)}s");
+            var task = _runningTask.Pop();
+            WriteLine($"[red]FAILED[/] [bold]{task.Task.name}[/] failed in {Math.Round(duration / 1000f, 1)}s");
 
             AnsiConsole.MarkupLine($"[red]━━━━━━━━━━━━━━━━━━━━━━━━━━ Build Failed ━━━━━━━━━━━━━━━━━━━━━━━━━━[/]");
             if (_stackTraceEnabled) {
@@ -69,5 +64,14 @@ public static class ApplicationLogger {
                 AnsiConsole.Write(panel);
             }
         }
+    }
+
+    public static void WriteLine(params object[] messages) {
+        if (_quiet) return;
+        AnsiConsole.MarkupLine(new string(' ', _runningTask.Count * 2) + string.Join(" ", messages));
+    }
+
+    public static void ScriptLog(params object[] messages) {
+        WriteLine($"[grey]→[/] {string.Join(" ", messages)}");
     }
 }

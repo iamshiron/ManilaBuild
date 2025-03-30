@@ -35,7 +35,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         Logger.debug("Adding Manila API to script engine.");
         ScriptEngine.AddHostObject("Manila", new API.Manila(this));
         ScriptEngine.AddHostObject("print", (params object[] args) => {
-            Logger.scriptLog(args);
+            ApplicationLogger.ScriptLog(args);
         });
 
         foreach (var prop in Component.GetType().GetProperties()) {

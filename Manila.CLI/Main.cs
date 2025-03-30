@@ -7,8 +7,12 @@ using Shiron.Manila.Utils;
 Directory.SetCurrentDirectory("E:/dev/Manila./run");
 #endif
 
-Logger.Init(false, false);
-ApplicationLogger.Init(false, true);
+var verbose = args.Contains("--verbose") || args.Contains("-v");
+var stackTrace = args.Contains("--stack-trace");
+var quiet = args.Contains("--quiet") || args.Contains("-q");
+
+Logger.Init(verbose, quiet);
+ApplicationLogger.Init(quiet, stackTrace);
 
 var engine = ManilaEngine.GetInstance();
 var extensionManager = ExtensionManager.GetInstance();
@@ -24,7 +28,7 @@ if (engine.Workspace == null) throw new Exception("Workspace not found");
 foreach (var arg in args) {
     if (arg.StartsWith(":")) {
         try {
-            var task = engine.Workspace.GetTask(arg[1..]) ?? throw new Exception("Task not found: " + arg[1..]);
+            var task = engine.Workspace.GetTask(arg) ?? throw new Exception("Task not found: " + arg[1..]);
             var order = task.GetExecutionOrder();
             Logger.debug("Execution order: " + string.Join(", ", order));
 
@@ -45,6 +49,7 @@ foreach (var arg in args) {
             ApplicationLogger.BuildFinished();
         } catch (Exception e) {
             ApplicationLogger.BuildFinished(e.InnerException);
+            Console.WriteLine(e);
         }
     }
 }

@@ -16,6 +16,10 @@ sourceSets({
 	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
 })
 
+Manila.task('clean').execute(() => {
+	print('Cleaning Client...')
+})
+
 Manila.task('build').execute(() => {
 	print('Building Client...')
 })
@@ -23,6 +27,8 @@ Manila.task('test')
 	.after('build')
 	.execute(() => {
 		print('Testing Client...')
+
+		Manila.runTask('clean')
 	})
 Manila.task('run')
 	.after('test')

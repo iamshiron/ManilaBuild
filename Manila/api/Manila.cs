@@ -150,8 +150,22 @@ public sealed class Manila {
         getProject().ApplyComponent(component);
     }
 
+    /// <summary>
+    /// Used for filtering projects and running actions on them.
+    /// </summary>
+    /// <param name="o">The type of filter, a subclass of <see cref="ProjectFilter"/></param>
+    /// <param name="a">The action to run</param>
     public void project(object o, dynamic a) {
         var filter = ProjectFilter.From(o);
         getWorkspace().ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
+    }
+
+    public void runTask(string key) {
+        var task = getWorkspace().GetTask(key);
+        if (task == null) throw new Exception("Task not found: " + key);
+
+        ApplicationLogger.TaskStarted(task);
+        task.Action?.Invoke();
+        ApplicationLogger.TaskFinished();
     }
 }

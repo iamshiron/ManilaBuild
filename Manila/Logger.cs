@@ -145,15 +145,6 @@ public static class Logger {
     }
 
     /// <summary>
-    /// Logs a message to the console, called from scripts.
-    /// </summary>
-    /// <param name="messages">The messages to log</param>
-    internal static void scriptLog(params object[] messages) {
-        if (quiet) return;
-        log(messages, LogLevel.Headless);
-    }
-
-    /// <summary>
     /// Logs an informational message to the console.
     /// Only logs if verbose mode is enabled and quiet mode is disabled.
     /// </summary>
