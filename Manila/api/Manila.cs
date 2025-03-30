@@ -71,10 +71,10 @@ public sealed class Manila {
     /// <returns>A new task with the specified name, associated with the current project and script context.</returns>
     public Task task(string name) {
         try {
-            return new Task(name, getProject(), context);
+            return new Task(name, getProject(), context, context.ScriptPath);
         } catch (ContextException e) {
             if (e.cIs != Context.WORKSPACE) throw;
-            return new Task(name, getWorkspace(), context);
+            return new Task(name, getWorkspace(), context, context.ScriptPath);
         }
     }
 

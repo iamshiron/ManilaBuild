@@ -16,7 +16,7 @@ public sealed class ManilaEngine {
 
     public static readonly string VERSION = "0.0.0";
 
-    internal ManilaEngine() {
+    private ManilaEngine() {
         Root = Directory.GetCurrentDirectory();
         Workspace = new Workspace(Root);
         WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(Root, "Manila.js"));

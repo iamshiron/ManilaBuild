@@ -37,13 +37,14 @@ if (engine.Workspace == null) throw new Exception("Workspace not found");
 foreach (var arg in args) {
     if (arg.StartsWith(":")) {
         try {
-            var task = engine.Workspace.GetTask(arg) ?? throw new Exception("Task not found: " + arg[1..]);
+            ApplicationLogger.BuildStarted();
+            var task = engine.Workspace.GetTask(arg);
+
             var order = task.GetExecutionOrder();
             Logger.debug("Execution order: " + string.Join(", ", order));
 
-            ApplicationLogger.BuildStarted();
             foreach (var t in order) {
-                var taskToRun = engine.Workspace.GetTask(t) ?? throw new Exception("Task not found: " + t);
+                var taskToRun = engine.Workspace.GetTask(t);
                 ApplicationLogger.TaskStarted(taskToRun);
 
                 try {
@@ -56,9 +57,12 @@ foreach (var arg in args) {
             }
 
             ApplicationLogger.BuildFinished();
+        } catch (TaskNotFoundException e) {
+            ApplicationLogger.BuildFinished(e);
+        } catch (TaskFailedException e) {
+            ApplicationLogger.BuildFinished(e);
         } catch (Exception e) {
-            ApplicationLogger.BuildFinished(e.InnerException);
-            Console.WriteLine(e);
+            ApplicationLogger.BuildFinished(e);
         }
     }
 }

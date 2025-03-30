@@ -11,6 +11,7 @@ public class Task {
     public Action? Action { get; private set; }
     private readonly ScriptContext _context;
     public Component Component { get; init; }
+    public string ScriptPath { get; init; }
 
     /// <summary>
     /// Get the identifier of the task.
@@ -20,11 +21,14 @@ public class Task {
         return $"{Component.GetIdentifier()}:{name}";
     }
 
-    public Task(string name, Component component, ScriptContext context) {
+    public Task(string name, Component component, ScriptContext context, string scriptPath) {
+        if (name.Contains(":")) throw new Exception("Task name cannot contain a colon (:) character.");
+
         this.name = name;
         this.Component = component;
         this._context = context;
         this.Component.tasks.Add(this);
+        this.ScriptPath = scriptPath;
     }
 
     /// <summary>

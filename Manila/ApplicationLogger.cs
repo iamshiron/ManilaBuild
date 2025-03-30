@@ -1,3 +1,5 @@
+using System.Text;
+using Microsoft.ClearScript;
 using Shiron.Manila.API;
 using Spectre.Console;
 
@@ -49,21 +51,34 @@ public static class ApplicationLogger {
         if (e == null) {
             AnsiConsole.MarkupLine($"[green]━━━━━━━━━━━━━━━━━━━━━━━━━━ Build Successful ━━━━━━━━━━━━━━━━━━━━━━━━━━[/]");
         } else {
-            var task = _runningTask.Pop();
-            WriteLine($"[red]FAILED[/] [bold]{task.Task.name}[/] failed in {Math.Round(duration / 1000f, 1)}s");
+            if (_runningTask.Count != 0) {
+                var task = _runningTask.Peek();
+                AnsiConsole.MarkupLine($"[red]FAILED[/] [bold]{task.Task.name}[/] failed in {Math.Round(duration / 1000f, 1)}s");
+            } else {
+                AnsiConsole.MarkupLine($"[red]FAILED[/] in {Math.Round(duration / 1000f, 1)}s");
+            }
 
-            AnsiConsole.MarkupLine($"[red]━━━━━━━━━━━━━━━━━━━━━━━━━━ Build Failed ━━━━━━━━━━━━━━━━━━━━━━━━━━[/]");
             if (_stackTraceEnabled) {
-                var panel = new Panel(Markup.Escape(e.StackTrace) ?? "No stack trace available") {
-                    Border = BoxBorder.Rounded,
-                    BorderStyle = Style.Parse("red dim"),
-                    Header = new PanelHeader($"{e.GetType().Name}: {e.Message}") {
-                    },
-                    Padding = new Padding(0),
-                };
-                AnsiConsole.Write(panel);
+                AnsiConsole.MarkupLine(FormatException(e));
             }
         }
+    }
+
+    public static string FormatException(Exception e) {
+        var builder = new StringBuilder();
+        var script = Path.GetRelativePath(ManilaEngine.GetInstance().Root, _runningTask.Peek().Task.ScriptPath);
+
+        if (e is ScriptEngineException ex) {
+            builder.AppendLine($"[bold]{Markup.Escape(e.GetType().Name)}[/] [grey]({Markup.Escape(e.Message)})[/] \n" + $"[dim]{Markup.Escape(e.StackTrace) + "\n" + ex.ErrorDetails.Replace(" at Script:", "at " + script + ":")}[/]");
+        } else {
+            builder.AppendLine($"[bold]{Markup.Escape(e.GetType().Name)}[/] [grey]({Markup.Escape(e.Message)})[/] \n" + $"[dim]{Markup.Escape(e.StackTrace)}[/]");
+        }
+
+        if (e.InnerException != null) {
+            builder.AppendLine($"[red]Caused By:[/] " + FormatException(e.InnerException));
+        }
+
+        return builder.ToString();
     }
 
     public static void WriteLine(params object[] messages) {

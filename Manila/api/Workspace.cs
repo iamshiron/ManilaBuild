@@ -1,3 +1,4 @@
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
@@ -31,7 +32,8 @@ public class Workspace : Component {
     public Task GetTask(string task, Component? component = null) {
         if (component == null) component = this;
         Logger.debug("Getting task: " + task + " from " + component.Path + " Available tasks: " + string.Join(", ", component.tasks.Select(t => t.name)));
-        return component.tasks.FirstOrDefault(t => t.name == task) ?? throw new Exception("Task not found: " + task);
+
+        return component.tasks.FirstOrDefault(t => t.name == task) ?? throw new TaskNotFoundException(task);
     }
 
     public override string GetIdentifier() {
