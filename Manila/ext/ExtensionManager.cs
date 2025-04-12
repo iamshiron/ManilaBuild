@@ -64,8 +64,8 @@ public class ExtensionManager {
         if (PluginDir == null) throw new Exception("Plugin directory not set");
 
         if (!Directory.Exists(PluginDir)) {
-            Logger.warn("Plugin directory does not exist: " + PluginDir);
-            Logger.info("Skipping plugin loading");
+            Logger.Warn("Plugin directory does not exist: " + PluginDir);
+            Logger.Info("Skipping plugin loading");
             return;
         }
 

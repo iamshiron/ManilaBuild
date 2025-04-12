@@ -41,14 +41,14 @@ foreach (var arg in args) {
             var task = engine.Workspace.GetTask(arg);
 
             var order = task.GetExecutionOrder();
-            Logger.debug("Execution order: " + string.Join(", ", order));
+            Logger.Debug("Execution order: " + string.Join(", ", order));
 
             foreach (var t in order) {
                 var taskToRun = engine.Workspace.GetTask(t);
                 ApplicationLogger.TaskStarted(taskToRun);
 
                 try {
-                    if (taskToRun.Action == null) Logger.warn("Task has no action: " + t);
+                    if (taskToRun.Action == null) Logger.Warn("Task has no action: " + t);
                     else taskToRun.Action.Invoke();
                     ApplicationLogger.TaskFinished();
                 } catch (Exception e) {

@@ -1,3 +1,5 @@
+using System.Dynamic;
+using System.Reflection;
 using Microsoft.ClearScript;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Exceptions;
@@ -11,14 +13,9 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// The main Manila API class. Used for global functions.
 /// </summary>
-public sealed class Manila {
-    private ScriptContext context;
-    private BuildConfig buildConfig = new BuildConfig();
-
-    public Manila(ScriptContext context) {
-        this.context = context;
-    }
-
+public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
+    private readonly ScriptContext Context = context;
+    private readonly BuildConfig BuildConfig = new();
 
     /// <summary>
     /// Gets the current project in the Manila engine.
@@ -26,7 +23,7 @@ public sealed class Manila {
     /// <returns>The current project.</returns>
     /// <exception cref="Exception">Thrown when not in a project context.</exception>
     public Project getProject() {
-        if (ManilaEngine.GetInstance().CurrentProject == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
+        if (ManilaEngine.GetInstance().CurrentProject == null) throw new ContextException(Exceptions.Context.WORKSPACE, Exceptions.Context.PROJECT);
         return ManilaEngine.GetInstance().CurrentProject;
     }
 
@@ -52,7 +49,7 @@ public sealed class Manila {
     /// </summary>
     /// <returns>The build configuration for this Manila instance.</returns>
     public BuildConfig getConfig() {
-        return buildConfig;
+        return BuildConfig;
     }
 
     /// <summary>
@@ -71,10 +68,10 @@ public sealed class Manila {
     /// <returns>A new task with the specified name, associated with the current project and script context.</returns>
     public Task task(string name) {
         try {
-            return new Task(name, getProject(), context, context.ScriptPath);
+            return new Task(name, getProject(), Context, Context.ScriptPath);
         } catch (ContextException e) {
-            if (e.cIs != Context.WORKSPACE) throw;
-            return new Task(name, getWorkspace(), context, context.ScriptPath);
+            if (e.cIs != Exceptions.Context.WORKSPACE) throw;
+            return new Task(name, getWorkspace(), Context, Context.ScriptPath);
         }
     }
 
@@ -119,7 +116,7 @@ public sealed class Manila {
     /// </summary>
     /// <param name="plugin">The Manila plugin to import.</param>
     public void import(ManilaPlugin plugin) {
-        Logger.debug("Importing: " + plugin);
+        Logger.Debug("Importing: " + plugin);
     }
 
     /// <summary>
@@ -146,7 +143,7 @@ public sealed class Manila {
     /// </summary>
     /// <param name="component">The plugin component to apply to the current project.</param>
     public void apply(PluginComponent component) {
-        Logger.debug("Applying: " + component);
+        Logger.Debug("Applying: " + component);
         getProject().ApplyComponent(component);
     }
 

@@ -27,7 +27,7 @@ public sealed class ManilaEngine {
     /// </summary>
     public void Run() {
         if (!System.IO.File.Exists("Manila.js")) {
-            Logger.error("No Manila.js file found in the current directory.");
+            Logger.Error("No Manila.js file found in the current directory.");
             return;
         }
 
@@ -62,7 +62,7 @@ public sealed class ManilaEngine {
     /// </summary>
     /// <param name="path">The relative path from the root</param>
     public void RunProjectScript(string path) {
-        Logger.debug("Running project script: " + path);
+        Logger.Debug("Running project script: " + path);
         string projectPath = Path.GetDirectoryName(Path.GetRelativePath(Root, path));
         string name = projectPath.ToLower().Replace(Path.DirectorySeparatorChar, ':');
 
@@ -84,7 +84,7 @@ public sealed class ManilaEngine {
     /// </summary>
     public void RunWorkspaceScript() {
         string path = "Manila.js";
-        Logger.debug("Running workspace script: " + path);
+        Logger.Debug("Running workspace script: " + path);
 
         WorkspaceContext.ApplyEnum<EPlatform>();
         WorkspaceContext.ApplyEnum<EArchitecture>();

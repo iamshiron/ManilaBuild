@@ -25,15 +25,19 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     public readonly API.Component Component = component;
 
+    public API.Manila? ManilaAPI { get; private set; } = null;
+
     public List<Type> EnumComponents { get; } = new();
 
     /// <summary>
     /// Initializes the script context.
     /// </summary>
     public void Init() {
-        Logger.debug($"Initializing script context for '{ScriptPath}'.");
-        Logger.debug("Adding Manila API to script engine.");
-        ScriptEngine.AddHostObject("Manila", new API.Manila(this));
+        Logger.Debug($"Initializing script context for '{ScriptPath}'.");
+        Logger.Debug("Adding Manila API to script engine.");
+
+        ManilaAPI = new API.Manila(this);
+        ScriptEngine.AddHostObject("Manila", ManilaAPI);
         ScriptEngine.AddHostObject("print", (params object[] args) => {
             ApplicationLogger.ScriptLog(args);
         });
@@ -54,8 +58,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         try {
             ScriptEngine.Execute(File.ReadAllText(ScriptPath));
         } catch (ScriptEngineException e) {
-            Logger.error("Error in script: " + ScriptPath);
-            Logger.info(e.Message);
+            Logger.Error("Error in script: " + ScriptPath);
+            Logger.Info(e.Message);
             throw;
         }
     }
@@ -66,8 +70,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         try {
             ScriptEngine.Execute(File.ReadAllText("Manila.js"));
         } catch (ScriptEngineException e) {
-            Logger.error("Error in workspace script!");
-            Logger.info(e.Message);
+            Logger.Error("Error in workspace script!");
+            Logger.Info(e.Message);
             throw;
         }
     }
@@ -85,12 +89,12 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <typeparam name="T">The enum type</typeparam>
     /// <exception cref="Exception">The class is not tagged with the <see cref="ScriptEnum"/> attribute.</exception>
     public void ApplyEnum(Type t) {
-        Logger.debug($"Applying enum '{t}'.");
+        Logger.Debug($"Applying enum '{t}'.");
 
         if (t.GetType().GetCustomAttributes<ScriptEnum>() == null) throw new Exception($"Object '{t}' is not a script enum.");
 
         if (EnumComponents.Contains(t)) {
-            Logger.warn($"Enum '{t}' already applied.");
+            Logger.Warn($"Enum '{t}' already applied.");
             return;
         }
 

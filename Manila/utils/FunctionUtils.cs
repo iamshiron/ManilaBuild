@@ -17,7 +17,7 @@ public static class FunctionUtils {
     /// and methods with up to 4 parameters. For methods that cannot be directly converted using CreateDelegate,
     /// it falls back to using expression trees.
     /// </remarks>
-    public static Delegate ToDelegate(object o, MethodInfo method) {
+    public static Delegate ToDelegate(object? o, MethodInfo method) {
         try {
             if (method.ReturnType == typeof(void)) {
                 var paramTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
@@ -65,7 +65,7 @@ public static class FunctionUtils {
     /// This method uses expression trees to create a delegate when the standard Delegate.CreateDelegate
     /// method fails. It supports both instance and static methods with up to 4 parameters.
     /// </remarks>
-    private static Delegate CreateDelegateWithExpression(object target, MethodInfo method, Type delegateType) {
+    private static Delegate CreateDelegateWithExpression(object? target, MethodInfo method, Type delegateType) {
         // This is a fallback approach using Expression trees when standard delegate creation fails
         ParameterExpression[] parameters = [.. method.GetParameters().Select(p => Expression.Parameter(p.ParameterType, p.Name))];
 
@@ -79,5 +79,21 @@ public static class FunctionUtils {
             : Expression.Lambda(delegateType, call, parameters);
 
         return lambda.Compile();
+    }
+
+    /// <summary>
+    /// Check if the method has the same parameters as the arguments.
+    /// </summary>
+    /// <param name="method">The method to check</param>
+    /// <param name="args">The list of the arguments</param>
+    /// <returns>True if the method parameters match the provided arguments, otherwise false.</returns>
+    public static bool SameParametes(MethodInfo method, object?[] args) {
+        var methodParams = method.GetParameters();
+        if (methodParams.Length != args.Length) return false;
+
+        for (int i = 0; i < methodParams.Length; ++i)
+            if (!methodParams[i].ParameterType.Equals(args[i].GetType())) return false;
+
+        return true;
     }
 }

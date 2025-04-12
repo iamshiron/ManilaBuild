@@ -21,7 +21,7 @@ public class Workspace : Component {
     /// <param name="key"></param>
     /// <returns></returns>
     public Task GetTask(string key) {
-        Logger.debug("Key: '" + key + "' - " + string.Join(", ", Projects.Keys));
+        Logger.Debug("Key: '" + key + "' - " + string.Join(", ", Projects.Keys));
 
         if (!key.StartsWith(":")) return GetTask(key, Projects.FirstOrDefault().Value);
         key = key[1..]; // Strip the colon that was just added to mark it as absolute path
@@ -31,7 +31,7 @@ public class Workspace : Component {
     }
     public Task GetTask(string task, Component? component = null) {
         if (component == null) component = this;
-        Logger.debug("Getting task: " + task + " from " + component.Path + " Available tasks: " + string.Join(", ", component.tasks.Select(t => t.name)));
+        Logger.Debug("Getting task: " + task + " from " + component.Path + " Available tasks: " + string.Join(", ", component.tasks.Select(t => t.name)));
 
         return component.tasks.FirstOrDefault(t => t.name == task) ?? throw new TaskNotFoundException(task);
     }

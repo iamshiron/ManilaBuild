@@ -9,7 +9,7 @@ namespace Shiron.Manila.Utils;
 
 /// <summary>
 /// The internal logger for Manila. Plugins should use their own logger:
-/// See <see cref="pluginInfo(Attributes.ManilaPlugin, object[])"/> as an example.
+/// See <see cref="PluginInfo(Attributes.ManilaPlugin, object[])"/> as an example.
 /// </summary>
 public static class Logger {
     private static bool verbose;
@@ -33,9 +33,9 @@ public static class Logger {
     /// </summary>
     /// <param name="message">The message</param>
     /// <returns>A formatted string representation of the message</returns>
-    internal static string formatMessage(object message) {
+    internal static string FormatMessage(object message) {
         if (message is object[] array)
-            return string.Join(" ", array.Select(item => formatMessage(item)));
+            return string.Join(" ", array.Select(item => FormatMessage(item)));
 
         if (message == null)
             return "null";
@@ -86,7 +86,7 @@ public static class Logger {
     /// </summary>
     /// <param name="message">The message to escape</param>
     /// <returns>The escaped message with proper indentation for multiline output</returns>
-    internal static string escapeMarkup(string message) {
+    internal static string EscapeMarkup(string message) {
         return message
             .Replace("[", "[[")
             .Replace("]", "]]")
@@ -115,8 +115,8 @@ public static class Logger {
     /// <param name="message">The message to log</param>
     /// <param name="level">The log level</param>
     /// <param name="plugin">Optional plugin information to include in the log message</param>
-    internal static void log(object[] message, LogLevel level, ManilaPlugin? plugin = null) {
-        string formattedMessage = formatMessage(message);
+    internal static void Log(object[] message, LogLevel level, ManilaPlugin? plugin = null) {
+        string formattedMessage = FormatMessage(message);
         if (level == LogLevel.Headless) {
             Console.WriteLine(formattedMessage);
             return;
@@ -137,11 +137,11 @@ public static class Logger {
             _ => "white"
         };
 
-        var levelStr = escapeMarkup(level.ToString().ToUpper());
+        var levelStr = EscapeMarkup(level.ToString().ToUpper());
         string timestamp = DateTime.Now.ToString("hh:mm tt").ToLower();
-        string pluginStr = plugin != null ? $"/{escapeMarkup($"{plugin.Group}:{plugin.Name}@{plugin.Version}")}" : "";
+        string pluginStr = plugin != null ? $"/{EscapeMarkup($"{plugin.Group}:{plugin.Name}@{plugin.Version}")}" : "";
 
-        AnsiConsole.MarkupLine($"<[blue]{timestamp}[/]>[[[{color}]{levelStr}[/]{pluginStr}]]: [{messageColor}]{escapeMarkup(formattedMessage)}[/]");
+        AnsiConsole.MarkupLine($"<[blue]{timestamp}[/]>[[[{color}]{levelStr}[/]{pluginStr}]]: [{messageColor}]{EscapeMarkup(formattedMessage)}[/]");
     }
 
     /// <summary>
@@ -149,9 +149,9 @@ public static class Logger {
     /// Only logs if verbose mode is enabled and quiet mode is disabled.
     /// </summary>
     /// <param name="messages">The messages to log</param>
-    public static void info(params object[] messages) {
+    public static void Info(params object[] messages) {
         if (!verbose || quiet) return;
-        log(messages, LogLevel.Info);
+        Log(messages, LogLevel.Info);
     }
 
     /// <summary>
@@ -159,9 +159,9 @@ public static class Logger {
     /// Only logs if verbose mode is enabled and quiet mode is disabled.
     /// </summary>
     /// <param name="messages">The messages to log</param>
-    public static void debug(params object[] messages) {
+    public static void Debug(params object[] messages) {
         if (!verbose || quiet) return;
-        log(messages, LogLevel.Debug);
+        Log(messages, LogLevel.Debug);
     }
 
     /// <summary>
@@ -169,9 +169,9 @@ public static class Logger {
     /// Only logs if verbose mode is enabled and quiet mode is disabled.
     /// </summary>
     /// <param name="messages">The messages to log</param>
-    public static void warn(params object[] messages) {
+    public static void Warn(params object[] messages) {
         if (!verbose || quiet) return;
-        log(messages, LogLevel.Warning);
+        Log(messages, LogLevel.Warning);
     }
 
     /// <summary>
@@ -179,9 +179,9 @@ public static class Logger {
     /// Only logs if verbose mode is enabled and quiet mode is disabled.
     /// </summary>
     /// <param name="messages">The messages to log</param>
-    public static void error(params object[] messages) {
+    public static void Error(params object[] messages) {
         if (!verbose || quiet) return;
-        log(messages, LogLevel.Error);
+        Log(messages, LogLevel.Error);
     }
 
     /// <summary>
@@ -190,9 +190,9 @@ public static class Logger {
     /// </summary>
     /// <param name="plugin">The plugin that is logging the message</param>
     /// <param name="messages">The messages to log</param>
-    public static void pluginInfo(ManilaPlugin plugin, params object[] messages) {
+    public static void PluginInfo(ManilaPlugin plugin, params object[] messages) {
         if (!verbose || quiet) return;
-        log(messages, LogLevel.Info, plugin);
+        Log(messages, LogLevel.Info, plugin);
     }
 
     /// <summary>
@@ -201,9 +201,9 @@ public static class Logger {
     /// </summary>
     /// <param name="plugin">The plugin that is logging the message</param>
     /// <param name="messages">The messages to log</param>
-    public static void pluginDebug(ManilaPlugin plugin, params object[] messages) {
+    public static void PluginDebug(ManilaPlugin plugin, params object[] messages) {
         if (!verbose || quiet) return;
-        log(messages, LogLevel.Debug, plugin);
+        Log(messages, LogLevel.Debug, plugin);
     }
 
     /// <summary>
@@ -212,9 +212,9 @@ public static class Logger {
     /// </summary>
     /// <param name="plugin">The plugin that is logging the message</param>
     /// <param name="messages">The messages to log</param>
-    public static void pluginWarn(ManilaPlugin plugin, params object[] messages) {
+    public static void PluginWarn(ManilaPlugin plugin, params object[] messages) {
         if (!verbose || quiet) return;
-        log(messages, LogLevel.Warning, plugin);
+        Log(messages, LogLevel.Warning, plugin);
     }
 
     /// <summary>
@@ -223,9 +223,9 @@ public static class Logger {
     /// </summary>
     /// <param name="plugin">The plugin that is logging the message</param>
     /// <param name="messages">The messages to log</param>
-    public static void pluginError(ManilaPlugin plugin, params object[] messages) {
+    public static void PluginError(ManilaPlugin plugin, params object[] messages) {
         if (!verbose || quiet) return;
-        log(messages, LogLevel.Error, plugin);
+        Log(messages, LogLevel.Error, plugin);
     }
 
     /// <summary>
@@ -233,8 +233,8 @@ public static class Logger {
     /// Only logs if quiet mode is disabled.
     /// </summary>
     /// <param name="messages">The messages to print</param>
-    public static void print(params object[] messages) {
+    public static void Print(params object[] messages) {
         if (quiet) return;
-        log(messages, LogLevel.Headless);
+        Log(messages, LogLevel.Headless);
     }
 }

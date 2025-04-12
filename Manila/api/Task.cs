@@ -55,8 +55,8 @@ public class Task {
             try {
                 action();
             } catch (Exception e) {
-                Logger.error("Task failed: " + name);
-                Logger.error(e.GetType().Name + ": " + e.Message);
+                Logger.Error("Task failed: " + name);
+                Logger.Error(e.GetType().Name + ": " + e.Message);
                 throw;
             }
         };
@@ -71,7 +71,7 @@ public class Task {
         List<string> result = [];
         foreach (string dependency in dependencies) {
             Task? dependentTask = ManilaEngine.GetInstance().Workspace.GetTask(dependency);
-            if (dependentTask == null) { Logger.warn("Task not found: " + dependency); continue; }
+            if (dependentTask == null) { Logger.Warn("Task not found: " + dependency); continue; }
             List<string> dependencyOrder = dependentTask.GetExecutionOrder();
             foreach (string depTask in dependencyOrder) {
                 if (!result.Contains(depTask)) {

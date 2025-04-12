@@ -10,7 +10,7 @@ public class ManilaCPP : ManilaPlugin {
     }
 
     [PluginInstance]
-    public static ManilaCPP? instance { get; set; }
+    public static ManilaCPP? Instance { get; set; }
 
     public override void Init() {
         Debug("Init");
@@ -26,16 +26,16 @@ public class ManilaCPP : ManilaPlugin {
     [ScriptFunction]
     public static void Build(Workspace workspace, Project project, BuildConfig config) {
         if (project.HasComponent<StaticLibComponent>()) {
-            instance!.Debug("Building static library: " + project.Name);
+            Instance!.Debug("Building static library: " + project.Name);
             var comp = project.getComponent<StaticLibComponent>();
-            instance.Debug("Building to: " + comp.BinDir!);
+            Instance.Debug("Building to: " + comp.BinDir!);
             return;
         }
 
         if (project.HasComponent<ConsoleComponent>()) {
-            instance!.Debug("Building console application: " + project.Name);
+            Instance!.Debug("Building console application: " + project.Name);
             var comp = project.getComponent<ConsoleComponent>();
-            instance.Debug("Building to: " + comp.BinDir!);
+            Instance.Debug("Building to: " + comp.BinDir!);
 
             return;
         }

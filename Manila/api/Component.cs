@@ -50,17 +50,17 @@ public class Component : DynamicObject, IScriptableObject {
         var scriptPropertyGetterName = "get" + propertyName;
         var scriptPropertySetterName = "set" + propertyName;
 
-        Logger.debug($"Adding property {propertyName}...");
-        Logger.debug($"Script property name: {scriptPropertyName}");
-        Logger.debug($"Script property setter name: {scriptPropertySetterName}");
-        Logger.debug($"Script property getter name: {scriptPropertyGetterName}");
+        Logger.Debug($"Adding property {propertyName}...");
+        Logger.Debug($"Script property name: {scriptPropertyName}");
+        Logger.Debug($"Script property setter name: {scriptPropertySetterName}");
+        Logger.Debug($"Script property getter name: {scriptPropertyGetterName}");
 
         var scriptPropertyInfo = prop.GetCustomAttribute<ScriptProperty>();
         if (scriptPropertyInfo == null) throw new Exception($"Property '{prop.Name}' is not a script property.");
 
         var setMethod = prop.GetSetMethod();
 
-        if (setMethod != null && !scriptPropertyInfo.immutable) {
+        if (setMethod != null && !scriptPropertyInfo.Immutable) {
             ManilaEngine.GetInstance().CurrentContext!.ScriptEngine.AddHostObject(scriptPropertyName, FunctionUtils.ToDelegate(obj, prop.GetSetMethod()!));
         }
 
@@ -68,7 +68,7 @@ public class Component : DynamicObject, IScriptableObject {
         var setterMethods = DynamicMethods.ContainsKey(scriptPropertySetterName) ? DynamicMethods[scriptPropertySetterName] : [];
         var getterMethods = DynamicMethods.ContainsKey(scriptPropertyGetterName) ? DynamicMethods[scriptPropertyGetterName] : [];
 
-        if (setMethod != null && !scriptPropertyInfo.immutable) setterMethods.Add(FunctionUtils.ToDelegate(obj, setMethod));
+        if (setMethod != null && !scriptPropertyInfo.Immutable) setterMethods.Add(FunctionUtils.ToDelegate(obj, setMethod));
         getterMethods.Add(FunctionUtils.ToDelegate(obj, prop.GetGetMethod()!));
 
         DynamicMethods[scriptPropertySetterName] = setterMethods;
@@ -77,7 +77,7 @@ public class Component : DynamicObject, IScriptableObject {
     public void AddScriptFunction(MethodInfo prop, ScriptEngine engine, object? obj = null) {
         if (obj == null) obj = this;
 
-        Logger.debug($"Adding function '{prop.Name}' to script context.");
+        Logger.Debug($"Adding function '{prop.Name}' to script context.");
         var scriptFunctionInfo = prop.GetCustomAttribute<ScriptFunction>();
         if (scriptFunctionInfo == null) throw new Exception($"Method '{prop.Name}' is not a script function.");
 
@@ -87,35 +87,20 @@ public class Component : DynamicObject, IScriptableObject {
 
         engine.AddHostObject(prop.Name, FunctionUtils.ToDelegate(obj, prop));
 
-        Logger.debug($"Added function '{prop.Name}' to script context.");
-    }
-    /// <summary>
-    /// Check if the method has the same parameters as the arguments.
-    /// </summary>
-    /// <param name="method">The method to check</param>
-    /// <param name="args">The lisst of the arguments</param>
-    /// <returns>True if the method parameters match the provided arguments, otherwise false.</returns>
-    private bool SameParametes(MethodInfo method, object?[] args) {
-        var methodParams = method.GetParameters();
-        if (methodParams.Length != args.Length) return false;
-
-        for (int i = 0; i < methodParams.Length; ++i)
-            if (!methodParams[i].ParameterType.Equals(args[i].GetType())) return false;
-
-        return true;
+        Logger.Debug($"Added function '{prop.Name}' to script context.");
     }
 
     public override bool TryInvokeMember(InvokeMemberBinder binder, object?[] args, out object result) {
         if (DynamicMethods.TryGetValue(binder.Name, out var methods)) {
-            Logger.debug($"Invoking method '{binder.Name}'");
+            Logger.Debug($"Invoking method '{binder.Name}'");
 
             foreach (var method in methods) {
-                if (!SameParametes(method.Method, args)) continue;
+                if (!FunctionUtils.SameParametes(method.Method, args)) continue;
 
                 var methodParams = method.Method.GetParameters();
                 for (int i = 0; i < methodParams.Length; ++i) {
                     var param = methodParams[i];
-                    Logger.debug($"Parameter: {param.Name}");
+                    Logger.Debug($"Parameter: {param.Name}");
 
                     // Convert enum strings to enum values
                     if (param.ParameterType.IsEnum) {
@@ -130,7 +115,7 @@ public class Component : DynamicObject, IScriptableObject {
             }
         }
 
-        Logger.debug($"Method '{binder.Name}' not found.");
+        Logger.Debug($"Method '{binder.Name}' not found.");
         return base.TryInvokeMember(binder, args, out result);
     }
 
@@ -139,10 +124,10 @@ public class Component : DynamicObject, IScriptableObject {
     /// </summary>
     /// <param name="component">The instance of the component</param>
     public void ApplyComponent(PluginComponent component) {
-        Logger.debug($"Applying component '{component}'.");
+        Logger.Debug($"Applying component '{component}'.");
 
         if (PluginComponents.ContainsKey(component.GetType())) {
-            Logger.warn($"Component '{component}' already applied.");
+            Logger.Warn($"Component '{component}' already applied.");
             return;
         }
         PluginComponents.Add(component.GetType(), component);
@@ -164,7 +149,7 @@ public class Component : DynamicObject, IScriptableObject {
     /// <param name="plugin">The instance of the plugin</param>
     public void ApplyPlugin(ManilaPlugin plugin) {
         if (plugins.Contains(plugin.GetType())) {
-            Logger.warn($"Plugin '{plugin}' already applied.");
+            Logger.Warn($"Plugin '{plugin}' already applied.");
             return;
         }
 

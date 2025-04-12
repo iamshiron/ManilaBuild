@@ -1,3 +1,4 @@
+using Shiron.Manila.API;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Attributes;
@@ -25,22 +26,22 @@ public abstract class ManilaPlugin(string group, string name, string version) {
     /// Prints a debug severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Debug(params object[] args) { Logger.pluginDebug(this, args); }
+    public void Debug(params object[] args) { Logger.PluginDebug(this, args); }
     /// <summary>
     /// Prints a information severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Info(params object[] args) { Logger.pluginInfo(this, args); }
+    public void Info(params object[] args) { Logger.PluginInfo(this, args); }
     /// <summary>
     /// Prints a warning severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Warn(params object[] args) { Logger.pluginWarn(this, args); }
+    public void Warn(params object[] args) { Logger.PluginWarn(this, args); }
     /// <summary>
     /// Prints a error severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Error(params object[] args) { Logger.pluginError(this, args); }
+    public void Error(params object[] args) { Logger.PluginError(this, args); }
 
     /// <summary>
     /// Registers a component to the plugin.

@@ -11,7 +11,7 @@ public abstract class ProjectFilter {
     public abstract bool Predicate(Project p);
 
     public static ProjectFilter From(object o) {
-        Logger.debug("From " + o.GetType());
+        Logger.Debug("From " + o.GetType());
 
         if (o is string) {
             var s = (string) o;
@@ -20,7 +20,7 @@ public abstract class ProjectFilter {
         }
 
         if (o is IList<object> list) {
-            Logger.debug("Array");
+            Logger.Debug("Array");
 
             var filters = new ProjectFilter[list.Count];
             for (var i = 0; i < list.Count; i++) filters[i] = From(list[i]);
@@ -31,9 +31,9 @@ public abstract class ProjectFilter {
             foreach (var key in obj.PropertyNames) {
                 try {
                     var value = obj.GetProperty(key);
-                    Logger.debug($"Property: {key}, Value: {value}, Type: {value?.GetType()}");
+                    Logger.Debug($"Property: {key}, Value: {value}, Type: {value?.GetType()}");
                 } catch (Exception ex) {
-                    Logger.debug($"Error accessing property {key}: {ex.Message}");
+                    Logger.Debug($"Error accessing property {key}: {ex.Message}");
                 }
             }
 
@@ -43,7 +43,7 @@ public abstract class ProjectFilter {
                 string pattern = objString.Substring(1, lastSlashIndex - 1);
                 string flags = lastSlashIndex < objString.Length - 1 ? objString.Substring(lastSlashIndex + 1) : "";
 
-                Logger.debug($"Detected regex pattern: '{pattern}', flags: '{flags}'");
+                Logger.Debug($"Detected regex pattern: '{pattern}', flags: '{flags}'");
                 return new ProjectFilterRegex(new Regex(pattern));
             }
 
@@ -53,11 +53,11 @@ public abstract class ProjectFilter {
                 if (constructorName == "RegExp") {
                     string pattern = dyn.source;
                     string flags = dyn.flags;
-                    Logger.debug($"Detected RegExp object with pattern: '{pattern}', flags: '{flags}'");
+                    Logger.Debug($"Detected RegExp object with pattern: '{pattern}', flags: '{flags}'");
                     return new ProjectFilterRegex(new Regex(pattern));
                 }
             } catch (Exception ex) {
-                Logger.debug($"Error checking constructor: {ex.Message}");
+                Logger.Debug($"Error checking constructor: {ex.Message}");
             }
         }
 
