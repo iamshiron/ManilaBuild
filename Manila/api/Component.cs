@@ -17,6 +17,7 @@ public class Component : DynamicObject, IScriptableObject {
     public List<Type> plugins { get; } = [];
     public Dictionary<string, List<Delegate>> DynamicMethods { get; } = [];
     public List<Task> tasks { get; } = [];
+    public List<Type> dependencyTypes { get; } = [];
 
     /// <summary>
     /// The GetIdentifier method returns a string that uniquely identifies the component.
@@ -132,7 +133,7 @@ public class Component : DynamicObject, IScriptableObject {
         }
         PluginComponents.Add(component.GetType(), component);
 
-        foreach (var e in component.plugin.enums) {
+        foreach (var e in component.plugin.Enums) {
             ManilaEngine.GetInstance().CurrentContext.ApplyEnum(e);
         }
 
@@ -148,14 +149,22 @@ public class Component : DynamicObject, IScriptableObject {
     /// </summary>
     /// <param name="plugin">The instance of the plugin</param>
     public void ApplyPlugin(ManilaPlugin plugin) {
+        ManilaEngine.GetInstance().CurrentContext.ScriptEngine.AddHostType(plugin.GetType().Name, plugin.GetType());
+        foreach (var t in plugin.Dependencies) {
+            dependencyTypes.Add(t);
+            ManilaEngine.GetInstance().CurrentContext.ManilaAPI.AddFunction((Activator.CreateInstance(t) as Dependency).Type, delegate (dynamic[] args) {
+                var dep = Activator.CreateInstance(t) as Dependency;
+                dep.Create((object[]) args);
+                return dep;
+            });
+        }
+
         if (plugins.Contains(plugin.GetType())) {
             Logger.Warn($"Plugin '{plugin}' already applied.");
             return;
         }
 
         plugins.Add(plugin.GetType());
-
-        ManilaEngine.GetInstance().CurrentContext.ScriptEngine.AddHostType(plugin.GetType().Name, plugin.GetType());
     }
 
     /// <summary>

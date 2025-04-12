@@ -1,4 +1,6 @@
+using Microsoft.ClearScript;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
@@ -16,13 +18,22 @@ public class Project : Component {
     [ScriptProperty]
     public string? Description { get; set; }
 
-    public Dictionary<string, SourceSet> _sourceSets = new();
+    public Dictionary<string, SourceSet> _sourceSets = [];
+    public List<Dependency> _dependencies = [];
 
     [ScriptFunction]
     public void sourceSets(object obj) {
         foreach (var pair in (IDictionary<string, object>) obj) {
             if (_sourceSets.ContainsKey(pair.Key)) throw new Exception($"SourceSet '{pair.Key}' already exists.");
             _sourceSets.Add(pair.Key, (SourceSet) pair.Value);
+        }
+    }
+
+    [ScriptFunction]
+    public void dependencies(object obj) {
+        ScriptObject sobj = (ScriptObject) obj;
+        foreach (var n in sobj.PropertyIndices) {
+            _dependencies.Add(sobj[n] as Dependency);
         }
     }
 

@@ -46,7 +46,7 @@ public sealed class ManilaEngine {
                 if (f.Item1.Predicate(p)) {
                     foreach (var type in p.plugins) {
                         var plugin = ExtensionManager.GetInstance().GetPlugin(type);
-                        foreach (var e in plugin.enums) {
+                        foreach (var e in plugin.Enums) {
                             // Applying duplicate enums is already handled in the ApplyEnum method.
                             WorkspaceContext.ApplyEnum(e);
                         }

@@ -10,8 +10,9 @@ public abstract class ManilaPlugin(string group, string name, string version) {
     public readonly string Group = group;
     public readonly string Name = name;
     public readonly string Version = version;
-    public readonly Dictionary<string, PluginComponent> components = [];
-    public readonly List<Type> enums = [];
+    public readonly Dictionary<string, PluginComponent> Components = [];
+    public readonly List<Type> Enums = [];
+    public readonly List<Type> Dependencies = [];
 
     /// <summary>
     /// Called upon initialization of the plugin.
@@ -49,8 +50,8 @@ public abstract class ManilaPlugin(string group, string name, string version) {
     /// <param name="component">The instance the component</param>
     /// <exception cref="Exception">Component already registered to this plugin</exception>
     public void RegisterComponent(PluginComponent component) {
-        if (components.ContainsKey(component.Name)) throw new Exception("Component with name " + component.Name + " already registered");
-        components.Add(component.Name, component);
+        if (Components.ContainsKey(component.Name)) throw new Exception("Component with name " + component.Name + " already registered");
+        Components.Add(component.Name, component);
         component.plugin = this;
     }
     /// <summary>
@@ -58,7 +59,10 @@ public abstract class ManilaPlugin(string group, string name, string version) {
     /// </summary>
     /// <typeparam name="T">The class type</typeparam>
     public void RegisterEnum<T>() {
-        enums.Add(typeof(T));
+        Enums.Add(typeof(T));
+    }
+    public void RegisterDependency<T>() {
+        Dependencies.Add(typeof(T));
     }
 
     /// <summary>
@@ -68,8 +72,8 @@ public abstract class ManilaPlugin(string group, string name, string version) {
     /// <returns>The instance of the component</returns>
     /// <exception cref="Exception">Component was not found</exception>
     public PluginComponent GetComponent(string name) {
-        if (!components.ContainsKey(name)) throw new Exception("Component with name " + name + " not registered");
-        return components[name];
+        if (!Components.ContainsKey(name)) throw new Exception("Component with name " + name + " not registered");
+        return Components[name];
     }
 
     /// <summary>

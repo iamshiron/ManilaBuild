@@ -18,6 +18,7 @@ public class ManilaCPP : ManilaPlugin {
         RegisterComponent(new StaticLibComponent());
         RegisterComponent(new ConsoleComponent());
         RegisterEnum<EToolChain>();
+        RegisterDependency<DependencyLink>();
     }
     public override void Release() {
         Debug("Release");

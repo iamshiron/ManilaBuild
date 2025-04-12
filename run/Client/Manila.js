@@ -16,6 +16,8 @@ sourceSets({
 	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
 })
 
+dependencies([Manila.link('opengl32.lib')])
+
 Manila.task('clean').execute(() => {
 	print('Cleaning Client...')
 })

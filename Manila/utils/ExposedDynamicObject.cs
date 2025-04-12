@@ -28,6 +28,10 @@ public abstract class ExposedDynamicObject : DynamicObject, IScriptableObject {
         if (!_functions.ContainsKey(exposedName)) _functions[exposedName] = [];
         _functions[exposedName].Add(FunctionUtils.ToDelegate(target, info));
     }
+    public void AddFunction(string exposedName, Delegate func, object? target = null) {
+        if (!_functions.ContainsKey(exposedName)) _functions[exposedName] = [];
+        _functions[exposedName].Add(func);
+    }
     /// <summary>
     /// Adds a property to the list of properties that are exposed to the script context.
     /// The property will be exposed JS styled naming convention (first letter lowercase).
@@ -102,6 +106,16 @@ public abstract class ExposedDynamicObject : DynamicObject, IScriptableObject {
 
                 result = method.DynamicInvoke(args);
                 return true;
+            }
+
+            // Check for a method that takes a single object parameter and call it with an object array
+            if (methods.Count == 1 && methods[0].Method.GetParameters().Length == 1) {
+                var method = methods[0];
+                var methodParams = method.Method.GetParameters();
+                if (methodParams.Length == 1 && methodParams[0].ParameterType.IsArray) {
+                    result = method.DynamicInvoke([args]);
+                    return true;
+                }
             }
         }
 

@@ -4,10 +4,10 @@ namespace Shiron.Manila.API;
 /// Represents a dependency in a project.
 /// </summary>
 public abstract class Dependency {
-    public readonly string Name;
+    public readonly string Type;
 
-    public Dependency(string name) {
-        this.Name = name;
+    public Dependency(string type) {
+        this.Type = type;
     }
 
     public abstract void Create(params object[] args);

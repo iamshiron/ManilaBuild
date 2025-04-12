@@ -1,11 +1,12 @@
+namespace Shiron.Manila.CPP;
 
 using Shiron.Manila.API;
 using Shiron.Manila.CPP;
 
-public class DepndencyLink : Dependency {
+public class DependencyLink : Dependency {
     public string Path { get; private set; } = string.Empty;
 
-    public DepndencyLink() : base("link") {
+    public DependencyLink() : base("link") {
     }
 
     public override void Create(params object[] args) {
