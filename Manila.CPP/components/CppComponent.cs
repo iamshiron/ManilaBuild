@@ -21,6 +21,10 @@ public class CppComponent : LanguageComponent {
     public EToolChain? ToolChain { get; set; }
 
     public override void Build(Workspace workspace, Project project, BuildConfig config) {
+        foreach (var dep in project._dependencies) {
+            dep.Resolve();
+        }
+
         Toolchain toolchain =
             ToolChain == EToolChain.Clang ? new ToolchainClang() :
             ToolChain == EToolChain.MSVC ? new ToolchainMSVC() :

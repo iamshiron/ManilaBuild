@@ -38,5 +38,12 @@ public class DependencyProject : Dependency {
 
         var project = this.Project.Resolve();
         ManilaCPP.Instance.Info("Resolving Dependency Project '" + project.GetIdentifier() + "'...");
+
+        var task = project.Workspace.GetTask(BuildTask, project);
+        if (task == null) throw new Exception("Task not found: " + BuildTask);
+
+        ApplicationLogger.TaskStarted(task);
+        task.Action?.Invoke();
+        ApplicationLogger.TaskFinished();
     }
 }

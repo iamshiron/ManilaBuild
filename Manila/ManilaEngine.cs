@@ -66,7 +66,7 @@ public sealed class ManilaEngine {
         string projectPath = Path.GetDirectoryName(Path.GetRelativePath(Root, path));
         string name = projectPath.ToLower().Replace(Path.DirectorySeparatorChar, ':');
 
-        CurrentProject = new API.Project(name, projectPath);
+        CurrentProject = new API.Project(name, projectPath, Workspace);
         Workspace!.Projects.Add(name, CurrentProject);
         CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(Root, path));
 

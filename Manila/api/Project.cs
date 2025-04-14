@@ -21,6 +21,8 @@ public class Project : Component {
     public Dictionary<string, SourceSet> _sourceSets = [];
     public List<Dependency> _dependencies = [];
 
+    public Workspace Workspace { get; private set; }
+
     [ScriptFunction]
     public void sourceSets(object obj) {
         foreach (var pair in (IDictionary<string, object>) obj) {
@@ -37,7 +39,8 @@ public class Project : Component {
         }
     }
 
-    public Project(string name, string location) : base(location) {
+    public Project(string name, string location, Workspace workspace) : base(location) {
         this.Name = name;
+        this.Workspace = workspace;
     }
 }
