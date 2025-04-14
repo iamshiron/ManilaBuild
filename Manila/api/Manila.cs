@@ -178,4 +178,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     public void build(Workspace workspace, Project project, BuildConfig config) {
         project.GetLanguageComponent().Build(workspace, project, config);
     }
+    public void run(UnresolvedProject project) { run(project.Resolve()); }
+    public void run(Project project) {
+        project.GetLanguageComponent().Run(project);
+    }
 }

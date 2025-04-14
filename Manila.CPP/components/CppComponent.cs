@@ -35,6 +35,7 @@ public class CppComponent : LanguageComponent {
         toolchain.Build(workspace, project, config);
     }
 
-    public override void Run(Workspace workspace, Project project, BuildConfig config) {
+    public override void Run(Project project) {
+        throw new Exception("A CppComponent cannot be started directly. Please use a ConsoleComponent.");
     }
 }

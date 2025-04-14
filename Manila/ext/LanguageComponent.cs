@@ -10,5 +10,5 @@ public abstract class LanguageComponent : PluginComponent {
     }
 
     public abstract void Build(Workspace workspace, Project project, BuildConfig config);
-    public abstract void Run(Workspace workspace, Project project, BuildConfig config);
+    public abstract void Run(Project project);
 }

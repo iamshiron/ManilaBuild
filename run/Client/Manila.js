@@ -37,4 +37,5 @@ Manila.task('run')
 	.after('build')
 	.execute(() => {
 		print('Running Client...')
+		Manila.run(project)
 	})

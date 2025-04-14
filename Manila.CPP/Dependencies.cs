@@ -51,7 +51,5 @@ public class DependencyProject : Dependency {
         var comp = dependent.GetComponent<CppComponent>();
         comp.IncludeDirs.Add(Path.Join(dependent.Workspace.Path, dependency._sourceSets["main"].Root));
         comp.Links.AddRange([.. depComp.Links, Utils.GetBinFile(dependency, depComp)]);
-
-        System.Console.WriteLine("Links: " + string.Join(", ", comp.Links));
     }
 }
