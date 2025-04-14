@@ -137,6 +137,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         ApplyPlugin(component.plugin);
 
         foreach (var prop in component.GetType().GetProperties()) {
+            if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
             AddScriptProperty(prop, component);
         }
     }
@@ -179,8 +180,15 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     /// <returns>The values of the component for the current context</returns>
     /// <exception cref="Exception">The component was not found on the context</exception>
     public T GetComponent<T>() where T : PluginComponent {
-        if (!PluginComponents.ContainsKey(typeof(T))) throw new Exception($"Component '{typeof(T)}' not found.");
-        return (T) PluginComponents[typeof(T)];
+        if (PluginComponents.TryGetValue(typeof(T), out var component))
+            return (T) component;
+
+        foreach (var p in PluginComponents) {
+            if (typeof(T).IsAssignableFrom(p.Key))
+                return (T) p.Value;
+        }
+
+        throw new Exception($"Component of type {typeof(T).Name} not found in this context.");
     }
 
     public LanguageComponent GetLanguageComponent() {

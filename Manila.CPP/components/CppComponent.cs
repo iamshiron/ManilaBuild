@@ -19,15 +19,17 @@ public class CppComponent : LanguageComponent {
     public Dir? ObjDir { get; set; }
     [ScriptProperty]
     public EToolChain? ToolChain { get; set; }
+    public List<string> IncludeDirs { get; set; } = [];
+    public List<string> Links { get; set; } = [];
 
     public override void Build(Workspace workspace, Project project, BuildConfig config) {
         foreach (var dep in project._dependencies) {
-            dep.Resolve();
+            dep.Resolve(project);
         }
 
         Toolchain toolchain =
-            ToolChain == EToolChain.Clang ? new ToolchainClang() :
-            ToolChain == EToolChain.MSVC ? new ToolchainMSVC() :
+            ToolChain == EToolChain.Clang ? new ToolchainClang(workspace, project, config) :
+            ToolChain == EToolChain.MSVC ? new ToolchainMSVC(workspace, project, config) :
             throw new NotImplementedException("Toolchain not implemented.");
 
         toolchain.Build(workspace, project, config);

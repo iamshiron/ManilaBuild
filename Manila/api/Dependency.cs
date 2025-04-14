@@ -11,5 +11,5 @@ public abstract class Dependency {
     }
 
     public abstract void Create(params object[] args);
-    public abstract void Resolve();
+    public abstract void Resolve(Project project);
 }

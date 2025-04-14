@@ -1,6 +1,7 @@
 namespace Shiron.Manila.CPP;
 
 using Shiron.Manila.API;
+using Shiron.Manila.CPP.Components;
 
 public class DependencyLink : Dependency {
     public string Path { get; private set; } = string.Empty;
@@ -14,7 +15,7 @@ public class DependencyLink : Dependency {
         this.Path = (string) args[0];
     }
 
-    public override void Resolve() {
+    public override void Resolve(Project project) {
         ManilaCPP.Instance.Info("Resolving Dependency Link '" + this.Path + "'...");
     }
 }
@@ -33,17 +34,24 @@ public class DependencyProject : Dependency {
         this.BuildTask = (string) args[1];
     }
 
-    public override void Resolve() {
+    public override void Resolve(Project dependent) {
         ManilaCPP.Instance.Info(string.Join(", ", ManilaEngine.GetInstance().Workspace.Projects.Keys));
 
-        var project = this.Project.Resolve();
-        ManilaCPP.Instance.Info("Resolving Dependency Project '" + project.GetIdentifier() + "'...");
+        var dependency = this.Project.Resolve();
+        ManilaCPP.Instance.Info("Resolving Dependency Project '" + dependency.GetIdentifier() + "'...");
 
-        var task = project.Workspace.GetTask(BuildTask, project);
+        var task = dependency.Workspace.GetTask(BuildTask, dependency);
         if (task == null) throw new Exception("Task not found: " + BuildTask);
 
         ApplicationLogger.TaskStarted(task);
         task.Action?.Invoke();
         ApplicationLogger.TaskFinished();
+
+        var depComp = dependency.GetComponent<CppComponent>();
+        var comp = dependent.GetComponent<CppComponent>();
+        comp.IncludeDirs.Add(Path.Join(dependent.Workspace.Path, dependency._sourceSets["main"].Root));
+        comp.Links.AddRange([.. depComp.Links, Utils.GetBinFile(dependency, depComp)]);
+
+        System.Console.WriteLine("Links: " + string.Join(", ", comp.Links));
     }
 }
