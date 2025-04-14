@@ -1,7 +1,7 @@
 using Shiron.Manila.API;
 using Shiron.Manila.Utils;
 
-namespace Shiron.Manila.Attributes;
+namespace Shiron.Manila.Ext;
 
 /// <summary>
 /// Represents a Manila plugin.

@@ -1,7 +1,5 @@
-using System.Dynamic;
-using System.Reflection;
 using Microsoft.ClearScript;
-using Shiron.Manila.Attributes;
+using Shiron.Manila.Ext;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
@@ -152,7 +150,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <param name="o">The type of filter, a subclass of <see cref="ProjectFilter"/></param>
     /// <param name="a">The action to run</param>
-    public void project(object o, dynamic a) {
+    public void onProject(object o, dynamic a) {
         var filter = ProjectFilter.From(o);
         getWorkspace().ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
     }
@@ -169,5 +167,15 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         ApplicationLogger.TaskStarted(task);
         task.Action?.Invoke();
         ApplicationLogger.TaskFinished();
+    }
+
+    /// <summary>
+    /// Calls the underlying compiler to build the project
+    /// </summary>
+    /// <param name="workspace">The workspace</param>
+    /// <param name="project">The project</param>
+    /// <param name="config">The config</param>
+    public void build(Workspace workspace, Project project, BuildConfig config) {
+        project.GetLanguageComponent().Build(workspace, project, config);
     }
 }

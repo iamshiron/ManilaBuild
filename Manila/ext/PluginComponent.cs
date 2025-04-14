@@ -1,4 +1,4 @@
-namespace Shiron.Manila.Attributes;
+namespace Shiron.Manila.Ext;
 
 /// <summary>
 /// Represents a component of a plugin.

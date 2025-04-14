@@ -16,7 +16,7 @@ sourceSets({
 	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
 })
 
-dependencies([Manila.link('opengl32.lib')])
+dependencies([Manila.link('opengl32.lib'), Manila.project(':core', 'build')])
 
 Manila.task('clean').execute(() => {
 	print('Cleaning Client...')
@@ -24,12 +24,12 @@ Manila.task('clean').execute(() => {
 
 Manila.task('build').execute(() => {
 	print('Building Client...')
+	Manila.build(workspace, project, config)
 })
 Manila.task('test')
 	.after('build')
 	.execute(() => {
 		print('Testing Client...')
-
 		Manila.runTask('clean')
 	})
 Manila.task('run')

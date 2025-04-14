@@ -1,8 +1,9 @@
-namespace Shiron.Manila.Attributes;
+namespace Shiron.Manila.Ext;
 
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Shiron.Manila.Utils;
+using Shiron.Manila.Attributes;
 
 /// <summary>
 /// Class for loading and managing plugins. Global singleton.

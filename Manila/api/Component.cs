@@ -1,17 +1,18 @@
 using Microsoft.ClearScript;
 using System.Dynamic;
 using System.Reflection;
-using Shiron.Manila.Attributes;
+using Shiron.Manila.Ext;
 using Shiron.Manila.Utils;
+using Shiron.Manila.Attributes;
 
 namespace Shiron.Manila.API;
 
 /// <summary>
 /// Represents a component in the build script. Components are used to group tasks and plugins. Can either be a workspace or a project.
 /// </summary>
-public class Component : DynamicObject, IScriptableObject {
+public class Component(string path) : DynamicObject, IScriptableObject {
     [ScriptProperty(true)]
-    public Dir Path { get; private set; }
+    public Dir Path { get; private set; } = new Dir(path);
 
     public Dictionary<Type, PluginComponent> PluginComponents { get; } = [];
     public List<Type> plugins { get; } = [];
@@ -26,10 +27,6 @@ public class Component : DynamicObject, IScriptableObject {
     public virtual string GetIdentifier() {
         string relativeDir = System.IO.Path.GetRelativePath(ManilaEngine.GetInstance().Root, Path.path);
         return ":" + relativeDir.Replace(System.IO.Path.DirectorySeparatorChar, ':').ToLower();
-    }
-
-    public Component(string path) {
-        this.Path = new Dir(path);
     }
 
     public void OnExposedToScriptCode(ScriptEngine engine) {
@@ -181,8 +178,15 @@ public class Component : DynamicObject, IScriptableObject {
     /// <typeparam name="T">The component type</typeparam>
     /// <returns>The values of the component for the current context</returns>
     /// <exception cref="Exception">The component was not found on the context</exception>
-    public T getComponent<T>() where T : PluginComponent {
+    public T GetComponent<T>() where T : PluginComponent {
         if (!PluginComponents.ContainsKey(typeof(T))) throw new Exception($"Component '{typeof(T)}' not found.");
         return (T) PluginComponents[typeof(T)];
+    }
+
+    public LanguageComponent GetLanguageComponent() {
+        foreach (var component in PluginComponents.Values) {
+            if (component is LanguageComponent languageComponent) return languageComponent;
+        }
+        throw new Exception("No language component found.");
     }
 }

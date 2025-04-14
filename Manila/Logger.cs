@@ -3,7 +3,7 @@ using Spectre.Console;
 using Microsoft.ClearScript;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Shiron.Manila.Attributes;
+using Shiron.Manila.Ext;
 
 namespace Shiron.Manila.Utils;
 

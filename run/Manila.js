@@ -1,6 +1,6 @@
 const workspace = Manila.getWorkspace()
 
-Manila.project('*', p => {
+Manila.onProject('*', p => {
 	p.setToolChain(ToolChain.Clang)
 })
 
