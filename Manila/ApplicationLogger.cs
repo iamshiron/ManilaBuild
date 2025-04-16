@@ -89,4 +89,7 @@ public static class ApplicationLogger {
     public static void ScriptLog(params object[] messages) {
         WriteLine($"[grey]→[/] {string.Join(" ", messages)}");
     }
+    public static void ApplicationLog(params object[] message) {
+        WriteLine($"[grey]→[/] {string.Join(" ", message)}");
+    }
 }

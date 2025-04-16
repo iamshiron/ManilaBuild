@@ -23,19 +23,16 @@ Manila.task('clean').execute(() => {
 })
 
 Manila.task('build').execute(() => {
-	print('Building Client...')
 	Manila.build(workspace, project, config)
 })
 Manila.task('test')
 	.after('build')
 	.execute(() => {
 		print('Testing Client...')
-		Manila.runTask('clean')
 	})
 Manila.task('run')
 	.after('test')
 	.after('build')
 	.execute(() => {
-		print('Running Client...')
 		Manila.run(project)
 	})
