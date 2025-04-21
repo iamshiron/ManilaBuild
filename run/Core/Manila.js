@@ -14,10 +14,14 @@ sourceSets({
 	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
 })
 
-Manila.task('build').execute(() => {
-	Manila.build(workspace, project, config)
-})
+Manila.task('build')
+	.description('Build the Core')
+	.execute(() => {
+		Manila.build(workspace, project, config)
+	})
+
 Manila.task('run')
+	.description('Run the Core')
 	.after('build')
 	.execute(() => {
 		print('Running Core...')

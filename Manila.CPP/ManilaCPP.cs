@@ -6,7 +6,7 @@ using Shiron.Manila.Ext;
 using Shiron.Manila.Attributes;
 
 public class ManilaCPP : ManilaPlugin {
-    public ManilaCPP() : base("shiron.manila", "cpp", "1.0.0") {
+    public ManilaCPP() : base("shiron.manila", "cpp", "1.0.0", "Shiron") {
     }
 
     [PluginInstance]

@@ -18,19 +18,23 @@ sourceSets({
 
 dependencies([Manila.project(':core', 'build')])
 
-Manila.task('clean').execute(() => {
-	print('Cleaning Client...')
-})
+Manila.task('clean')
+	.description('Clean the client')
+	.execute(() => {
+		print('Cleaning Client...')
+	})
 
 Manila.task('build').execute(() => {
 	Manila.build(workspace, project, config)
 })
 Manila.task('test')
+	.description('Run the Client Tests')
 	.after('build')
 	.execute(() => {
 		print('Testing Client...')
 	})
 Manila.task('run')
+	.description('Run the Client')
 	.after('test')
 	.after('build')
 	.execute(() => {

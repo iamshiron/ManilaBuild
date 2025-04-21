@@ -48,7 +48,7 @@ public class ExtensionManager {
     /// <summary>
     /// List of loaded plugins.
     /// </summary>
-    public List<ManilaPlugin> plugins = [];
+    public List<ManilaPlugin> Plugins = [];
 
     /// <summary>
     /// Initializes the extension manager with the plugin directory.
@@ -76,7 +76,8 @@ public class ExtensionManager {
                 if (type.IsSubclassOf(typeof(ManilaPlugin))) {
                     var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
                     if (plugin == null) throw new Exception("Failed to create plugin instance of type " + type + " loaded from " + file);
-                    plugins.Add(plugin);
+                    plugin.File = file;
+                    Plugins.Add(plugin);
 
                     foreach (var prop in type.GetProperties())
                         if (prop.GetCustomAttribute<PluginInstance>() != null)
@@ -90,7 +91,7 @@ public class ExtensionManager {
     /// Initializes all loaded plugins.
     /// </summary>
     public void InitPlugins() {
-        foreach (var plugin in plugins) {
+        foreach (var plugin in Plugins) {
             plugin.Init();
         }
     }
@@ -98,7 +99,7 @@ public class ExtensionManager {
     /// Releases all loaded plugins.
     /// </summary>
     public void ReleasePlugins() {
-        foreach (var plugin in plugins) {
+        foreach (var plugin in Plugins) {
             plugin.Release();
         }
     }
@@ -119,7 +120,7 @@ public class ExtensionManager {
     /// <returns>The plugin instance</returns>
     /// <exception cref="Exception"></exception>
     public ManilaPlugin GetPlugin(Type type) {
-        foreach (var plugin in plugins) {
+        foreach (var plugin in Plugins) {
             if (plugin.GetType() == type) return plugin;
         }
         throw new Exception("Plugin not found: " + type);
@@ -135,7 +136,7 @@ public class ExtensionManager {
     /// <exception cref="Exception">Plugin has not been found.</exception>
     public ManilaPlugin GetPlugin(string group, string name, string? version = null) {
         if (version == String.Empty) version = null;
-        foreach (var plugin in plugins) {
+        foreach (var plugin in Plugins) {
             if (plugin.Group == group && plugin.Name == name && (version == null || plugin.Version == version)) return plugin;
         }
         throw new Exception("Plugin not found: " + group + ":" + name + (version == null ? "" : "." + version));

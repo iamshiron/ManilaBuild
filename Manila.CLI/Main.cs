@@ -3,6 +3,7 @@ using Shiron.Manila.Ext;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 using Spectre.Console;
+using Shiron.Manila.API;
 
 Directory.SetCurrentDirectory("E:/dev/Manila./run");
 var startTime = DateTime.Now.Ticks;
@@ -64,6 +65,66 @@ foreach (var arg in args) {
             ApplicationLogger.BuildFinished(e);
         } catch (Exception e) {
             ApplicationLogger.BuildFinished(e);
+        }
+    } else {
+        if (arg == "tasks") {
+            AnsiConsole.Write(new Rule("[bold yellow]Available Tasks[/]").RuleStyle("grey").DoubleBorder());
+
+            var workspaceTable = new Table().Border(TableBorder.Rounded);
+            workspaceTable.AddColumn(new TableColumn("[cyan]Task[/]"));
+            workspaceTable.AddColumn(new TableColumn("[green]Description[/]"));
+            workspaceTable.AddColumn(new TableColumn("[magenta]Direct Dependencies[/]"));
+
+            foreach (var t in engine.Workspace.Tasks) {
+                workspaceTable.AddRow(
+                    $"[bold cyan]{t.GetIdentifier()}[/]",
+                    t.Description ?? "",
+                    t.dependencies.Count > 0 ? $"[italic]{string.Join(", ", t.dependencies)}[/]" : "");
+            }
+
+            AnsiConsole.MarkupLine("\n[bold blue]Workspace Tasks[/]");
+            AnsiConsole.Write(workspaceTable);
+
+            foreach (var p in engine.Workspace.Projects) {
+                var project = p.Value;
+
+                var projectTable = new Table().Border(TableBorder.Rounded);
+                projectTable.AddColumn(new TableColumn("[cyan]Task[/]"));
+                projectTable.AddColumn(new TableColumn("[green]Description[/]"));
+                projectTable.AddColumn(new TableColumn("[magenta]Direct Dependencies[/]"));
+
+
+                foreach (var t in project.Tasks) {
+                    projectTable.AddRow(
+                        $"[bold cyan]{t.GetIdentifier()}[/]",
+                        t.Description ?? "",
+                        t.dependencies.Count > 0 ? $"[italic]{string.Join(", ", t.dependencies)}[/]" : "");
+                }
+
+                AnsiConsole.MarkupLine($"\n[bold blue]{project.Name}[/]");
+                AnsiConsole.Write(projectTable);
+            }
+        } else if (arg == "plugins") {
+            var table = new Table().Border(TableBorder.Rounded);
+            table.AddColumn(new TableColumn("[cyan]Plugin[/]"));
+            table.AddColumn(new TableColumn("[green]Version[/]"));
+            table.AddColumn(new TableColumn("[magenta]Group[/]"));
+            table.AddColumn(new TableColumn("[yellow]Path[/]"));
+            table.AddColumn(new TableColumn("[red]Author[/]"));
+            foreach (var p in ExtensionManager.GetInstance().Plugins) {
+                table.AddRow(
+                    $"[bold cyan]{p.Name}[/]",
+                    p.Version.ToString(),
+                    p.Group ?? "",
+                    Path.GetFileName(p.File) ?? "",
+                    p.Authors.Count > 0 ? Markup.Escape($"{string.Join(", ", p.Authors)}") : "");
+            }
+
+            AnsiConsole.Write(new Rule("[bold yellow]Available Plugins[/]\n").RuleStyle("grey").DoubleBorder());
+            AnsiConsole.Write(table);
+        } else {
+            AnsiConsole.MarkupLine($"[red]Unknown command: {arg}[/]");
+            AnsiConsole.MarkupLine("[yellow]Available commands: tasks, plugins[/]");
         }
     }
 }

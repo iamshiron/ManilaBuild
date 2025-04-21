@@ -12,6 +12,7 @@ public class Task {
     private readonly ScriptContext _context;
     public Component Component { get; init; }
     public string ScriptPath { get; init; }
+    public string Description { get; set; } = "A generic task.";
 
     /// <summary>
     /// Get the identifier of the task.
@@ -27,7 +28,7 @@ public class Task {
         this.name = name;
         this.Component = component;
         this._context = context;
-        this.Component.tasks.Add(this);
+        this.Component.Tasks.Add(this);
         this.ScriptPath = scriptPath;
     }
 
@@ -60,6 +61,15 @@ public class Task {
                 throw;
             }
         };
+        return this;
+    }
+    /// <summary>
+    /// Set the description of the task.
+    /// </summary>
+    /// <param name="description">The description</param>
+    /// <returns>Task instance for chaining calls</returns>
+    public Task description(string description) {
+        this.Description = description;
         return this;
     }
 

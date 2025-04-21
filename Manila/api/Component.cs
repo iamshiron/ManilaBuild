@@ -17,8 +17,8 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     public Dictionary<Type, PluginComponent> PluginComponents { get; } = [];
     public List<Type> plugins { get; } = [];
     public Dictionary<string, List<Delegate>> DynamicMethods { get; } = [];
-    public List<Task> tasks { get; } = [];
-    public List<Type> dependencyTypes { get; } = [];
+    public List<Task> Tasks { get; } = [];
+    public List<Type> DependencyTypes { get; } = [];
 
     /// <summary>
     /// The GetIdentifier method returns a string that uniquely identifies the component.
@@ -149,7 +149,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     public void ApplyPlugin(ManilaPlugin plugin) {
         ManilaEngine.GetInstance().CurrentContext.ScriptEngine.AddHostType(plugin.GetType().Name, plugin.GetType());
         foreach (var t in plugin.Dependencies) {
-            dependencyTypes.Add(t);
+            DependencyTypes.Add(t);
             ManilaEngine.GetInstance().CurrentContext.ManilaAPI.AddFunction((Activator.CreateInstance(t) as Dependency).Type, delegate (dynamic[] args) {
                 var dep = Activator.CreateInstance(t) as Dependency;
                 dep.Create((object[]) args);

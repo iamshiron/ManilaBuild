@@ -31,9 +31,9 @@ public class Workspace : Component {
     }
     public Task GetTask(string task, Component? component = null) {
         if (component == null) component = this;
-        Logger.Debug("Getting task: " + task + " from " + component.Path + " Available tasks: " + string.Join(", ", component.tasks.Select(t => t.name)));
+        Logger.Debug("Getting task: " + task + " from " + component.Path + " Available tasks: " + string.Join(", ", component.Tasks.Select(t => t.name)));
 
-        return component.tasks.FirstOrDefault(t => t.name == task) ?? throw new TaskNotFoundException(task);
+        return component.Tasks.FirstOrDefault(t => t.name == task) ?? throw new TaskNotFoundException(task);
     }
 
     public override string GetIdentifier() {

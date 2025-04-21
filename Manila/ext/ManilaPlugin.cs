@@ -1,3 +1,4 @@
+using System.Dynamic;
 using Shiron.Manila.API;
 using Shiron.Manila.Utils;
 
@@ -6,13 +7,15 @@ namespace Shiron.Manila.Ext;
 /// <summary>
 /// Represents a Manila plugin.
 /// </summary>
-public abstract class ManilaPlugin(string group, string name, string version) {
+public abstract class ManilaPlugin(string group, string name, string version, params List<string> authors) {
     public readonly string Group = group;
     public readonly string Name = name;
     public readonly string Version = version;
     public readonly Dictionary<string, PluginComponent> Components = [];
     public readonly List<Type> Enums = [];
     public readonly List<Type> Dependencies = [];
+    public readonly List<string> Authors = authors;
+    public string? File { get; internal set; } = null;
 
     /// <summary>
     /// Called upon initialization of the plugin.
