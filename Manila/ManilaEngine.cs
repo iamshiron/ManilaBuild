@@ -13,6 +13,7 @@ public sealed class ManilaEngine {
     public Project? CurrentProject { get; private set; }
     public ScriptContext? CurrentContext { get; private set; }
     public ScriptContext WorkspaceContext { get; }
+    public string DataDir { get; private set; }
 
     public static readonly string VERSION = "0.0.0";
 
@@ -20,6 +21,7 @@ public sealed class ManilaEngine {
         Root = Directory.GetCurrentDirectory();
         Workspace = new Workspace(Root);
         WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(Root, "Manila.js"));
+        DataDir = Path.Join(Root, ".manila");
     }
 
     /// <summary>
@@ -70,8 +72,8 @@ public sealed class ManilaEngine {
         Workspace!.Projects.Add(name, CurrentProject);
         CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(Root, path));
 
-        CurrentContext.ApplyEnum(typeof(EPlatform));
-        CurrentContext.ApplyEnum(typeof(EArchitecture));
+        CurrentContext.ApplyEnum<EPlatform>();
+        CurrentContext.ApplyEnum<EArchitecture>();
 
         CurrentContext.Init();
         CurrentContext.Execute();

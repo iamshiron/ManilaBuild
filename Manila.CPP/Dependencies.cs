@@ -16,7 +16,7 @@ public class DependencyLink : Dependency {
     }
 
     public override void Resolve(Project project) {
-        ManilaCPP.Instance.Info("Resolving Dependency Link '" + this.Path + "'...");
+        throw new Exception("Link dependencies are not supported yet.");
     }
 }
 

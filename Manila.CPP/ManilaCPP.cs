@@ -10,7 +10,7 @@ public class ManilaCPP : ManilaPlugin {
     }
 
     [PluginInstance]
-    public static ManilaCPP? Instance { get; set; }
+    public static ManilaCPP Instance { get; set; }
 
     public override void Init() {
         Debug("Init");

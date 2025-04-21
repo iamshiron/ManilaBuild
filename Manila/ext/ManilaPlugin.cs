@@ -83,4 +83,8 @@ public abstract class ManilaPlugin(string group, string name, string version) {
     public override string ToString() {
         return $"ManilaPlugin({Group}:{Name}@{Version})";
     }
+
+    public string GetDataDir() {
+        return Path.Join(ManilaEngine.GetInstance().DataDir, "plugins", $"{Group}.{Name}");
+    }
 }
