@@ -4,9 +4,8 @@ using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 using Spectre.Console;
 
-#if DEBUG
 Directory.SetCurrentDirectory("E:/dev/Manila./run");
-#endif
+var startTime = DateTime.Now.Ticks;
 
 var verbose = args.Contains("--verbose") || args.Contains("-v");
 var stackTrace = args.Contains("--stack-trace");
@@ -42,6 +41,8 @@ foreach (var arg in args) {
 
             var order = task.GetExecutionOrder();
             Logger.Debug("Execution order: " + string.Join(", ", order));
+
+            ApplicationLogger.WriteLine("Parsed scripts in: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
 
             foreach (var t in order) {
                 var taskToRun = engine.Workspace.GetTask(t);
