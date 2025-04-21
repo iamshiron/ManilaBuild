@@ -34,6 +34,7 @@ engine.Run();
 extensionManager.ReleasePlugins();
 
 if (engine.Workspace == null) throw new Exception("Workspace not found");
+ApplicationLogger.WriteLine("Parsed scripts in: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
 foreach (var arg in args) {
     if (arg.StartsWith(":")) {
         try {
@@ -42,8 +43,6 @@ foreach (var arg in args) {
 
             var order = task.GetExecutionOrder();
             Logger.Debug("Execution order: " + string.Join(", ", order));
-
-            ApplicationLogger.WriteLine("Parsed scripts in: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
 
             foreach (var t in order) {
                 var taskToRun = engine.Workspace.GetTask(t);
@@ -66,6 +65,8 @@ foreach (var arg in args) {
         } catch (Exception e) {
             ApplicationLogger.BuildFinished(e);
         }
+
+        return;
     } else {
         if (arg == "tasks") {
             AnsiConsole.Write(new Rule("[bold yellow]Available Tasks[/]").RuleStyle("grey").DoubleBorder());
@@ -126,5 +127,7 @@ foreach (var arg in args) {
             AnsiConsole.MarkupLine($"[red]Unknown command: {arg}[/]");
             AnsiConsole.MarkupLine("[yellow]Available commands: tasks, plugins[/]");
         }
+
+        return;
     }
 }
