@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manila.CLI", "Manila.CLI\Ma
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manila.CPP", "Manila.CPP\Manila.CPP.csproj", "{CCEB3347-7AF6-41D3-A77D-594F652661E9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manila.Discord", "Manila.Discord\Manila.Discord.csproj", "{383D6207-0A85-429C-A809-468477EC5882}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{CCEB3347-7AF6-41D3-A77D-594F652661E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CCEB3347-7AF6-41D3-A77D-594F652661E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CCEB3347-7AF6-41D3-A77D-594F652661E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{383D6207-0A85-429C-A809-468477EC5882}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{383D6207-0A85-429C-A809-468477EC5882}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{383D6207-0A85-429C-A809-468477EC5882}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{383D6207-0A85-429C-A809-468477EC5882}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

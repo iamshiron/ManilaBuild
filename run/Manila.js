@@ -1,9 +1,5 @@
 const workspace = Manila.getWorkspace()
 
-print('Webhook:', Manila.getEnv('DISCORD_WEBHOOK_URL'))
-print('Count:', Manila.getEnvNumber('COUNT'))
-print('PI:', Manila.getEnvNumber('PI'))
-
 if (Manila.getEnvBool('ENABLE')) {
 	print('Enabled')
 } else {
