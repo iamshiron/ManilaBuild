@@ -182,4 +182,24 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     public void run(Project project) {
         project.GetLanguageComponent().Run(project);
     }
+    public string getEnv(string key) {
+        return Context.GetEnvironmentVariable(key);
+    }
+    public double getEnvNumber(string key) {
+        var value = Context.GetEnvironmentVariable(key);
+        if (string.IsNullOrEmpty(value)) return 0;
+        if (double.TryParse(value, out var result)) return result;
+        throw new Exception($"Environment variable {key} is not a number: {value}");
+    }
+    public bool getEnvBool(string key) {
+        var value = Context.GetEnvironmentVariable(key);
+        if (string.IsNullOrEmpty(value)) return false;
+        if (bool.TryParse(value, out var result)) return result;
+        throw new Exception($"Environment variable {key} is not a boolean: {value}");
+    }
+
+
+    public void setEnv(string key, string value) {
+        Context.SetEnvironmentVariable(key, value);
+    }
 }

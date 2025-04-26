@@ -25,6 +25,11 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     public readonly API.Component Component = component;
 
+    /// <summary>
+    /// Project-specific environment variables that get isolated between projects
+    /// </summary>
+    private Dictionary<string, string> EnvironmentVariables { get; } = new();
+
     public API.Manila? ManilaAPI { get; private set; } = null;
 
     public List<Type> EnumComponents { get; } = new();
@@ -50,12 +55,81 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             if (func.GetCustomAttribute<ScriptFunction>() == null) continue;
             Component.AddScriptFunction(func, ScriptEngine);
         }
+    }    /// <summary>
+         /// Loads environment variables from a .env file if it exists in the project directory
+         /// </summary>
+    private void LoadEnvironmentVariables() {
+        // Clear any existing variables to ensure clean state
+        EnvironmentVariables.Clear();
+
+        string? projectDir = System.IO.Path.GetDirectoryName(ScriptPath);
+        if (projectDir == null) {
+            Logger.Warn($"Could not determine project directory for '{ScriptPath}'.");
+            return;
+        }
+
+        string envFilePath = System.IO.Path.Combine(projectDir, ".env");
+
+        if (!System.IO.File.Exists(envFilePath)) {
+            Logger.Debug($"No .env file found for '{ScriptPath}'.");
+            return;
+        }
+
+        Logger.Debug($"Loading environment variables from '{envFilePath}'.");
+        try {
+            foreach (string line in System.IO.File.ReadAllLines(envFilePath)) {
+                string trimmedLine = line.Trim();
+
+                // Skip comments and empty lines
+                if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#") || trimmedLine.StartsWith("//")) {
+                    continue;
+                }
+
+                int equalIndex = trimmedLine.IndexOf('=');
+                if (equalIndex > 0) {
+                    string key = trimmedLine.Substring(0, equalIndex).Trim();
+                    string value = trimmedLine.Substring(equalIndex + 1).Trim();
+
+                    // Remove quotes if they exist
+                    if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
+                        (value.StartsWith("'") && value.EndsWith("'"))) {
+                        value = value.Substring(1, value.Length - 2);
+                    }
+
+                    EnvironmentVariables[key] = value;
+                    Logger.Debug($"Loaded environment variable: {key}");
+                }
+            }
+        } catch (Exception ex) {
+            Logger.Warn($"Error loading environment variables: {ex.Message}");
+        }
     }
+
+    /// <summary>
+    /// Gets an environment variable, first checking project-specific variables, then system variables
+    /// </summary>
+    public string GetEnvironmentVariable(string key) {
+        if (EnvironmentVariables.TryGetValue(key, out string value)) {
+            return value;
+        }
+        return Environment.GetEnvironmentVariable(key) ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Sets a project-specific environment variable
+    /// </summary>
+    public void SetEnvironmentVariable(string key, string value) {
+        EnvironmentVariables[key] = value;
+    }
+
     /// <summary>
     /// Executes the script.
     /// </summary>
     public void Execute() {
         try {
+            // Load environment variables before executing script
+            LoadEnvironmentVariables();
+
             ScriptEngine.Execute(File.ReadAllText(ScriptPath));
         } catch (ScriptEngineException e) {
             Logger.Error("Error in script: " + ScriptPath);
@@ -68,6 +142,9 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     public void ExecuteWorkspace() {
         try {
+            // Load environment variables from workspace root
+            LoadEnvironmentVariables();
+
             ScriptEngine.Execute(File.ReadAllText("Manila.js"));
         } catch (ScriptEngineException e) {
             Logger.Error("Error in workspace script!");
