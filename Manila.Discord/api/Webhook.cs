@@ -7,7 +7,7 @@ public class Webhook {
     public class Impl(string url) {
         public string Url { get; init; } = url;
 
-        public async Task sendAsync(string message) {
+        public async Task send(string message) {
             // Create the payload
             var payload = new {
                 content = message
@@ -31,8 +31,8 @@ public class Webhook {
                 }
             }
         }
-        public void send(string content) {
-            Task.Run(() => sendAsync(content)).Wait();
+        public void sendSync(string content) {
+            Task.Run(() => send(content)).Wait();
         }
     }
 

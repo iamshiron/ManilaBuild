@@ -130,7 +130,13 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             // Load environment variables before executing script
             LoadEnvironmentVariables();
 
-            ScriptEngine.Execute(File.ReadAllText(ScriptPath));
+            ScriptEngine.Execute($@"
+                async function __Manila_main__() {{
+                    {File.ReadAllText(ScriptPath)}
+                }}
+
+                __Manila_main__().then(() => {{}}).catch((e) => {{ throw e; }});
+            ");
         } catch (ScriptEngineException e) {
             Logger.Error("Error in script: " + ScriptPath);
             Logger.Info(e.Message);
