@@ -92,32 +92,6 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     /// <summary>
-    /// Imports the plugin with the specified key.
-    /// </summary>
-    /// <param name="pluginKey">The key of the plugin to import.</param>
-    public void import(string pluginKey) {
-        var plugin = ExtensionManager.GetInstance().GetPlugin(pluginKey);
-        import(plugin);
-    }
-
-    /// <summary>
-    /// Imports the plugin specified by the script object.
-    /// </summary>
-    /// <param name="obj">A script object containing the group, name, and version of the plugin to import.</param>
-    public void import(ScriptObject obj) {
-        var plugin = ExtensionManager.GetInstance().GetPlugin((string) obj["group"], (string) obj["name"], (string) obj["version"]);
-        import(plugin);
-    }
-
-    /// <summary>
-    /// Imports the specified Manila plugin.
-    /// </summary>
-    /// <param name="plugin">The Manila plugin to import.</param>
-    public void import(ManilaPlugin plugin) {
-        Logger.Debug("Importing: " + plugin);
-    }
-
-    /// <summary>
     /// Applies the plugin component with the specified key to the current project.
     /// </summary>
     /// <param name="pluginComponentKey">The key of the plugin component to apply.</param>
@@ -197,9 +171,15 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         if (bool.TryParse(value, out var result)) return result;
         throw new Exception($"Environment variable {key} is not a boolean: {value}");
     }
-
-
     public void setEnv(string key, string value) {
         Context.SetEnvironmentVariable(key, value);
+    }
+
+    public object import(string key) {
+        var t = Activator.CreateInstance(ExtensionManager.GetInstance().GetAPIType(key));
+        Console.WriteLine($"Importing {key} as {t}");
+        Console.WriteLine(t);
+
+        return t;
     }
 }

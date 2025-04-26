@@ -31,6 +31,11 @@ public class ExtensionManager {
     /// Regular expression pattern for matching component keys inside of plugins.
     /// </summary>
     public static readonly Regex componentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)");
+    /// <summary>
+    /// Regular expression pattern for matching API classes inside of plugins.
+    /// </summary>
+    public static readonly Regex apiClassPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?/(?<class>[\w.\d]+)");
+    public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d\]+)@(<?version>[\w.\d]+)?");
 
     /// <summary>
     /// Returns the singleton instance of the extension manager.
@@ -92,6 +97,7 @@ public class ExtensionManager {
     /// </summary>
     public void InitPlugins() {
         foreach (var plugin in Plugins) {
+
             plugin.Init();
         }
     }
@@ -174,5 +180,11 @@ public class ExtensionManager {
         var match = componentPattern.Match(key);
         if (!match.Success) throw new Exception("Invalid component key: " + key);
         return GetPluginComponent(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["component"].Value, match.Groups["version"].Value);
+    }
+
+    public Type GetAPIType(string key) {
+        var match = apiClassPattern.Match(key);
+        if (!match.Success) throw new Exception("Invalid API class key: " + key);
+        return GetPlugin(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["version"].Value).GetAPIClass(match.Groups["class"].Value);
     }
 }

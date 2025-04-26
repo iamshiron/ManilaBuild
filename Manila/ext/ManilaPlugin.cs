@@ -7,15 +7,18 @@ namespace Shiron.Manila.Ext;
 /// <summary>
 /// Represents a Manila plugin.
 /// </summary>
-public abstract class ManilaPlugin(string group, string name, string version, params List<string> authors) {
+public abstract class ManilaPlugin(string group, string name, string version, List<string> authors, List<string>? nugetDependencies) {
     public readonly string Group = group;
     public readonly string Name = name;
     public readonly string Version = version;
+    public readonly List<string> Authors = authors;
+    public readonly List<string> NugetDependencies = nugetDependencies == null ? [] : nugetDependencies;
+
     public readonly Dictionary<string, PluginComponent> Components = [];
     public readonly List<Type> Enums = [];
     public readonly List<Type> Dependencies = [];
-    public readonly List<string> Authors = authors;
     public string? File { get; internal set; } = null;
+    public readonly Dictionary<string, Type> APIClasses = [];
 
     /// <summary>
     /// Called upon initialization of the plugin.
@@ -67,6 +70,9 @@ public abstract class ManilaPlugin(string group, string name, string version, pa
     public void RegisterDependency<T>() {
         Dependencies.Add(typeof(T));
     }
+    public void RegisterAPIType<T>(string name) {
+        APIClasses.Add(name, typeof(T));
+    }
 
     /// <summary>
     /// Returns a component by its name.
@@ -80,6 +86,17 @@ public abstract class ManilaPlugin(string group, string name, string version, pa
     }
 
     /// <summary>
+    /// Returns a api class by its name.
+    /// </summary>
+    /// <param name="name">The name</param>
+    /// <returns>The type</returns>
+    /// <exception cref="Exception">Class was not found</exception>
+    public Type GetAPIClass(string name) {
+        if (!APIClasses.ContainsKey(name)) throw new Exception("API class with name " + name + " not registered");
+        return APIClasses[name];
+    }
+
+    /// <summary>
     /// Returns a string representation of the plugin.
     /// </summary>
     /// <returns>Format: ManilaPlugin(Group:Name@Version)</returns>
@@ -87,6 +104,10 @@ public abstract class ManilaPlugin(string group, string name, string version, pa
         return $"ManilaPlugin({Group}:{Name}@{Version})";
     }
 
+    /// <summary>
+    /// Returns the plugin directory path.
+    /// </summary>
+    /// <returns>The directory the plugin is allowed to write/read to</returns>
     public string GetDataDir() {
         return Path.Join(ManilaEngine.GetInstance().DataDir, "plugins", $"{Group}.{Name}");
     }
