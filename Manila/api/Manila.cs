@@ -177,8 +177,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
 
     public object import(string key) {
         var t = Activator.CreateInstance(ExtensionManager.GetInstance().GetAPIType(key));
-        Console.WriteLine($"Importing {key} as {t}");
-        Console.WriteLine(t);
+        Logger.Debug($"Importing {key} as {t}");
 
         return t;
     }
