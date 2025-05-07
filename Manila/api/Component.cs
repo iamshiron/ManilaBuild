@@ -48,11 +48,6 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         var scriptPropertyGetterName = "get" + propertyName;
         var scriptPropertySetterName = "set" + propertyName;
 
-        Logger.Debug($"Adding property {propertyName}...");
-        Logger.Debug($"Script property name: {scriptPropertyName}");
-        Logger.Debug($"Script property setter name: {scriptPropertySetterName}");
-        Logger.Debug($"Script property getter name: {scriptPropertyGetterName}");
-
         var scriptPropertyInfo = prop.GetCustomAttribute<ScriptProperty>();
         if (scriptPropertyInfo == null) throw new Exception($"Property '{prop.Name}' is not a script property.");
 
@@ -90,8 +85,6 @@ public class Component(string path) : DynamicObject, IScriptableObject {
 
     public override bool TryInvokeMember(InvokeMemberBinder binder, object?[] args, out object result) {
         if (DynamicMethods.TryGetValue(binder.Name, out var methods)) {
-            Logger.Debug($"Invoking method '{binder.Name}'");
-
             foreach (var method in methods) {
                 if (!FunctionUtils.SameParametes(method.Method, args)) continue;
 

@@ -2,6 +2,7 @@ namespace Shiron.Manila;
 
 using System.Dynamic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
 using Shiron.Manila.Attributes;
@@ -38,8 +39,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// Initializes the script context.
     /// </summary>
     public void Init() {
-        Logger.Debug($"Initializing script context for '{ScriptPath}'.");
-        Logger.Debug("Adding Manila API to script engine.");
+        Logger.Debug($"Initializing script context for '{ScriptPath}'");
 
         ManilaAPI = new API.Manila(this);
         ScriptEngine.AddHostObject("Manila", ManilaAPI);
@@ -55,9 +55,11 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             if (func.GetCustomAttribute<ScriptFunction>() == null) continue;
             Component.AddScriptFunction(func, ScriptEngine);
         }
-    }    /// <summary>
-         /// Loads environment variables from a .env file if it exists in the project directory
-         /// </summary>
+    }
+
+    /// <summary>
+    /// Loads environment variables from a .env file if it exists in the project directory
+    /// </summary>
     private void LoadEnvironmentVariables() {
         // Clear any existing variables to ensure clean state
         EnvironmentVariables.Clear();
@@ -97,7 +99,6 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                     }
 
                     EnvironmentVariables[key] = value;
-                    Logger.Debug($"Loaded environment variable: {key}");
                 }
             }
         } catch (Exception ex) {
@@ -109,7 +110,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// Gets an environment variable, first checking project-specific variables, then system variables
     /// </summary>
     public string GetEnvironmentVariable(string key) {
-        if (EnvironmentVariables.TryGetValue(key, out string value)) {
+        if (EnvironmentVariables.TryGetValue(key, out string? value)) {
             return value;
         }
         return Environment.GetEnvironmentVariable(key) ?? string.Empty;
@@ -120,28 +121,57 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     public void SetEnvironmentVariable(string key, string value) {
         EnvironmentVariables[key] = value;
-    }
-
-    /// <summary>
-    /// Executes the script.
-    /// </summary>
+    }    /// <summary>
+         /// Executes the script.
+         /// </summary>
     public void Execute() {
+        Logger.Info($"Executing script '{ScriptPath}'.");
         try {
             // Load environment variables before executing script
             LoadEnvironmentVariables();
 
-            ScriptEngine.Execute($@"
-                async function __Manila_main__() {{
-                    {File.ReadAllText(ScriptPath)}
-                }}
+            // Create a TaskCompletionSource to track script completion
+            var taskCompletion = new TaskCompletionSource<bool>();
 
-                __Manila_main__().then(() => {{}}).catch((e) => {{ throw e; }});
+            ScriptEngine.AddHostObject("__Manila_signalCompletion", new Action(() => {
+                taskCompletion.TrySetResult(true);
+            }));
+
+            ScriptEngine.AddHostObject("__Manila_handleError", new Action<object>(e => {
+                if (e == null) {
+                    taskCompletion.TrySetException(new Exception("Script error: null exception"));
+                    return;
+                }
+                if (e is not Exception) {
+                    taskCompletion.TrySetException(new Exception("Script error: " + e.ToString()));
+                    return;
+                }
+                taskCompletion.TrySetException(e as Exception);
+            }));
+
+            ScriptEngine.AllowReflection = true;
+            ScriptEngine.EnableAutoHostVariables = true;
+
+            // Execute the script with proper error handling
+            ScriptEngine.Execute($@"
+                (async function() {{
+                    try {{
+                        {File.ReadAllText(ScriptPath)}
+                        __Manila_signalCompletion();
+                    }} catch (e) {{
+                        __Manila_handleError(e);
+                    }}
+                }})();
             ");
-        } catch (ScriptEngineException e) {
+
+            // Wait for the script to either complete or throw an exception
+            taskCompletion.Task.Wait();
+        } catch (Exception e) {
             Logger.Error("Error in script: " + ScriptPath);
             Logger.Info(e.Message);
             throw;
         }
+        Logger.Info($"Script '{ScriptPath}' executed successfully.");
     }
     /// <summary>
     /// Executes the workspace script.
@@ -172,8 +202,6 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <typeparam name="T">The enum type</typeparam>
     /// <exception cref="Exception">The class is not tagged with the <see cref="ScriptEnum"/> attribute.</exception>
     public void ApplyEnum(Type t) {
-        Logger.Debug($"Applying enum '{t}'.");
-
         if (t.GetType().GetCustomAttributes<ScriptEnum>() == null) throw new Exception($"Object '{t}' is not a script enum.");
 
         if (EnumComponents.Contains(t)) {

@@ -30,7 +30,7 @@ public class CppComponent : LanguageComponent {
         Toolchain toolchain =
             ToolChain == EToolChain.Clang ? new ToolchainClang(workspace, project, config) :
             ToolChain == EToolChain.MSVC ? new ToolchainMSVC(workspace, project, config) :
-            throw new Exception($"Toolchain {ToolChain} is not supported.");
+            throw new Exception($"Toolchain '{ToolChain}' is not supported.");
 
         toolchain.Build(workspace, project, config);
     }

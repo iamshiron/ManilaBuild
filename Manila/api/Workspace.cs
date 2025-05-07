@@ -21,8 +21,6 @@ public class Workspace : Component {
     /// <param name="key"></param>
     /// <returns></returns>
     public Task GetTask(string key) {
-        Logger.Debug("Key: '" + key + "' - " + string.Join(", ", Projects.Keys));
-
         if (!key.StartsWith(":")) return GetTask(key, Projects.FirstOrDefault().Value);
         key = key[1..]; // Strip the colon that was just added to mark it as absolute path
         if (!key.Contains(":")) return GetTask(key, Projects.FirstOrDefault().Value);
@@ -31,8 +29,6 @@ public class Workspace : Component {
     }
     public Task GetTask(string task, Component? component = null) {
         if (component == null) component = this;
-        Logger.Debug("Getting task: " + task + " from " + component.Path + " Available tasks: " + string.Join(", ", component.Tasks.Select(t => t.name)));
-
         return component.Tasks.FirstOrDefault(t => t.name == task) ?? throw new TaskNotFoundException(task);
     }
 

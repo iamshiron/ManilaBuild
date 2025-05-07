@@ -87,8 +87,6 @@ public abstract class ExposedDynamicObject : DynamicObject, IScriptableObject {
 
     override public bool TryInvokeMember(InvokeMemberBinder binder, object?[] args, out object? result) {
         if (_functions.TryGetValue(binder.Name, out var methods)) {
-            Logger.Debug($"Invoking method '{binder.Name}'");
-
             foreach (var method in methods) {
                 if (!FunctionUtils.SameParametes(method.Method, args)) continue;
 

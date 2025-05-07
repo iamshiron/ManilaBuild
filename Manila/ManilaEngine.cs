@@ -85,8 +85,7 @@ public sealed class ManilaEngine {
     /// Runs the workspace script. Always Manila.js in the root directory.
     /// </summary>
     public void RunWorkspaceScript() {
-        string path = "Manila.js";
-        Logger.Debug("Running workspace script: " + path);
+        Logger.Debug("Running workspace script: " + WorkspaceContext.ScriptPath);
 
         WorkspaceContext.ApplyEnum<EPlatform>();
         WorkspaceContext.ApplyEnum<EArchitecture>();

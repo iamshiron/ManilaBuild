@@ -35,7 +35,7 @@ public class ExtensionManager {
     /// Regular expression pattern for matching API classes inside of plugins.
     /// </summary>
     public static readonly Regex apiClassPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?/(?<class>[\w.\d]+)");
-    public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d\]+)@(<?version>[\w.\d]+)?");
+    public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d]+)");
 
     /// <summary>
     /// Returns the singleton instance of the extension manager.
@@ -84,9 +84,19 @@ public class ExtensionManager {
                     plugin.File = file;
                     Plugins.Add(plugin);
 
-                    foreach (var prop in type.GetProperties())
+                    foreach (var dep in plugin.NugetDependencies) {
+                        var match = nugetDependencyPattern.Match(dep);
+                        if (!match.Success) throw new Exception("Invalid dependency: " + dep);
+                        var package = match.Groups["package"].Value;
+                        var version = match.Groups["version"].Value;
+                        if (version == String.Empty) throw new Exception("Invalid dependency: " + dep + " (version is empty)");
+                        Logger.Info("Plugin " + plugin.Name + " has dependency: " + package + (version == null ? "" : "@" + version));
+                    }
+
+                    foreach (var prop in type.GetProperties()) {
                         if (prop.GetCustomAttribute<PluginInstance>() != null)
                             prop.SetValue(null, plugin);
+                    }
                 }
             }
         }
@@ -182,6 +192,12 @@ public class ExtensionManager {
         return GetPluginComponent(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["component"].Value, match.Groups["version"].Value);
     }
 
+    /// <summary>
+    /// Returns a plugin API class by its key.
+    /// </summary>
+    /// <param name="key">The key</param>
+    /// <returns>The type</returns>
+    /// <exception cref="Exception">Class was not found or regex was incorrect</exception>
     public Type GetAPIType(string key) {
         var match = apiClassPattern.Match(key);
         if (!match.Success) throw new Exception("Invalid API class key: " + key);
