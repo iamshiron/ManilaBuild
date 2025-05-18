@@ -24,6 +24,8 @@ Logger.Init(verbose, quiet);
 ApplicationLogger.Init(quiet, stackTrace);
 
 var engine = ManilaEngine.GetInstance();
+engine.verboseLogger = verbose;
+
 var extensionManager = ExtensionManager.GetInstance();
 
 extensionManager.Init("./.manila/plugins");
@@ -34,7 +36,7 @@ engine.Run();
 extensionManager.ReleasePlugins();
 
 if (engine.Workspace == null) throw new Exception("Workspace not found");
-ApplicationLogger.WriteLine("Parsed scripts in: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
+ApplicationLogger.WriteLine("Initialization took: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
 foreach (var arg in args) {
     if (arg.StartsWith(":")) {
         try {

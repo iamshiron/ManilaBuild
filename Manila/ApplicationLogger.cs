@@ -30,8 +30,6 @@ public static class ApplicationLogger {
     public static void BuildStarted() {
         if (_buildStartTime != 0) throw new InvalidOperationException("Build already started.");
         _buildStartTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-        AnsiConsole.MarkupLine($"[blue]━━━━━━━━━━━━━━━━━━━━━━━━━━ Build Process Started ━━━━━━━━━━━━━━━━━━━━━━━━━━[/]");
     }
     public static void TaskStarted(API.Task task) {
         var info = new TaskInfo { Task = task, };
@@ -49,13 +47,13 @@ public static class ApplicationLogger {
         var duration = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _buildStartTime;
 
         if (e == null) {
-            AnsiConsole.MarkupLine($"[green]━━━━━━━━━━━━━━━━━━━━━━━━━━ Build Successful ━━━━━━━━━━━━━━━━━━━━━━━━━━[/]");
+            AnsiConsole.MarkupLine($"\n[green]BUILD SUCCESSFUL[/] in {Math.Round(duration / 1000f, 1)}s");
         } else {
             if (_runningTask.Count != 0) {
                 var task = _runningTask.Peek();
-                AnsiConsole.MarkupLine($"[red]FAILED[/] [bold]{task.Task.name}[/] failed in {Math.Round(duration / 1000f, 1)}s");
+                AnsiConsole.MarkupLine($"[red]BUILD FAILED[/] [bold]{task.Task.name}[/] failed in {Math.Round(duration / 1000f, 1)}s");
             } else {
-                AnsiConsole.MarkupLine($"[red]FAILED[/] in {Math.Round(duration / 1000f, 1)}s");
+                AnsiConsole.MarkupLine($"[red]BUILD FAILED[/] in {Math.Round(duration / 1000f, 1)}s");
             }
 
             if (_stackTraceEnabled) {
@@ -91,5 +89,8 @@ public static class ApplicationLogger {
     }
     public static void ApplicationLog(params object[] message) {
         WriteLine($"[grey]→[/] {string.Join(" ", message)}");
+    }
+    public static void ApplicationError(params object[] message) {
+        WriteLine($"[red]→[/] {string.Join(" ", message)}");
     }
 }

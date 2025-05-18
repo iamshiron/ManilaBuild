@@ -70,7 +70,9 @@ public class ToolchainClang : Toolchain {
             args.Add("-D" + d);
         }
 
-        return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path));
+        return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path),
+            ManilaEngine.GetInstance().verboseLogger ? (s) => ApplicationLogger.WriteLine(s) : null, (s) => ApplicationLogger.ApplicationError(s)
+        );
     }
 
     /// <summary>
@@ -81,7 +83,9 @@ public class ToolchainClang : Toolchain {
     /// <returns>Exit code of the linker</returns>
     public int InvokeLibLinker(params string[] a) {
         List<string> args = [.. a];
-        return ShellUtils.Run("llvm-ar", [.. args], Path.Join(workspace.Path));
+        return ShellUtils.Run("llvm-ar", [.. args], Path.Join(workspace.Path),
+            ManilaEngine.GetInstance().verboseLogger ? (s) => ApplicationLogger.WriteLine(s) : null, (s) => ApplicationLogger.ApplicationError(s)
+        );
     }
 
     /// <summary>
@@ -97,7 +101,9 @@ public class ToolchainClang : Toolchain {
             args.Add("-l" + l);
         }
 
-        return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path));
+        return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path),
+            ManilaEngine.GetInstance().verboseLogger ? (s) => ApplicationLogger.WriteLine(s) : null, (s) => ApplicationLogger.ApplicationError(s)
+        );
     }
 
     /// <summary>
@@ -121,7 +127,9 @@ public class ToolchainClang : Toolchain {
 
             // Run the compiler
             ApplicationLogger.ApplicationLog(Path.GetRelativePath(setRoot, file));
-            InvokeCompiler("-c", file, "-o", objFile);
+            if (InvokeCompiler("-c", file, "-o", objFile) != 0) {
+                throw new Exception("Failed to compile file: " + file);
+            }
 
             // Stop timing
             startTime.Stop();

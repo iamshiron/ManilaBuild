@@ -3,17 +3,85 @@ using System.Text;
 
 namespace Shiron.Manila.Utils;
 
+/// <summary>
+/// Provides utility methods for executing shell commands and processes.
+/// </summary>
 public static class ShellUtils {
+    /// <summary>
+    /// Executes a shell command with optional working directory.
+    /// </summary>
+    /// <param name="command">The full command string including arguments.</param>
+    /// <param name="workingDir">Optional working directory where the command will be executed. If null, current directory is used.</param>
+    /// <returns>The exit code of the process.</returns>
     public static int Run(string command, string? workingDir = null) {
         return Run(command[0..command.IndexOf(' ')], command[command.IndexOf(' ')..].Split(" "), workingDir);
     }
+    /// <summary>
+    /// Executes a shell command with specified arguments and optional working directory.
+    /// </summary>
+    /// <param name="command">The command to execute.</param>
+    /// <param name="args">The arguments as a single string.</param>
+    /// <param name="workingDir">Optional working directory where the command will be executed. If null, current directory is used.</param>
+    /// <returns>The exit code of the process.</returns>
     public static int Run(string command, string args, string? workingDir = null) {
         return Run(command, args.Split(" "), workingDir);
     }
+    /// <summary>
+    /// Executes a shell command with specified arguments array and optional working directory.
+    /// </summary>
+    /// <param name="command">The command to execute.</param>
+    /// <param name="args">The arguments as an array of strings.</param>
+    /// <param name="workingDir">Optional working directory where the command will be executed. If null, current directory is used.</param>
+    /// <returns>The exit code of the process.</returns>
     public static int Run(string command, string[] args, string? workingDir = null) {
         return Run(command, args, workingDir, null, null);
     }
 
+    /// <summary>
+    /// Executes a shell command and logs output to the application logger.
+    /// </summary>
+    /// <param name="command">The command to execute.</param>
+    /// <param name="args">The arguments as an array of strings.</param>
+    /// <param name="workingDir">Optional working directory where the command will be executed. If null, current directory is used.</param>
+    /// <param name="logStdOut">Whether to log standard output to the application logger.</param>
+    /// <param name="logStdErr">Whether to log standard error to the application logger.</param>
+    /// <returns>The exit code of the process.</returns>
+    public static int ApplicationRun(string command, string[] args, string? workingDir = null, bool logStdOut = true, bool logStdErr = true) {
+        return Run(command, args, workingDir, logStdOut ? (s) => ApplicationLogger.ApplicationLog(s) : null, logStdErr ? (s) => ApplicationLogger.ApplicationError(s) : null);
+    }
+    /// <summary>
+    /// Executes a shell command with arguments as a string and logs output to the application logger.
+    /// </summary>
+    /// <param name="command">The command to execute.</param>
+    /// <param name="args">The arguments as a single string.</param>
+    /// <param name="workingDir">Optional working directory where the command will be executed. If null, current directory is used.</param>
+    /// <param name="logStdOut">Whether to log standard output to the application logger.</param>
+    /// <param name="logStdErr">Whether to log standard error to the application logger.</param>
+    /// <returns>The exit code of the process.</returns>
+    public static int ApplicationRun(string command, string args, string? workingDir = null, bool logStdOut = true, bool logStdErr = true) {
+        return ApplicationRun(command, args.Split(" "), workingDir, logStdOut, logStdErr);
+    }
+    /// <summary>
+    /// Executes a shell command with arguments included in the command string and logs output to the application logger.
+    /// </summary>
+    /// <param name="command">The full command string including arguments.</param>
+    /// <param name="workingDir">Optional working directory where the command will be executed. If null, current directory is used.</param>
+    /// <param name="logStdOut">Whether to log standard output to the application logger.</param>
+    /// <param name="logStdErr">Whether to log standard error to the application logger.</param>
+    /// <returns>The exit code of the process.</returns>
+    public static int ApplicationRun(string command, string? workingDir = null, bool logStdOut = true, bool logStdErr = true) {
+        return ApplicationRun(command[0..command.IndexOf(' ')], command[command.IndexOf(' ')..].Split(" "), workingDir, logStdOut, logStdErr);
+    }
+
+    /// <summary>
+    /// Executes a shell command with full control over process configuration and output handling.
+    /// </summary>
+    /// <param name="command">The command to execute.</param>
+    /// <param name="args">The arguments as an array of strings.</param>
+    /// <param name="workingDir">Optional working directory where the command will be executed. If null, current directory is used.</param>
+    /// <param name="stdOut">Optional callback action to handle standard output lines.</param>
+    /// <param name="stdErr">Optional callback action to handle standard error lines.</param>
+    /// <returns>The exit code of the process.</returns>
     public static int Run(string command, string[] args, string? workingDir = null, Action<string>? stdOut = null, Action<string>? stdErr = null) {
         if (workingDir == null) workingDir = Directory.GetCurrentDirectory();
         Logger.Debug("Running command: " + command + " " + string.Join(" ", args) + " in " + workingDir);

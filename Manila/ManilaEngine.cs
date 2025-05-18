@@ -14,6 +14,7 @@ public sealed class ManilaEngine {
     public ScriptContext? CurrentContext { get; private set; }
     public ScriptContext WorkspaceContext { get; }
     public string DataDir { get; private set; }
+    public bool verboseLogger = false;
 
     public static readonly string VERSION = "0.0.0";
 
