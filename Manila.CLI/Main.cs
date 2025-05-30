@@ -5,7 +5,7 @@ using Shiron.Manila.Utils;
 using Spectre.Console;
 using Shiron.Manila.API;
 
-Directory.SetCurrentDirectory("E:/dev/Manila./run");
+Directory.SetCurrentDirectory("./run");
 var startTime = DateTime.Now.Ticks;
 
 var verbose = args.Contains("--verbose") || args.Contains("-v");
