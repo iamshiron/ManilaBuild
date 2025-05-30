@@ -26,16 +26,19 @@ public class ExtensionManager {
     /// <summary>
     /// Regular expression pattern for matching plugin keys.
     /// </summary>
-    public static readonly Regex pluginPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?");
+    public static readonly Regex pluginPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?", RegexOptions.Compiled);
     /// <summary>
     /// Regular expression pattern for matching component keys inside of plugins.
     /// </summary>
-    public static readonly Regex componentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)");
+    public static readonly Regex componentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)", RegexOptions.Compiled);
     /// <summary>
     /// Regular expression pattern for matching API classes inside of plugins.
     /// </summary>
-    public static readonly Regex apiClassPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?/(?<class>[\w.\d]+)");
-    public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d]+)");
+    public static readonly Regex apiClassPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?/(?<class>[\w.\d]+)", RegexOptions.Compiled);
+    /// <summary>
+    /// Regular expression pattern for matching NuGet dependencies.
+    /// </summary>
+    public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d]+)", RegexOptions.Compiled);
 
     /// <summary>
     /// Returns the singleton instance of the extension manager.
