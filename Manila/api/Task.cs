@@ -12,7 +12,7 @@ public class Task {
     private readonly ScriptContext _context;
     public Component Component { get; init; }
     public string ScriptPath { get; init; }
-    public string Description { get; set; } = "A generic task.";
+    public string Description { get; set; } = "A generic task";
 
     /// <summary>
     /// Get the identifier of the task.

@@ -1,4 +1,4 @@
-﻿using Shiron.Manila;
+using Shiron.Manila;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
@@ -32,8 +32,8 @@ extensionManager.Init("./.manila/plugins");
 extensionManager.LoadPlugins();
 extensionManager.InitPlugins();
 
+ApplicationLogger.WriteLine("Initializing...");
 engine.Run();
-extensionManager.ReleasePlugins();
 
 if (engine.Workspace == null) throw new Exception("Workspace not found");
 ApplicationLogger.WriteLine("Initialization took: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
@@ -68,6 +68,7 @@ foreach (var arg in args) {
             ApplicationLogger.BuildFinished(e);
         }
 
+        extensionManager.ReleasePlugins();
         return;
     } else {
         if (arg == "tasks") {
@@ -125,11 +126,16 @@ foreach (var arg in args) {
 
             AnsiConsole.Write(new Rule("[bold yellow]Available Plugins[/]\n").RuleStyle("grey").DoubleBorder());
             AnsiConsole.Write(table);
+
+            extensionManager.ReleasePlugins();
         } else {
             AnsiConsole.MarkupLine($"[red]Unknown command: {arg}[/]");
             AnsiConsole.MarkupLine("[yellow]Available commands: tasks, plugins[/]");
+
+            extensionManager.ReleasePlugins();
         }
 
         return;
     }
 }
+
