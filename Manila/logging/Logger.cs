@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Shiron.Manila.Ext;
 
-namespace Shiron.Manila.Utils;
+namespace Shiron.Manila.Logging;
 
 /// <summary>
 /// The internal logger for Manila. Plugins should use their own logger:

@@ -2,7 +2,7 @@ namespace Shiron.Manila.Ext;
 
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Shiron.Manila.Utils;
+using Shiron.Manila.Logging;
 using Shiron.Manila.Attributes;
 
 /// <summary>

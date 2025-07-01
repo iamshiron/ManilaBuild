@@ -3,7 +3,7 @@ using System.Reflection;
 using Microsoft.ClearScript;
 using Shiron.Manila.Attributes;
 
-namespace Shiron.Manila.Utils;
+namespace Shiron.Manila.Logging;
 
 /// <summary>
 /// Represents a dynamic object that can be exposed to the script context.

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
 using Shiron.Manila.Attributes;
-using Shiron.Manila.Utils;
+using Shiron.Manila.Logging;
 
 public sealed class ScriptContext(ManilaEngine engine, API.Component component, string scriptPath) {
     /// <summary>

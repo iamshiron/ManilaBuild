@@ -1,7 +1,7 @@
 using Shiron.Manila;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Exceptions;
-using Shiron.Manila.Utils;
+using Shiron.Manila.Logging;
 using Spectre.Console;
 using Shiron.Manila.API;
 

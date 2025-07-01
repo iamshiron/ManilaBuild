@@ -1,4 +1,4 @@
-namespace Shiron.Manila.Utils;
+namespace Shiron.Manila.Logging;
 
 public static class HashUtils {
     public static string SHA256(string file) {

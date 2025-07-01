@@ -1,7 +1,7 @@
 using Microsoft.ClearScript;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Exceptions;
-using Shiron.Manila.Utils;
+using Shiron.Manila.Logging;
 
 namespace Shiron.Manila.API;
 

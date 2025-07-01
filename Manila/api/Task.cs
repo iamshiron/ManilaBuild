@@ -1,4 +1,4 @@
-using Shiron.Manila.Utils;
+using Shiron.Manila.Logging;
 
 namespace Shiron.Manila.API;
 

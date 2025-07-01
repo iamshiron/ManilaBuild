@@ -2,7 +2,7 @@ using Microsoft.ClearScript;
 using System.Dynamic;
 using System.Reflection;
 using Shiron.Manila.Ext;
-using Shiron.Manila.Utils;
+using Shiron.Manila.Logging;
 using Shiron.Manila.Attributes;
 
 namespace Shiron.Manila.API;
