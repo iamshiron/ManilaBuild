@@ -14,9 +14,9 @@ public class CppComponent : LanguageComponent {
     }
 
     [ScriptProperty]
-    public Dir? BinDir { get; set; }
+    public DirHandle? BinDir { get; set; }
     [ScriptProperty]
-    public Dir? ObjDir { get; set; }
+    public DirHandle? ObjDir { get; set; }
     [ScriptProperty]
     public EToolChain? ToolChain { get; set; }
     public List<string> IncludeDirs { get; set; } = [];

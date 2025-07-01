@@ -6,35 +6,35 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Represents a directory in the scripting context. Mostly used for syntax sugar.
 /// </summary>
-public class Dir {
+public class DirHandle {
     public string path { get; private set; }
 
-    public Dir(string path) {
+    public DirHandle(string path) {
         this.path = path;
     }
 
-    public File[] files() {
+    public FileHandle[] files() {
         string[] files = Directory.GetFiles(this.path);
-        File[] result = new File[files.Length];
+        FileHandle[] result = new FileHandle[files.Length];
         for (int i = 0; i < files.Length; i++) {
-            result[i] = new File(files[i]);
+            result[i] = new FileHandle(files[i]);
         }
         return result;
     }
 
-    public File file(string name) {
-        return new File(Path.Combine(this.path, name));
+    public FileHandle file(string name) {
+        return new FileHandle(Path.Combine(this.path, name));
     }
 
-    public Dir join(params object[] path) {
+    public DirHandle join(params object[] path) {
         var newPath = this.path;
         foreach (var p in path) {
             newPath = Path.Combine(newPath, p.ToString());
         }
-        return new Dir(newPath);
+        return new DirHandle(newPath);
     }
-    public Dir join(Dir dir) {
-        return new Dir(Path.Combine(this.path, dir.path));
+    public DirHandle join(DirHandle dir) {
+        return new DirHandle(Path.Combine(this.path, dir.path));
     }
 
     public bool isAbsolute() {
@@ -51,7 +51,7 @@ public class Dir {
         return this.path;
     }
 
-    public static implicit operator string(Dir d) {
+    public static implicit operator string(DirHandle d) {
         return d.path;
     }
 }

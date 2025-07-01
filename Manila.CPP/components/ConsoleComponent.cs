@@ -12,7 +12,7 @@ public class ConsoleComponent : CppComponent {
     }
 
     [ScriptProperty]
-    public Dir? RunDir { get; set; }
+    public DirHandle? RunDir { get; set; }
 
     public override void Run(Project project) {
         var instance = ManilaCPP.Instance!;

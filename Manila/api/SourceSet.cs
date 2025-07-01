@@ -38,7 +38,7 @@ public class SourceSet {
     /// Return a list of files in the source set.
     /// </summary>
     /// <returns>List of files complying to the includes and excludes</returns>
-    public File[] files() {
+    public FileHandle[] files() {
         var matcher = new Matcher();
         foreach (var include in Includes) {
             matcher.AddInclude(include);
@@ -48,6 +48,6 @@ public class SourceSet {
         }
 
         var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(Root)));
-        return result.Files.Select(f => new File(f.Path)).ToArray();
+        return result.Files.Select(f => new FileHandle(f.Path)).ToArray();
     }
 }

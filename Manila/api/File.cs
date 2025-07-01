@@ -6,18 +6,18 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Represents a file in the scripting context. Mostly used for syntax sugar.
 /// </summary>
-public class File {
+public class FileHandle {
     public string path { get; private set; }
 
-    public File(string dir, string name) {
+    public FileHandle(string dir, string name) {
         this.path = Path.Combine(dir, name);
     }
-    public File(string path) {
+    public FileHandle(string path) {
         this.path = path;
     }
 
-    public Dir getDir() {
-        return new Dir(Path.GetDirectoryName(this.path));
+    public DirHandle getDir() {
+        return new DirHandle(Path.GetDirectoryName(this.path));
     }
 
     public bool isAbsolute() {
@@ -34,7 +34,7 @@ public class File {
         return this.path;
     }
 
-    public static implicit operator string(File f) {
+    public static implicit operator string(FileHandle f) {
         return f.path;
     }
 }

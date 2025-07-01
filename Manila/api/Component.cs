@@ -12,7 +12,7 @@ namespace Shiron.Manila.API;
 /// </summary>
 public class Component(string path) : DynamicObject, IScriptableObject {
     [ScriptProperty(true)]
-    public Dir Path { get; private set; } = new Dir(path);
+    public DirHandle Path { get; private set; } = new DirHandle(path);
 
     public Dictionary<Type, PluginComponent> PluginComponents { get; } = [];
     public List<Type> plugins { get; } = [];

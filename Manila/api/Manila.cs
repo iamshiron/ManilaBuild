@@ -78,8 +78,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <param name="path">The path of the directory.</param>
     /// <returns>A new directory reference with the specified path.</returns>
-    public Dir dir(string path) {
-        return new Dir(path);
+    public DirHandle dir(string path) {
+        return new DirHandle(path);
     }
 
     /// <summary>
@@ -87,8 +87,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <param name="path">The path of the file.</param>
     /// <returns>A new file reference with the specified path.</returns>
-    public File file(string path) {
-        return new File(path);
+    public FileHandle file(string path) {
+        return new FileHandle(path);
     }
 
     /// <summary>
