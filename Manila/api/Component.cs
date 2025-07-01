@@ -118,7 +118,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         Logger.Debug($"Applying component '{component}'.");
 
         if (PluginComponents.ContainsKey(component.GetType())) {
-            Logger.Warn($"Component '{component}' already applied.");
+            Logger.Warning($"Component '{component}' already applied.");
             return;
         }
         PluginComponents.Add(component.GetType(), component);
@@ -151,7 +151,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         }
 
         if (plugins.Contains(plugin.GetType())) {
-            Logger.Warn($"Plugin '{plugin}' already applied.");
+            Logger.Warning($"Plugin '{plugin}' already applied.");
             return;
         }
 

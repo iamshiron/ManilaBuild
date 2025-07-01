@@ -71,7 +71,7 @@ public class ToolchainClang : Toolchain {
         }
 
         return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path),
-            ManilaEngine.GetInstance().verboseLogger ? (s) => ApplicationLogger.WriteLine(s) : null, (s) => ApplicationLogger.ApplicationError(s)
+            ManilaEngine.GetInstance().verboseLogger ? (s) => ManilaCPP.Instance.Info(s) : null, (s) => ManilaCPP.Instance.Error(s)
         );
     }
 
@@ -84,7 +84,7 @@ public class ToolchainClang : Toolchain {
     public int InvokeLibLinker(params string[] a) {
         List<string> args = [.. a];
         return ShellUtils.Run("llvm-ar", [.. args], Path.Join(workspace.Path),
-            ManilaEngine.GetInstance().verboseLogger ? (s) => ApplicationLogger.WriteLine(s) : null, (s) => ApplicationLogger.ApplicationError(s)
+            ManilaEngine.GetInstance().verboseLogger ? (s) => ManilaCPP.Instance.Info(s) : null, (s) => ManilaCPP.Instance.Error(s)
         );
     }
 
@@ -102,7 +102,7 @@ public class ToolchainClang : Toolchain {
         }
 
         return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path),
-            ManilaEngine.GetInstance().verboseLogger ? (s) => ApplicationLogger.WriteLine(s) : null, (s) => ApplicationLogger.ApplicationError(s)
+            ManilaEngine.GetInstance().verboseLogger ? (s) => ManilaCPP.Instance.Info(s) : null, (s) => ManilaCPP.Instance.Error(s)
         );
     }
 
@@ -126,7 +126,7 @@ public class ToolchainClang : Toolchain {
             var startTime = System.Diagnostics.Stopwatch.StartNew();
 
             // Run the compiler
-            ApplicationLogger.ApplicationLog(Path.GetRelativePath(setRoot, file));
+            ManilaCPP.Instance.Debug(Path.GetRelativePath(setRoot, file));
             if (InvokeCompiler("-c", file, "-o", objFile) != 0) {
                 throw new Exception("Failed to compile file: " + file);
             }

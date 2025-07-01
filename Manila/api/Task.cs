@@ -81,7 +81,7 @@ public class Task {
         List<string> result = [];
         foreach (string dependency in dependencies) {
             Task? dependentTask = ManilaEngine.GetInstance().Workspace.GetTask(dependency);
-            if (dependentTask == null) { Logger.Warn("Task not found: " + dependency); continue; }
+            if (dependentTask == null) { Logger.Warning("Task not found: " + dependency); continue; }
             List<string> dependencyOrder = dependentTask.GetExecutionOrder();
             foreach (string depTask in dependencyOrder) {
                 if (!result.Contains(depTask)) {

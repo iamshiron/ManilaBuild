@@ -47,7 +47,7 @@ public static class ShellUtils {
     /// <param name="logStdErr">Whether to log standard error to the application logger.</param>
     /// <returns>The exit code of the process.</returns>
     public static int ApplicationRun(string command, string[] args, string? workingDir = null, bool logStdOut = true, bool logStdErr = true) {
-        return Run(command, args, workingDir, logStdOut ? (s) => ApplicationLogger.ApplicationLog(s) : null, logStdErr ? (s) => ApplicationLogger.ApplicationError(s) : null);
+        return Run(command, args, workingDir, logStdOut ? (s) => Console.WriteLine(s) : null, logStdErr ? (s) => Console.WriteLine(s) : null);
     }
     /// <summary>
     /// Executes a shell command with arguments as a string and logs output to the application logger.

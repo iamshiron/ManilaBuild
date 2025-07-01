@@ -8,11 +8,14 @@ using Shiron.Manila.API;
 Directory.SetCurrentDirectory("./run");
 var startTime = DateTime.Now.Ticks;
 
-var verbose = args.Contains("--verbose") || args.Contains("-v");
-var stackTrace = args.Contains("--stack-trace");
-var quiet = args.Contains("--quiet") || args.Contains("-q");
+var logOptions = new {
+    Structured = args.Contains("--structured") || args.Contains("--json"),
+    Verbose = args.Contains("--verbose"),
+    Quiet = args.Contains("--quiet"),
+    StackTrace = args.Contains("--stack-trace")
+};
 
-if (!quiet) {
+if (!logOptions.Quiet) {
     AnsiConsole.MarkupLine(@"[blue] __  __             _ _[/]");
     AnsiConsole.MarkupLine(@"[blue]|  \/  | __ _ _ __ (_| | __ _[/]");
     AnsiConsole.MarkupLine(@"[blue]| |\/| |/ _` | '_ \| | |/ _` |[/]");
@@ -20,27 +23,24 @@ if (!quiet) {
     AnsiConsole.MarkupLine($"[blue]|_|  |_|\\__,_|_| |_|_|_|\\__,_|[/] [magenta]v{ManilaEngine.VERSION}[/]\n");
 }
 
-Logger.Init(verbose, quiet);
-ApplicationLogger.Init(quiet, stackTrace);
-
 var engine = ManilaEngine.GetInstance();
-engine.verboseLogger = verbose;
 
 var extensionManager = ExtensionManager.GetInstance();
+
+StdOutSink.Init(logOptions.Verbose, logOptions.Quiet, logOptions.Structured);
 
 extensionManager.Init("./.manila/plugins");
 extensionManager.LoadPlugins();
 extensionManager.InitPlugins();
 
-ApplicationLogger.WriteLine("Initializing...");
+Console.WriteLine("Initializing...");
 engine.Run();
 
 if (engine.Workspace == null) throw new Exception("Workspace not found");
-ApplicationLogger.WriteLine("Initialization took: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
+Console.WriteLine("Initialization took: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
 foreach (var arg in args) {
     if (arg.StartsWith(":")) {
         try {
-            ApplicationLogger.BuildStarted();
             var task = engine.Workspace.GetTask(arg);
 
             var order = task.GetExecutionOrder();
@@ -48,24 +48,17 @@ foreach (var arg in args) {
 
             foreach (var t in order) {
                 var taskToRun = engine.Workspace.GetTask(t);
-                ApplicationLogger.TaskStarted(taskToRun);
 
                 try {
-                    if (taskToRun.Action == null) Logger.Warn("Task has no action: " + t);
+                    if (taskToRun.Action == null) Logger.Warning("Task has no action: " + t);
                     else taskToRun.Action.Invoke();
-                    ApplicationLogger.TaskFinished();
                 } catch (Exception e) {
                     throw new TaskFailedException(taskToRun, e);
                 }
             }
 
-            ApplicationLogger.BuildFinished();
-        } catch (TaskNotFoundException e) {
-            ApplicationLogger.BuildFinished(e);
-        } catch (TaskFailedException e) {
-            ApplicationLogger.BuildFinished(e);
         } catch (Exception e) {
-            ApplicationLogger.BuildFinished(e);
+            Console.WriteLine(e);
         }
 
         extensionManager.ReleasePlugins();
@@ -138,4 +131,3 @@ foreach (var arg in args) {
         return;
     }
 }
-

@@ -138,9 +138,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         var task = getWorkspace().GetTask(key);
         if (task == null) throw new Exception("Task not found: " + key);
 
-        ApplicationLogger.TaskStarted(task);
         task.Action?.Invoke();
-        ApplicationLogger.TaskFinished();
     }
 
     /// <summary>

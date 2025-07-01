@@ -44,7 +44,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         ManilaAPI = new API.Manila(this);
         ScriptEngine.AddHostObject("Manila", ManilaAPI);
         ScriptEngine.AddHostObject("print", (params object[] args) => {
-            ApplicationLogger.ScriptLog(args);
+            Logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args)));
         });
 
         foreach (var prop in Component.GetType().GetProperties()) {
@@ -66,7 +66,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
 
         string? projectDir = System.IO.Path.GetDirectoryName(ScriptPath);
         if (projectDir == null) {
-            Logger.Warn($"Could not determine project directory for '{ScriptPath}'.");
+            Logger.Warning($"Could not determine project directory for '{ScriptPath}'.");
             return;
         }
 
@@ -102,7 +102,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 }
             }
         } catch (Exception ex) {
-            Logger.Warn($"Error loading environment variables: {ex.Message}");
+            Logger.Warning($"Error loading environment variables: {ex.Message}");
         }
     }
 
@@ -205,7 +205,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         if (t.GetType().GetCustomAttributes<ScriptEnum>() == null) throw new Exception($"Object '{t}' is not a script enum.");
 
         if (EnumComponents.Contains(t)) {
-            Logger.Warn($"Enum '{t}' already applied.");
+            Logger.Warning($"Enum '{t}' already applied.");
             return;
         }
 

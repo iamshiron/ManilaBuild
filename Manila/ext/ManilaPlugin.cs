@@ -33,22 +33,27 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// Prints a debug severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Debug(params object[] args) { Logger.PluginDebug(this, args); }
+    public void Debug(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Debug)); }
     /// <summary>
     /// Prints a information severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Info(params object[] args) { Logger.PluginInfo(this, args); }
+    public void Info(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Info)); }
     /// <summary>
     /// Prints a warning severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Warn(params object[] args) { Logger.PluginWarn(this, args); }
+    public void Warn(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Warning)); }
     /// <summary>
     /// Prints a error severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Error(params object[] args) { Logger.PluginError(this, args); }
+    public void Error(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Error)); }
+    /// <summary>
+    /// Prints a critical severity message.
+    /// </summary>
+    /// <param name="args">The message</param>
+    public void Critical(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Critical)); }
 
     /// <summary>
     /// Registers a component to the plugin.

@@ -29,10 +29,10 @@ public class ConsoleComponent : CppComponent {
 
         using (Process process = Process.Start(startInfo)) {
             process.OutputDataReceived += (sender, e) => {
-                if (e.Data != null) ApplicationLogger.ApplicationLog(e.Data);
+                if (e.Data != null) ManilaCPP.Instance.Info(e.Data);
             };
             process.ErrorDataReceived += (sender, e) => {
-                if (e.Data != null) ApplicationLogger.ApplicationLog(e.Data);
+                if (e.Data != null) ManilaCPP.Instance.Info(e.Data);
             };
 
             process.BeginOutputReadLine();
