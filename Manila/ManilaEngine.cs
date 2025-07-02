@@ -16,6 +16,7 @@ public sealed class ManilaEngine {
     public ScriptContext WorkspaceContext { get; }
     public string DataDir { get; private set; }
     public bool verboseLogger = false;
+    public readonly long EngineCreatedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     public static readonly string VERSION = "0.0.0";
 
@@ -61,6 +62,8 @@ public sealed class ManilaEngine {
                 }
             }
         }
+
+        Logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - EngineCreatedTime));
     }
 
     /// <summary>

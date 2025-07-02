@@ -5,8 +5,9 @@ using Shiron.Manila.Logging;
 using Spectre.Console;
 using Shiron.Manila.API;
 
+#if DEBUG
 Directory.SetCurrentDirectory("./run");
-var startTime = DateTime.Now.Ticks;
+#endif
 
 var logOptions = new {
     Structured = args.Contains("--structured") || args.Contains("--json"),
@@ -27,17 +28,15 @@ var engine = ManilaEngine.GetInstance();
 
 var extensionManager = ExtensionManager.GetInstance();
 
-AnsiConsoleSkin.Init(logOptions.Verbose, logOptions.Quiet, logOptions.Structured);
+AnsiConsoleRenderer.Init(logOptions.Quiet, logOptions.Structured);
 
 extensionManager.Init("./.manila/plugins");
 extensionManager.LoadPlugins();
 extensionManager.InitPlugins();
 
-Console.WriteLine("Initializing...");
 engine.Run();
 
 if (engine.Workspace == null) throw new Exception("Workspace not found");
-Console.WriteLine("Initialization took: " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + "ms\n");
 foreach (var arg in args) {
     if (arg.StartsWith(":")) {
         try {

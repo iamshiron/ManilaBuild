@@ -3,6 +3,7 @@ namespace Shiron.Manila.CPP.Components;
 using System.Diagnostics;
 using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Logging;
 
 /// <summary>
 /// Represents a C++ console application project.
@@ -16,6 +17,9 @@ public class ConsoleComponent : CppComponent {
 
     public override void Run(Project project) {
         var instance = ManilaCPP.Instance!;
+        ShellUtils.Run(project.GetComponent<ConsoleComponent>().BinDir + "/" + project.Name + ".exe");
+
+        /*
         instance.Debug("Running project: " + project.Name);
         instance.Debug("BinDir: " + project.GetComponent<ConsoleComponent>().BinDir);
 
@@ -41,5 +45,6 @@ public class ConsoleComponent : CppComponent {
 
             if (process.ExitCode != 0) throw new Exception("Process exited with code " + process.ExitCode);
         }
+        */
     }
 }

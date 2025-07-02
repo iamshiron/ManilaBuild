@@ -146,6 +146,11 @@ public class BuildFailedLogEntry(long duration, Exception e) : BaseLogEntry {
     public long Duration { get; } = duration;
 }
 
+public class ProjectsInitializedLogEntry(long duration) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public long Duration { get; } = duration;
+}
+
 // --- Script Logging Events --- //
 public class ScriptExecutionStartedLogEntry(string scriptPath, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
@@ -187,6 +192,23 @@ public class TaskExecutionFinishedLogEntry(API.Task task, Guid contextID) : Base
     public string ContextID { get; } = contextID.ToString();
 }
 
+// -- Discovery Logs -- //
+public class ProjectDiscoveredLogEntry(string root, string script) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public string Root { get; } = root;
+    public string Script { get; } = script;
+}
+public class ProjectInitializedLogEntry(Project project) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public ProjectInfo Projet { get; } = new(project);
+}
+
+public class TaskDiscoveredLogEntry(API.Task task, Component component) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public ComponentInfo Component { get; } = new(component);
+    public TaskInfo Task { get; } = new(task);
+}
+
 // --- Misc Log Entries --- //
 public class CommandExecutionLogEntry(Guid contextID, string executable, string[] args, string workingDir) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Debug;
@@ -212,19 +234,15 @@ public class CommandExecutionFailedLogEntry(Guid contextID, string stdOut, strin
     public long Duration { get; } = duration;
 }
 
-// -- Discovery Logs -- //
-public class ProjectDiscoveredLogEntry(string root, string script) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public string Root { get; } = root;
-    public string Script { get; } = script;
+public class CommandStdOutLogEntry(Guid contextID, string message, bool quiet) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public string ContextID { get; } = contextID.ToString();
+    public string Message { get; } = message;
+    public bool Quiet { get; } = quiet;
 }
-public class ProjectInitializedLogEntry(Project project) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public ProjectInfo Projet { get; } = new(project);
-}
-
-public class TaskDiscoveredLogEntry(API.Task task, Component component) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public ComponentInfo Component = new(component);
-    public TaskInfo Task { get; } = new(task);
+public class CommandStdErrLogEntry(Guid contextID, string message, bool quiet) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Error;
+    public string ContextID { get; } = contextID.ToString();
+    public string Message { get; } = message;
+    public bool Quiet { get; } = quiet;
 }

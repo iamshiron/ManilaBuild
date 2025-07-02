@@ -70,9 +70,7 @@ public class ToolchainClang : Toolchain {
             args.Add("-D" + d);
         }
 
-        return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path),
-            ManilaEngine.GetInstance().verboseLogger ? (s) => ManilaCPP.Instance.Info(s) : null, (s) => ManilaCPP.Instance.Error(s)
-        );
+        return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path));
     }
 
     /// <summary>
@@ -83,9 +81,7 @@ public class ToolchainClang : Toolchain {
     /// <returns>Exit code of the linker</returns>
     public int InvokeLibLinker(params string[] a) {
         List<string> args = [.. a];
-        return ShellUtils.Run("llvm-ar", [.. args], Path.Join(workspace.Path),
-            ManilaEngine.GetInstance().verboseLogger ? (s) => ManilaCPP.Instance.Info(s) : null, (s) => ManilaCPP.Instance.Error(s)
-        );
+        return ShellUtils.Run("llvm-ar", [.. args], Path.Join(workspace.Path));
     }
 
     /// <summary>
@@ -101,9 +97,7 @@ public class ToolchainClang : Toolchain {
             args.Add("-l" + l);
         }
 
-        return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path),
-            ManilaEngine.GetInstance().verboseLogger ? (s) => ManilaCPP.Instance.Info(s) : null, (s) => ManilaCPP.Instance.Error(s)
-        );
+        return ShellUtils.Run("clang++", [.. args], Path.Join(workspace.Path));
     }
 
     /// <summary>
