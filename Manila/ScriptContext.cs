@@ -25,6 +25,10 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// The component this context is part of.
     /// </summary>
     public readonly API.Component Component = component;
+    /// <summary>
+    /// Mostly used for logging
+    /// </summary>
+    public readonly Guid ContextID = Guid.NewGuid();
 
     /// <summary>
     /// Project-specific environment variables that get isolated between projects
@@ -44,7 +48,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         ManilaAPI = new API.Manila(this);
         ScriptEngine.AddHostObject("Manila", ManilaAPI);
         ScriptEngine.AddHostObject("print", (params object[] args) => {
-            Logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args)));
+            Logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args), ContextID));
         });
 
         foreach (var prop in Component.GetType().GetProperties()) {
@@ -125,7 +129,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
          /// Executes the script.
          /// </summary>
     public void Execute() {
-        Logger.Info($"Executing script '{ScriptPath}'.");
+        var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        Logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
         try {
             // Load environment variables before executing script
             LoadEnvironmentVariables();
@@ -152,6 +157,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             ScriptEngine.AllowReflection = true;
             ScriptEngine.EnableAutoHostVariables = true;
 
+
             // Execute the script with proper error handling
             ScriptEngine.Execute($@"
                 (async function() {{
@@ -167,11 +173,10 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             // Wait for the script to either complete or throw an exception
             taskCompletion.Task.Wait();
         } catch (Exception e) {
-            Logger.Error("Error in script: " + ScriptPath);
-            Logger.Info(e.Message);
+            Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, e.Message, ContextID, e.StackTrace));
             throw;
         }
-        Logger.Info($"Script '{ScriptPath}' executed successfully.");
+        Logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
     }
     /// <summary>
     /// Executes the workspace script.

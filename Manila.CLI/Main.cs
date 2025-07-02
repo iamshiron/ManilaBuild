@@ -27,7 +27,7 @@ var engine = ManilaEngine.GetInstance();
 
 var extensionManager = ExtensionManager.GetInstance();
 
-StdOutSink.Init(logOptions.Verbose, logOptions.Quiet, logOptions.Structured);
+AnsiConsoleSkin.Init(logOptions.Verbose, logOptions.Quiet, logOptions.Structured);
 
 extensionManager.Init("./.manila/plugins");
 extensionManager.LoadPlugins();
@@ -41,22 +41,7 @@ Console.WriteLine("Initialization took: " + (DateTime.Now.Ticks - startTime) / T
 foreach (var arg in args) {
     if (arg.StartsWith(":")) {
         try {
-            var task = engine.Workspace.GetTask(arg);
-
-            var order = task.GetExecutionOrder();
-            Logger.Debug("Execution order: " + string.Join(", ", order));
-
-            foreach (var t in order) {
-                var taskToRun = engine.Workspace.GetTask(t);
-
-                try {
-                    if (taskToRun.Action == null) Logger.Warning("Task has no action: " + t);
-                    else taskToRun.Action.Invoke();
-                } catch (Exception e) {
-                    throw new TaskFailedException(taskToRun, e);
-                }
-            }
-
+            engine.ExecuteBuildLogic(arg);
         } catch (Exception e) {
             Console.WriteLine(e);
         }

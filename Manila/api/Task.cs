@@ -6,7 +6,7 @@ namespace Shiron.Manila.API;
 /// Represents a task in the build script.
 /// </summary>
 public class Task {
-    public readonly string name;
+    public readonly string Name;
     public readonly List<string> dependencies = [];
     public Action? Action { get; private set; }
     private readonly ScriptContext _context;
@@ -19,17 +19,19 @@ public class Task {
     /// </summary>
     /// <returns>The unique identifier of the task</returns>
     public string GetIdentifier() {
-        return $"{Component.GetIdentifier()}:{name}";
+        return $"{Component.GetIdentifier()}:{Name}";
     }
 
     public Task(string name, Component component, ScriptContext context, string scriptPath) {
         if (name.Contains(":")) throw new Exception("Task name cannot contain a colon (:) character.");
 
-        this.name = name;
+        this.Name = name;
         this.Component = component;
         this._context = context;
         this.Component.Tasks.Add(this);
         this.ScriptPath = scriptPath;
+
+        Logger.Log(new TaskDiscoveredLogEntry(this, Component));
     }
 
     /// <summary>
@@ -56,7 +58,7 @@ public class Task {
             try {
                 action();
             } catch (Exception e) {
-                Logger.Error("Task failed: " + name);
+                Logger.Error("Task failed: " + Name);
                 Logger.Error(e.GetType().Name + ": " + e.Message);
                 throw;
             }

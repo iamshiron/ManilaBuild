@@ -29,7 +29,7 @@ public class Workspace : Component {
     }
     public Task GetTask(string task, Component? component = null) {
         if (component == null) component = this;
-        return component.Tasks.FirstOrDefault(t => t.name == task) ?? throw new TaskNotFoundException(task);
+        return component.Tasks.FirstOrDefault(t => t.Name == task) ?? throw new TaskNotFoundException(task);
     }
 
     public override string GetIdentifier() {

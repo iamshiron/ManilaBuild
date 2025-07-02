@@ -1,4 +1,5 @@
 ﻿using Shiron.Manila.API;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 
@@ -8,7 +9,7 @@ public sealed class ManilaEngine {
     internal static ManilaEngine? instance = null;
     public static ManilaEngine GetInstance() { if (instance == null) instance = new ManilaEngine(); return instance; }
 
-    public string Root { get; private set; }
+    public string RootDir { get; private set; }
     public Workspace? Workspace { get; }
     public Project? CurrentProject { get; private set; }
     public ScriptContext? CurrentContext { get; private set; }
@@ -19,22 +20,24 @@ public sealed class ManilaEngine {
     public static readonly string VERSION = "0.0.0";
 
     private ManilaEngine() {
-        Root = Directory.GetCurrentDirectory();
-        Workspace = new Workspace(Root);
-        WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(Root, "Manila.js"));
-        DataDir = Path.Join(Root, ".manila");
+        RootDir = Directory.GetCurrentDirectory();
+        Workspace = new Workspace(RootDir);
+        WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(RootDir, "Manila.js"));
+        DataDir = Path.Join(RootDir, ".manila");
     }
 
     /// <summary>
     /// Main entry point for the engine. Runs the workspace script and all project scripts.
     /// </summary>
     public void Run() {
-        if (!System.IO.File.Exists("Manila.js")) {
+        if (!File.Exists("Manila.js")) {
             Logger.Error("No Manila.js file found in the current directory.");
             return;
         }
 
-        var workspaceScript = Path.Join(Root, "Manila.js");
+        Logger.Log(new EngineStartedLogEntry(RootDir, DataDir));
+
+        var workspaceScript = Path.Join(RootDir, "Manila.js");
         var files = Directory.GetFiles(".", "Manila.js", SearchOption.AllDirectories)
             .Where(f => !Path.GetFullPath(f).Equals(Path.GetFullPath("Manila.js")))
             .ToList();
@@ -65,19 +68,21 @@ public sealed class ManilaEngine {
     /// </summary>
     /// <param name="path">The relative path from the root</param>
     public void RunProjectScript(string path) {
-        Logger.Debug("Running project script: " + path);
-        string projectPath = Path.GetDirectoryName(Path.GetRelativePath(Root, path));
+        Logger.Log(new ProjectDiscoveredLogEntry(Path.GetDirectoryName(path), path));
+        string projectPath = Path.GetDirectoryName(Path.GetRelativePath(RootDir, path));
         string name = projectPath.ToLower().Replace(Path.DirectorySeparatorChar, ':');
 
         CurrentProject = new API.Project(name, projectPath, Workspace);
         Workspace!.Projects.Add(name, CurrentProject);
-        CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(Root, path));
+        CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(RootDir, path));
 
         CurrentContext.ApplyEnum<EPlatform>();
         CurrentContext.ApplyEnum<EArchitecture>();
 
         CurrentContext.Init();
         CurrentContext.Execute();
+
+        Logger.Log(new ProjectInitializedLogEntry(CurrentProject));
 
         CurrentProject = null;
         CurrentContext = null;
@@ -93,5 +98,33 @@ public sealed class ManilaEngine {
 
         WorkspaceContext.Init();
         WorkspaceContext.Execute();
+    }
+
+    public void ExecuteBuildLogic(string taskID) {
+        var task = Workspace!.GetTask(taskID);
+
+        var order = task.GetExecutionOrder();
+        Logger.Debug("Execution Order: " + string.Join(", ", order));
+
+        long startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        Logger.Log(new BuildStartedLogEntry());
+        foreach (var t in order) {
+            var taskToRun = Workspace.GetTask(t);
+            var taskContextID = Guid.NewGuid();
+
+            try {
+                if (taskToRun.Action == null) {
+                    Logger.Warning("Task has no action: " + t);
+                } else {
+                    Logger.Log(new TaskExecutionStartedLogEntry(taskToRun, taskContextID));
+                    taskToRun.Action.Invoke();
+                    Logger.Log(new TaskExecutionFinishedLogEntry(taskToRun, taskContextID));
+                }
+            } catch (Exception e) {
+                Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
+                throw new TaskFailedException(taskToRun, e);
+            }
+        }
+        Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
     }
 }

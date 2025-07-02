@@ -2,6 +2,4 @@
 
 #include <iostream>
 
-void Core::init() {
-    std::cout << "Core initialized!" << std::endl;
-}
+void Core::init() { std::cout << "Core initialized!" << std::endl; }

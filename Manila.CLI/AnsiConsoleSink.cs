@@ -3,8 +3,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Shiron.Manila.Logging;
+using Spectre.Console;
 
-public static class StdOutSink {
+public static class AnsiConsoleSkin {
     public static void Init(bool verbose, bool quiet, bool structured) {
         var jsonSerializerSettings = new JsonSerializerSettings {
             ContractResolver = new CamelCasePropertyNamesContractResolver(),
@@ -38,26 +39,45 @@ public static class StdOutSink {
 
         switch (e) {
             case BasicLogEntry entry:
-                Console.WriteLine($"{prefix}{entry.Message}");
+                AnsiConsole.WriteLine($"{prefix}{entry.Message}");
                 break;
             case BasicPluginLogEntry entry:
-                Console.WriteLine($"{prefix}[{entry.Plugin.Name}]: {entry.Message}");
-                break;
-            case EngineStartedLogEntry entry:
-                Console.WriteLine($"{prefix}Engine started at '{entry.RootDirectory}' with data directory '{entry.DataDirectory}'");
+                AnsiConsole.WriteLine($"{prefix}[{entry.Plugin.Name}]: {entry.Message}");
                 break;
             case ScriptExecutionStartedLogEntry entry:
-                Console.WriteLine($"{prefix}Running script '{entry.ScriptPath}'...");
+                AnsiConsole.WriteLine($"{prefix}Running script '{entry.ScriptPath}'...");
                 break;
             case ScriptExecutedSuccessfullyLogEntry entry:
-                Console.WriteLine($"{prefix}Script executed successfully!");
+                AnsiConsole.WriteLine($"{prefix}Script executed successfully!");
                 break;
             case ScriptExecutionFailedLogEntry entry:
-                Console.WriteLine($"{prefix}Script execution failed!\nError: {entry.ErrorMessage}");
+                AnsiConsole.WriteLine($"{prefix}Script execution failed!\nError: {entry.ErrorMessage}");
                 if (entry.StackTrace != null) Console.WriteLine(entry.StackTrace);
                 break;
             case ScriptLogEntry entry:
-                Console.WriteLine($"{prefix}{Path.GetRelativePath(Directory.GetCurrentDirectory(), entry.ScriptPath)}: {entry.Message}");
+                AnsiConsole.WriteLine($"{prefix}{Path.GetRelativePath(Directory.GetCurrentDirectory(), entry.ScriptPath)}: {entry.Message}");
+                break;
+
+            // --- Life Cycle --- //
+            case EngineStartedLogEntry entry:
+                AnsiConsole.WriteLine($"{prefix}Engine started at '{entry.RootDirectory}' with data directory '{entry.DataDirectory}'");
+                break;
+            case BuildStartedLogEntry entry:
+                AnsiConsole.WriteLine("Build Started!");
+                break;
+            case BuildCompletedLogEntry entry:
+                AnsiConsole.MarkupLine("[green]BUILD SUCCESSFUL![/]");
+                break;
+            case BuildFailedLogEntry entry:
+                AnsiConsole.MarkupLine("[red]BUILD FAILED![/]");
+                break;
+
+            // --- Script Events --- //
+            case TaskExecutionStartedLogEntry entry:
+                AnsiConsole.MarkupLine($"Running {entry.Task.Name}...");
+                break;
+            case TaskExecutionFinishedLogEntry entry:
+                AnsiConsole.MarkupLine($"[green]{entry.Task.Name} Finished![/]");
                 break;
         }
     }

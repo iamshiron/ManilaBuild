@@ -25,7 +25,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     /// </summary>
     /// <returns>The identifier</returns>
     public virtual string GetIdentifier() {
-        string relativeDir = System.IO.Path.GetRelativePath(ManilaEngine.GetInstance().Root, Path.path);
+        string relativeDir = System.IO.Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, Path.path);
         return ":" + relativeDir.Replace(System.IO.Path.DirectorySeparatorChar, ':').ToLower();
     }
 

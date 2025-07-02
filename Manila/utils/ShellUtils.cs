@@ -84,7 +84,10 @@ public static class ShellUtils {
     /// <returns>The exit code of the process.</returns>
     public static int Run(string command, string[] args, string? workingDir = null, Action<string>? stdOut = null, Action<string>? stdErr = null) {
         if (workingDir == null) workingDir = Directory.GetCurrentDirectory();
-        Logger.Debug("Running command: " + command + " " + string.Join(" ", args) + " in " + workingDir);
+        var contextID = Guid.NewGuid();
+        var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        Logger.Log(new CommandExecutionLogEntry(contextID, command, args, workingDir));
 
         var startInfo = new ProcessStartInfo() {
             FileName = command,
@@ -121,6 +124,15 @@ public static class ShellUtils {
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         process.WaitForExit();
+
+        if (process.ExitCode == 0)
+            Logger.Log(new CommandExecutionFinishedLogEntry(
+                contextID, stdOutBuilder.ToString(), stdErrBuilder.ToString(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime
+            ));
+        else
+            Logger.Log(new CommandExecutionFailedLogEntry(
+                contextID, stdOutBuilder.ToString(), stdErrBuilder.ToString(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime
+            ));
 
         return process.ExitCode;
     }
