@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Shiron.Manila.Logging;
+namespace Shiron.Manila.Utils;
 
 public static class FunctionUtils {
     /// <summary>

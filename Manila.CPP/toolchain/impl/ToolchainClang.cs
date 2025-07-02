@@ -1,6 +1,6 @@
 using Shiron.Manila.API;
 using Shiron.Manila.CPP.Components;
-using Shiron.Manila.Logging;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.CPP.Toolchain.Impl;
 

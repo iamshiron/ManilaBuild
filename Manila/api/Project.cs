@@ -1,6 +1,6 @@
 using Microsoft.ClearScript;
 using Shiron.Manila.Attributes;
-using Shiron.Manila.Logging;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 

@@ -1,6 +1,5 @@
 namespace Shiron.Manila;
 
-using System.Dynamic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.ClearScript;

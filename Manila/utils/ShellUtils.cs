@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using System.Text;
+using Shiron.Manila.Logging;
 
-namespace Shiron.Manila.Logging;
+namespace Shiron.Manila.Utils;
 
 /// <summary>
 /// Provides utility methods for executing shell commands and processes.
