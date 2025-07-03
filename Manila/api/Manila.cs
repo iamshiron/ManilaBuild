@@ -60,6 +60,10 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         return new SourceSet(origin);
     }
 
+    public async void sleep(int milliseconds) {
+        await System.Threading.Tasks.Task.Delay(milliseconds);
+    }
+
     /// <summary>
     /// Creates a new task with the specified name.
     /// </summary>

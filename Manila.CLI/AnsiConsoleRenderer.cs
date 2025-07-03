@@ -1,43 +1,40 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
+using NuGet.Protocol;
 using Shiron.Manila.Logging;
 using Spectre.Console;
+using Spectre.Console.Rendering;
+using System.Collections.Concurrent;
+using System.Data;
 using System.Diagnostics;
 using System.Text;
 
 /// <summary>
 /// Handles rendering structured log entries into a human-readable format
-/// using Spectre.Console, creating a tree-like view of the build process.
+/// using Spectre.Console, creating a rich, structured view of the build process.
+/// This version leverages more Spectre.Console features like Rules, Panels, and Charts
+/// for a cleaner and more informative output.
 /// </summary>
 public static class AnsiConsoleRenderer {
-    private static readonly Stack<TaskInfo> _taskStack = new();
-    private static readonly Dictionary<string, long> _taskTimers = new();
-
-    private static readonly Dictionary<Type, Action<ILogEntry>> _renderActions = new()
-    {
-        // Build Lifecycle Events
-        { typeof(ProjectsInitializedLogEntry), e => HandleProjectsInitialized((ProjectsInitializedLogEntry)e) },
-        { typeof(BuildStartedLogEntry), e => HandleBuildStarted((BuildStartedLogEntry)e) },
-        { typeof(BuildLayerStartedLogEntry), e => HandleBuildLayerStarted((BuildLayerStartedLogEntry)e) },
-        { typeof(BuildCompletedLogEntry), e => HandleBuildCompleted((BuildCompletedLogEntry)e) },
-        { typeof(BuildFailedLogEntry), e => HandleBuildFailed((BuildFailedLogEntry)e) },
-
-        // Task Execution Events
-        { typeof(TaskExecutionStartedLogEntry), e => HandleTaskExecutionStarted((TaskExecutionStartedLogEntry)e) },
-        { typeof(TaskExecutionFinishedLogEntry), e => HandleTaskExecutionFinished((TaskExecutionFinishedLogEntry)e) },
-        { typeof(TaskExecutionFailedLogEntry), e => HandleTaskExecutionFailed((TaskExecutionFailedLogEntry)e) },
-
-        // Plugin & Script Messages
-        { typeof(BasicPluginLogEntry), e => HandleBasicPluginLog((BasicPluginLogEntry)e) },
-        { typeof(BasicLogEntry), e => HandleBasicLog((BasicLogEntry)e) },
-        { typeof(ScriptLogEntry), e => HandleScriptLog((ScriptLogEntry)e) },
-        { typeof(ScriptExecutionFailedLogEntry), e => HandleScriptExecutionFailed((ScriptExecutionFailedLogEntry)e) },
-
-        // Command Output Events
-        { typeof(CommandStdOutLogEntry), e => HandleCommandStdOut((CommandStdOutLogEntry)e) },
-        { typeof(CommandStdErrLogEntry), e => HandleCommandStdErr((CommandStdErrLogEntry)e) }
+    private static readonly ConcurrentDictionary<LogLevel, string> LogLevelColorMappings = new() {
+        [LogLevel.System] = "grey93",
+        [LogLevel.Debug] = "dim",
+        [LogLevel.Info] = "deepskyblue1",
+        [LogLevel.Warning] = "yellow1",
+        [LogLevel.Error] = "red1",
+        [LogLevel.Critical] = "bold red"
     };
+
+    // --- State Management for Live Display ---
+    private static Tree? _executionTree;
+    private static Action? _refresh; // Action to refresh the LiveDisplay
+    private static TaskCompletionSource<bool>? _buildCompletion; // Controls the LiveDisplay lifetime
+    private static Dictionary<string, TaskCompletionSource> _nodeCompletiosn = [];
+
+    private static readonly ConcurrentDictionary<string, TreeNode> _executionNodes = [];
+
+    private static readonly object _lock = new();
 
     /// <summary>
     /// Initializes the console renderer, subscribing to the logger's OnLogEntry event.
@@ -55,15 +52,18 @@ public static class AnsiConsoleRenderer {
 
         Logger.OnLogEntry += entry => {
             if (structured) {
-                Console.WriteLine(JsonConvert.SerializeObject(entry, jsonSerializerSettings));
+                AnsiConsole.WriteLine(JsonConvert.SerializeObject(entry, jsonSerializerSettings));
                 return;
             }
 
-            if ((quiet && entry.Level < LogLevel.Error) || (!quiet && entry.Level < LogLevel.Info)) {
+            // Filter logs based on the quiet flag and log level.
+            if ((quiet && entry.Level < LogLevel.Error) || entry.Level < LogLevel.Debug) {
                 return;
             }
 
-            RenderLog(entry);
+            lock (_lock) {
+                RenderLog(entry);
+            }
         };
     }
 
@@ -72,164 +72,190 @@ public static class AnsiConsoleRenderer {
     /// </summary>
     /// <param name="entry">The log entry to render.</param>
     private static void RenderLog(ILogEntry entry) {
-        if (_renderActions.TryGetValue(entry.GetType(), out var renderAction)) {
-            renderAction(entry);
+        // Dispatch to the correct handler based on the concrete log entry type.
+        switch (entry) {
+            case BasicLogEntry log:
+                HandleBasicLogEntry(log);
+                break;
+            case BasicPluginLogEntry log:
+                HandleBasicPluginLogEntry(log);
+                break;
+            case EngineStartedLogEntry log:
+                HandleEngineStartedLogEntry(log);
+                break;
+            case BuildLayersLogEntry log:
+                HandleBuildLayersLogEntry(log);
+                break;
+            case BuildLayerStartedLogEntry log:
+                HandleBuildLayerStartedLogEntry(log);
+                break;
+            case BuildLayerCompletedLogEntry log:
+                HandleBuildLayerCompletedLogEntry(log);
+                break;
+            case BuildStartedLogEntry log:
+                HandleBuildStartedLogEntry(log);
+                break;
+            case BuildCompletedLogEntry log:
+                HandleBuildCompletedLogEntry(log);
+                break;
+            case BuildFailedLogEntry log:
+                HandleBuildFailedLogEntry(log);
+                break;
+            case ProjectsInitializedLogEntry log:
+                HandleProjectsInitializedLogEntry(log);
+                break;
+            case ScriptExecutionStartedLogEntry log:
+                HandleScriptExecutionStartedLogEntry(log);
+                break;
+            case ScriptLogEntry log:
+                HandleScriptLogEntry(log);
+                break;
+            case ScriptExecutedSuccessfullyLogEntry log:
+                HandleScriptExecutedSuccessfullyLogEntry(log);
+                break;
+            case ScriptExecutionFailedLogEntry log:
+                HandleScriptExecutionFailedLogEntry(log);
+                break;
+            case TaskExecutionStartedLogEntry log:
+                HandleTaskExecutionStartedLogEntry(log);
+                break;
+            case TaskExecutionFinishedLogEntry log:
+                HandleTaskExecutionFinishedLogEntry(log);
+                break;
+            case TaskExecutionFailedLogEntry log:
+                HandleTaskExecutionFailedLogEntry(log);
+                break;
+            case ProjectDiscoveredLogEntry log:
+                HandleProjectDiscoveredLogEntry(log);
+                break;
+            case ProjectInitializedLogEntry log:
+                HandleProjectInitializedLogEntry(log);
+                break;
+            case TaskDiscoveredLogEntry log:
+                HandleTaskDiscoveredLogEntry(log);
+                break;
+            case CommandExecutionLogEntry log:
+                HandleCommandExecutionLogEntry(log);
+                break;
+            case CommandExecutionFinishedLogEntry log:
+                HandleCommandExecutionFinishedLogEntry(log);
+                break;
+            case CommandExecutionFailedLogEntry log:
+                HandleCommandExecutionFailedLogEntry(log);
+                break;
+            case CommandStdOutLogEntry log:
+                HandleCommandStdOutLogEntry(log);
+                break;
+            case CommandStdErrLogEntry log:
+                HandleCommandStdErrLogEntry(log);
+                break;
+            // Default fallback for any unhandled log types
+            default:
+                AnsiConsole.MarkupLine($"[dim]Unhandled Log Event: {entry.GetType().Name}[/]");
+                break;
         }
-        // Logs without a specific handler are silently ignored.
     }
 
-    // --- Handler Implementations ---
-
-    private static void HandleProjectsInitialized(ProjectsInitializedLogEntry entry) {
-        AnsiConsole.MarkupLine($"[white]Project initialization took:[/] [green]{entry.Duration}ms[/]\n");
+    private static void PushLog(object[] msg, string? parentID = null, string? contextID = null) {
+        PushLog(string.Join(" ", msg), parentID, contextID);
     }
-
-    private static void HandleBuildStarted(BuildStartedLogEntry entry) {
-        AnsiConsole.MarkupLine("[bold cornflowerblue]▶▶▶ BUILD STARTED[/]");
-    }
-
-    private static void HandleBuildLayerStarted(BuildLayerStartedLogEntry entry) {
-        var items = string.Join(", ", entry.Layer.Items.Select(i => $"[bold]{i.ID}[/]"));
-        RenderTreeMessage($"[bold]Executing Layer:[/] {items}", " слой");
-    }
-
-    private static void HandleBuildCompleted(BuildCompletedLogEntry entry) {
-        AnsiConsole.MarkupLine($"\n[bold green]✔ BUILD SUCCESSFUL[/] [dim]in {entry.Duration}ms[/]");
-    }
-
-    private static void HandleBuildFailed(BuildFailedLogEntry entry) {
-        AnsiConsole.MarkupLine($"\n[bold red]❌ BUILD FAILED[/] [dim]after {entry.Duration}ms[/]");
-        RenderExceptionPanel(entry.Exception, "Build Failure");
-    }
-
-    private static void HandleTaskExecutionStarted(TaskExecutionStartedLogEntry entry) {
-        _taskStack.Push(entry.Task);
-        _taskTimers[entry.Task.ID] = Stopwatch.GetTimestamp();
-        RenderTreeMessage($"[cyan]▶[/] [bold]{entry.Task.Name}[/]", "├─");
-    }
-
-    private static void HandleTaskExecutionFinished(TaskExecutionFinishedLogEntry entry) {
-        // Pop the corresponding task from the stack to correctly finish the tree branch.
-        if (_taskStack.TryPeek(out var currentTask) && currentTask.ID == entry.Task.ID) {
-            _taskStack.Pop();
+    private static void PushLog(string msg, string? parentID = null, string? contextID = null) {
+        // Fallback for when the live display isn't active.
+        if (_executionTree is null) {
+            AnsiConsole.MarkupLine(msg);
+            return;
         }
 
-        if (_taskTimers.TryGetValue(entry.Task.ID, out var startTime)) {
-            var duration = Stopwatch.GetElapsedTime(startTime);
-            RenderTreeMessage($"[green]✓[/] [bold]{entry.Task.Name}[/] [green]completed[/] [dim]in {duration.TotalMilliseconds:F0}ms[/]", "└─");
-            _taskTimers.Remove(entry.Task.ID);
-        }
-    }
+        TreeNode newNode;
 
-    private static void HandleTaskExecutionFailed(TaskExecutionFailedLogEntry entry) {
-        if (_taskStack.TryPeek(out var currentTask) && currentTask.ID == entry.Task.ID) {
-            _taskStack.Pop();
-        }
-
-        RenderTreeMessage($"[red]❌[/] [bold]{entry.Task.Name}[/] [red]failed[/]", "└─");
-
-        // Create an ExceptionInfo from the log data to pass to the renderer.
-        var exceptionInfo = new ExceptionInfo(new Exception(entry.Messager, new Exception(entry.StackTrace)));
-        RenderExceptionPanel(exceptionInfo, $"Task Failed: {entry.Task.Name}");
-
-        if (_taskTimers.ContainsKey(entry.Task.ID)) {
-            _taskTimers.Remove(entry.Task.ID);
-        }
-    }
-
-    private static void HandleScriptExecutionFailed(ScriptExecutionFailedLogEntry entry) {
-        var exceptionInfo = new ExceptionInfo(new Exception(entry.ErrorMessage, new Exception(entry.StackTrace)));
-        RenderExceptionPanel(exceptionInfo, $"Script Failure: {Path.GetFileName(entry.ScriptPath)}");
-    }
-
-    private static void HandleBasicPluginLog(BasicPluginLogEntry entry) {
-        var message = Markup.Escape(entry.Message);
-        string styledMessage;
-
-        // Apply specific styling for known message patterns
-        if (message.StartsWith("Using cached object file")) {
-            styledMessage = $"[grey]{message}[/]";
-        } else if (message.StartsWith("Resolving Dependency")) {
-            styledMessage = $"[yellow]Resolving dependency[/] [bold]{message.Split('\'').ElementAtOrDefault(1) ?? ""}[/]";
+        // Check if a parentID is provided and if that parent exists in our node map.
+        if (parentID != null && _executionNodes.TryGetValue(parentID, out var parentNode)) {
+            // A valid parent was found, so attach this log as a child node.
+            newNode = parentNode.AddNode(msg);
         } else {
-            styledMessage = $"[bold dim][[{entry.Plugin.Name}]][/] {message}";
-        }
-        RenderTreeMessage(styledMessage);
-    }
-
-    private static void HandleBasicLog(BasicLogEntry entry) {
-        var color = entry.Level switch {
-            LogLevel.Warning => "yellow",
-            LogLevel.Error => "red",
-            _ => "grey"
-        };
-        RenderTreeMessage($"[{color}]ℹ {Markup.Escape(entry.Message)}[/]");
-    }
-
-    private static void HandleScriptLog(ScriptLogEntry entry) {
-        RenderTreeMessage($"[yellow]→[/] {Markup.Escape(entry.Message)}");
-    }
-
-    private static void HandleCommandStdOut(CommandStdOutLogEntry entry) {
-        if (entry.Quiet || string.IsNullOrWhiteSpace(entry.Message)) return;
-        RenderTreeMessage($"[grey]{Markup.Escape(entry.Message)}[/]", "  ");
-    }
-
-    private static void HandleCommandStdErr(CommandStdErrLogEntry entry) {
-        if (entry.Quiet || string.IsNullOrWhiteSpace(entry.Message)) return;
-        RenderTreeMessage($"[red]→ {Markup.Escape(entry.Message)}[/]", "  ");
-    }
-
-    // --- Helper Methods ---
-
-    /// <summary>
-    /// Renders a message with indentation based on the current task stack depth.
-    /// </summary>
-    private static void RenderTreeMessage(string markup, string prefix = "│") {
-        var indent = new StringBuilder();
-        var stackDepth = _taskStack.Count > 0 ? _taskStack.Count - 1 : 0;
-
-        for (var i = 0; i < stackDepth; i++) {
-            indent.Append("  [dim]│[/] ");
+            // If no parent is specified or the parentID is invalid, attach the log
+            // to the root of the tree to prevent it from being lost.
+            newNode = _executionTree.AddNode(msg);
         }
 
-        if (_taskStack.Count > 0) {
-            indent.Append($"[dim]{prefix}[/] ");
+        // If this log entry has its own contextID, register its new node so that
+        // subsequent logs can attach to it.
+        if (contextID != null) {
+            _executionNodes[contextID] = newNode;
         }
 
-        AnsiConsole.MarkupLine(indent.ToString() + markup);
+        // Trigger a refresh of the live display to show the new node.
+        _refresh?.Invoke();
     }
 
-    /// <summary>
-    /// Renders a formatted panel for displaying exception details.
-    /// </summary>
-    private static void RenderExceptionPanel(ExceptionInfo ex, string title) {
-        var stackTrace = string.IsNullOrEmpty(ex.StackTrace) || ex.StackTrace == "Empty Stack Trace"
-            ? "[dim]No stack trace available.[/]"
-            : Markup.Escape(ex.StackTrace);
+    private static void HandleBuildStartedLogEntry(BuildStartedLogEntry entry) {
+        _buildCompletion = new TaskCompletionSource<bool>();
+        _executionTree = new Tree($"[green]🚀 Build Started![/]");
 
-        var content = new StringBuilder();
-        content.AppendLine($"[white]{Markup.Escape(ex.Message)}[/]");
-        content.AppendLine($"[dim]{stackTrace}[/]");
+        AnsiConsole.Live(_executionTree)
+            .AutoClear(false)
+            .Overflow(VerticalOverflow.Ellipsis)
+            .StartAsync(async ctx => {
+                _refresh = ctx.Refresh; // Store the refresh delegate
+                await _buildCompletion.Task; // Wait until build is marked as complete
+                _executionTree.AddNode("[bold blue]✔️ Build Finished![/]");
+                ctx.Refresh();
+            });
+    }
 
-        var current = ex;
-        while (current.CausedBy.Any()) {
-            var cause = current.CausedBy.First();
-            content.AppendLine("\n[yellow]Caused by:[/] " + Markup.Escape(cause.Type));
-            content.AppendLine(Markup.Escape(cause.Message));
-            stackTrace = string.IsNullOrEmpty(cause.StackTrace) || cause.StackTrace == "Empty Stack Trace"
-                ? "[dim]No stack trace available.[/]"
-                : Markup.Escape(cause.StackTrace);
-            content.AppendLine($"[dim]{stackTrace}[/]");
-            current = cause;
+    private static void HandleBuildLayerStartedLogEntry(BuildLayerStartedLogEntry entry) {
+        PushLog("[yellow]📦 Layer[/]", entry.ParentContextID.ToString(), entry.ContextID);
+
+        _refresh?.Invoke();
+    }
+
+    private static void HandleTaskExecutionStartedLogEntry(TaskExecutionStartedLogEntry entry) {
+        // Attach the task to the current layer's node
+        PushLog($"[deepskyblue1]Task [skyblue1]{entry.Task.Name}[/][/]", entry.ParentContextID.ToString(), entry.ContextID);
+        _refresh?.Invoke();
+    }
+
+    private static void HandleBuildCompletedLogEntry(BuildCompletedLogEntry entry) {
+        // Signal the LiveDisplay to stop
+        _buildCompletion?.SetResult(true);
+    }
+
+    private static void HandleBuildFailedLogEntry(BuildFailedLogEntry entry) {
+        if (_executionTree is not null) {
+            _executionTree.AddNode($"[bold red]❌ Build Failed: {entry.Exception.Message}[/]");
+            _refresh?.Invoke();
         }
-
-        var panel = new Panel(content.ToString())
-            .Header(title, Justify.Left)
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Red))
-            .Padding(1, 1);
-
-        AnsiConsole.Write(panel);
+        // Signal the LiveDisplay to stop
+        _buildCompletion?.SetResult(true);
     }
+
+    private static void HandleBasicLogEntry(BasicLogEntry entry) { }
+    private static void HandleBasicPluginLogEntry(BasicPluginLogEntry entry) { }
+    private static void HandleEngineStartedLogEntry(EngineStartedLogEntry entry) { }
+    private static void HandleBuildLayersLogEntry(BuildLayersLogEntry entry) { }
+    private static void HandleBuildLayerCompletedLogEntry(BuildLayerCompletedLogEntry entry) {
+    }
+    private static void HandleProjectsInitializedLogEntry(ProjectsInitializedLogEntry entry) { }
+    private static void HandleScriptExecutionStartedLogEntry(ScriptExecutionStartedLogEntry entry) { }
+    private static void HandleScriptLogEntry(ScriptLogEntry entry) {
+        PushLog($"[yellow]>[/] {entry.Message}", entry.ParentContextID.ToString(), entry.ContextID);
+    }
+    private static void HandleScriptExecutedSuccessfullyLogEntry(ScriptExecutedSuccessfullyLogEntry entry) { }
+    private static void HandleScriptExecutionFailedLogEntry(ScriptExecutionFailedLogEntry entry) { }
+    private static void HandleTaskExecutionFinishedLogEntry(TaskExecutionFinishedLogEntry entry) { }
+    private static void HandleTaskExecutionFailedLogEntry(TaskExecutionFailedLogEntry entry) { }
+    private static void HandleProjectDiscoveredLogEntry(ProjectDiscoveredLogEntry entry) { }
+    private static void HandleProjectInitializedLogEntry(ProjectInitializedLogEntry entry) { }
+    private static void HandleTaskDiscoveredLogEntry(TaskDiscoveredLogEntry entry) { }
+    private static void HandleCommandExecutionLogEntry(CommandExecutionLogEntry entry) {
+        PushLog($"[grey]{Path.GetFileName(entry.Executable)}[/]", entry.ParentContextID.ToString(), entry.ContextID);
+    }
+    private static void HandleCommandExecutionFinishedLogEntry(CommandExecutionFinishedLogEntry entry) { }
+    private static void HandleCommandExecutionFailedLogEntry(CommandExecutionFailedLogEntry entry) { }
+    private static void HandleCommandStdOutLogEntry(CommandStdOutLogEntry entry) {
+        if (entry.ParentContextID != null) {
+            PushLog(entry.Message, entry.ParentContextID.ToString(), entry.ContextID);
+        }
+    }
+    private static void HandleCommandStdErrLogEntry(CommandStdErrLogEntry entry) { }
 }

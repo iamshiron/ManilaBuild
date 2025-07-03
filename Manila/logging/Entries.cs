@@ -10,13 +10,14 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila.Logging;
 
 public interface ILogEntry {
-    long Timestamp { get; }
-    LogLevel Level { get; }
+    public abstract long Timestamp { get; }
+    public abstract LogLevel Level { get; }
 }
 
 public abstract class BaseLogEntry : ILogEntry {
     public long Timestamp { get; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     public abstract LogLevel Level { get; }
+    public Guid? ParentContextID { get; } = LogContext.CurrentContextId;
 }
 
 public class LogEntryConverter : JsonConverter<ILogEntry> {
@@ -168,13 +169,13 @@ public class BuildLayersLogEntry(ExecutionGraph.ExecutionLayer[] layers) : BaseL
 }
 public class BuildLayerStartedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
-    public ExecutionLayerInfo Layer = new(layer);
-    public string ContextID = contextID.ToString();
+    public ExecutionLayerInfo Layer { get; } = new(layer);
+    public string ContextID { get; } = contextID.ToString();
 }
 public class BuildLayerCompletedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
-    public ExecutionLayerInfo Layer = new(layer);
-    public string ContextID = contextID.ToString();
+    public ExecutionLayerInfo Layer { get; } = new(layer);
+    public string ContextID { get; } = contextID.ToString();
 }
 
 public class BuildStartedLogEntry : BaseLogEntry {
@@ -189,7 +190,7 @@ public class BuildCompletedLogEntry(long duration) : BaseLogEntry {
 public class BuildFailedLogEntry(long duration, Exception e) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
     public long Duration { get; } = duration;
-    public ExceptionInfo Exception = new(e);
+    public ExceptionInfo Exception { get; } = new(e);
 }
 
 public class ProjectsInitializedLogEntry(long duration) : BaseLogEntry {
@@ -242,8 +243,8 @@ public class TaskExecutionFailedLogEntry(API.Task task, Guid contextID, Exceptio
     public override LogLevel Level => LogLevel.Info;
     public TaskInfo Task { get; } = new(task);
     public string ContextID { get; } = contextID.ToString();
-    public string Messager = e.Message;
-    public string StackTrace = e.StackTrace ?? "No Stacktrace";
+    public string Message { get; } = e.Message;
+    public string StackTrace { get; } = e.StackTrace ?? "No Stacktrace";
 }
 
 // -- Discovery Logs -- //

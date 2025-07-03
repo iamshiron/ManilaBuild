@@ -1,6 +1,7 @@
 
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
+using Spectre.Console;
 
 namespace Shiron.Manila.API;
 
@@ -16,6 +17,7 @@ public class Task : ExecutableObject {
     public string ScriptPath { get; init; }
     public string Description { get; set; } = "A generic task";
     public bool Blocking { get; set; } = true;
+    public string TaskID { get; } = Guid.NewGuid().ToString();
 
     /// <summary>
     /// Get the identifier of the task.
@@ -119,15 +121,18 @@ public class Task : ExecutableObject {
     }
 
     protected override void Run() {
-        var taskContextID = Guid.NewGuid();
-        Logger.Log(new TaskExecutionStartedLogEntry(this, taskContextID));
+        var oldID = LogContext.CurrentContextId;
+
+        Logger.Log(new TaskExecutionStartedLogEntry(this, ExecutableID));
+        LogContext.CurrentContextId = ExecutableID;
         try {
             Action.Invoke();
         } catch (Exception e) {
-            Logger.Log(new TaskExecutionFailedLogEntry(this, taskContextID, e));
+            Logger.Log(new TaskExecutionFailedLogEntry(this, ExecutableID, e));
             throw;
         }
-        Logger.Log(new TaskExecutionFinishedLogEntry(this, taskContextID));
+        Logger.Log(new TaskExecutionFinishedLogEntry(this, ExecutableID));
+        LogContext.CurrentContextId = oldID;
     }
     public override string GetID() {
         return GetIdentifier();

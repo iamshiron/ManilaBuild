@@ -11,12 +11,12 @@ namespace Shiron.Manila.Utils;
 /// </summary>
 public abstract class ExecutableObject {
     // The ID is cached to ensure it's consistent for each object instance.
-    public string ID { get; } = Guid.NewGuid().ToString();
+    public Guid ExecutableID { get; } = Guid.NewGuid();
 
     public virtual bool IsBlocking() { return true; }
 
     // Returns the cached ID for the object.
-    public virtual string GetID() { return ID; }
+    public virtual string GetID() { return ExecutableID.ToString(); }
 
     protected virtual void PreRun() { }
     protected abstract void Run();

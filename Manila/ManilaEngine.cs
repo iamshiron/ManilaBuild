@@ -3,6 +3,7 @@ using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
+using Spectre.Console;
 
 namespace Shiron.Manila;
 
@@ -137,20 +138,28 @@ public sealed class ManilaEngine {
             foreach (var layer in layers) {
                 Guid layerContextID = Guid.NewGuid();
                 Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID));
+                var oldID = LogContext.CurrentContextId;
+                LogContext.CurrentContextId = layerContextID;
+
+                List<System.Threading.Tasks.Task> layerTasks = [];
 
                 foreach (var o in layer.Items) {
-                    if (o is API.Task task) {
-                        try {
+                    layerTasks.Add(System.Threading.Tasks.Task.Run(() => {
+                        if (o is API.Task task) {
+                            try {
+                                o.Execute();
+                            } catch (Exception e) {
+                                throw;
+                            }
+                        } else {
                             o.Execute();
-                        } catch (Exception e) {
-                            throw;
                         }
-                    } else {
-                        o.Execute();
-                    }
+                    }));
                 }
 
+                System.Threading.Tasks.Task.WaitAll(layerTasks);
                 Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID));
+                LogContext.CurrentContextId = oldID;
             }
             Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
         } catch (Exception e) {

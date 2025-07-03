@@ -27,10 +27,15 @@ Manila.task('clean')
 Manila.task('build').execute(() => {
 	Manila.build(workspace, project, config)
 })
+Manila.task('build-test').execute(async () => {
+	print('Building Test...')
+	await Manila.sleep(5000)
+	print('Done!')
+})
 
 Manila.task('test')
 	.description('Run the Client Tests')
-	.after('build')
+	.after('build-test')
 	.execute(() => {
 		print('Testing Client...')
 	})

@@ -8,3 +8,5 @@ run/.manila
 run/.env
 run/bin
 run/bin-int
+
+log.txt

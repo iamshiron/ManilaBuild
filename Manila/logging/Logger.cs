@@ -1,6 +1,16 @@
 
 namespace Shiron.Manila.Logging;
 
+public static class LogContext {
+    // This will store a unique ID for the current execution flow.
+    private static readonly AsyncLocal<Guid?> _currentContextId = new();
+
+    public static Guid? CurrentContextId {
+        get => _currentContextId.Value;
+        set => _currentContextId.Value = value;
+    }
+}
+
 /// <summary>
 /// The internal logger for Manila. Plugins should use their own logger:
 /// See <see cref="PluginInfo(Attributes.ManilaPlugin, object[])"/> as an example.
@@ -19,7 +29,7 @@ public static class Logger {
     /// It raises the OnLogEntry event with the provided log entry.
     /// </summary>
     /// <param name="entry"></param>
-    public static void Log(ILogEntry entry) {
+    public static void Log(ILogEntry entry, Guid? contextID = null) {
         OnLogEntry?.Invoke(entry);
     }
 
