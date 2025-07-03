@@ -218,8 +218,7 @@ public class ToolchainClang : Toolchain {
 
         var sourceSet = project._sourceSets["main"];
         foreach (var file in sourceSet.files()) {
-            var f = Path.Join(sourceSet.Root, file.path);
-            objectFiles.Add(CompileFile(sourceSet.Root, f, Path.Join(objDir, sourceSet.Root)));
+            objectFiles.Add(CompileFile(sourceSet.Root, file.Handle, Path.Join(objDir, Path.GetRelativePath(project.Path.Handle, sourceSet.Root))));
         }
 
         LinkFiles(objectFiles, binDir, cppComponent);

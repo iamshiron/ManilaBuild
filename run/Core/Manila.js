@@ -19,10 +19,3 @@ Manila.task('build')
 	.execute(() => {
 		Manila.build(workspace, project, config)
 	})
-
-Manila.task('run')
-	.description('Run the Core')
-	.after('build')
-	.execute(() => {
-		print('Running Core...')
-	})

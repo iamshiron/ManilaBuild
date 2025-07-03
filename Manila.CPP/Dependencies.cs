@@ -40,14 +40,14 @@ public class DependencyProject : Dependency {
         var dependency = this.Project.Resolve();
         ManilaCPP.Instance.Info("Resolving Dependency Project '" + dependency.GetIdentifier() + "'...");
 
-        var task = dependency.Workspace.GetTask(BuildTask, dependency);
+        var task = dependency.Workspace.GetTask(dependency, BuildTask);
         if (task == null) throw new Exception("Task not found: " + BuildTask);
 
         task.Action?.Invoke();
 
         var depComp = dependency.GetComponent<CppComponent>();
         var comp = dependent.GetComponent<CppComponent>();
-        comp.IncludeDirs.Add(Path.Join(dependent.Workspace.Path, dependency._sourceSets["main"].Root));
+        comp.IncludeDirs.Add(Path.Join(dependency._sourceSets["main"].Root));
         comp.Links.AddRange([.. depComp.Links, Utils.GetBinFile(dependency, depComp)]);
     }
 }

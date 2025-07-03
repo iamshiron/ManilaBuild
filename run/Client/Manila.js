@@ -16,7 +16,7 @@ sourceSets({
 	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
 })
 
-dependencies([Manila.project(':core', 'build')])
+dependencies([Manila.project('core', 'build')])
 
 Manila.task('clean')
 	.description('Clean the client')
@@ -27,6 +27,7 @@ Manila.task('clean')
 Manila.task('build').execute(() => {
 	Manila.build(workspace, project, config)
 })
+
 Manila.task('test')
 	.description('Run the Client Tests')
 	.after('build')

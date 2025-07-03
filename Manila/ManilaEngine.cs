@@ -2,6 +2,7 @@
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
@@ -17,6 +18,7 @@ public sealed class ManilaEngine {
     public string DataDir { get; private set; }
     public bool verboseLogger = false;
     public readonly long EngineCreatedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    public ExecutionGraph ExecutionGraph = new();
 
     public static readonly string VERSION = "0.0.0";
 
@@ -71,12 +73,14 @@ public sealed class ManilaEngine {
     /// </summary>
     /// <param name="path">The relative path from the root</param>
     public void RunProjectScript(string path) {
-        Logger.Log(new ProjectDiscoveredLogEntry(Path.GetDirectoryName(path), path));
-        string projectPath = Path.GetDirectoryName(Path.GetRelativePath(RootDir, path));
-        string name = projectPath.ToLower().Replace(Path.DirectorySeparatorChar, ':');
+        var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path));
+        var scriptPath = Path.Join(Directory.GetCurrentDirectory(), path);
+        var projectName = Path.GetRelativePath(Directory.GetCurrentDirectory(), projectRoot).ToLower().Replace(Path.DirectorySeparatorChar, ':');
 
-        CurrentProject = new API.Project(name, projectPath, Workspace);
-        Workspace!.Projects.Add(name, CurrentProject);
+        Logger.Log(new ProjectDiscoveredLogEntry(projectRoot!, scriptPath));
+
+        CurrentProject = new Project(projectName, projectRoot, Workspace);
+        Workspace!.Projects.Add(projectName, CurrentProject);
         CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(RootDir, path));
 
         CurrentContext.ApplyEnum<EPlatform>();
@@ -104,30 +108,53 @@ public sealed class ManilaEngine {
     }
 
     public void ExecuteBuildLogic(string taskID) {
-        var task = Workspace!.GetTask(taskID);
+        // Add all existing tasks to the graph, hopefully I'll find a better solution for this in the future
+        foreach (var t in Workspace.Tasks) {
+            List<ExecutableObject> dependencies = [];
+            foreach (var d in t.Dependencies) {
+                dependencies.Add(Workspace.GetTask(d));
+            }
+            ExecutionGraph.Attach(t, dependencies);
+        }
+        foreach (var p in Workspace.Projects.Values) {
+            foreach (var t in p.Tasks) {
+                List<ExecutableObject> dependencies = [];
+                foreach (var d in t.Dependencies) {
+                    dependencies.Add(Workspace.GetTask(d));
+                }
+                ExecutionGraph.Attach(t, dependencies);
+            }
+        }
 
-        var order = task.GetExecutionOrder();
-        Logger.Debug("Execution Order: " + string.Join(", ", order));
+        var layers = ExecutionGraph.GetExecutionLayers(taskID);
+
+        Logger.Log(new BuildLayersLogEntry(layers));
 
         long startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         Logger.Log(new BuildStartedLogEntry());
-        foreach (var t in order) {
-            var taskToRun = Workspace.GetTask(t);
-            var taskContextID = Guid.NewGuid();
 
-            try {
-                if (taskToRun.Action == null) {
-                    Logger.Warning("Task has no action: " + t);
-                } else {
-                    Logger.Log(new TaskExecutionStartedLogEntry(taskToRun, taskContextID));
-                    taskToRun.Action.Invoke();
-                    Logger.Log(new TaskExecutionFinishedLogEntry(taskToRun, taskContextID));
+        try {
+            foreach (var layer in layers) {
+                Guid layerContextID = Guid.NewGuid();
+                Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID));
+
+                foreach (var o in layer.Items) {
+                    if (o is API.Task task) {
+                        try {
+                            o.Execute();
+                        } catch (Exception e) {
+                            throw;
+                        }
+                    } else {
+                        o.Execute();
+                    }
                 }
-            } catch (Exception e) {
-                Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
-                throw new TaskFailedException(taskToRun, e);
+
+                Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID));
             }
+            Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
+        } catch (Exception e) {
+            Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
         }
-        Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
     }
 }

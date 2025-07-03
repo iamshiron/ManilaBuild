@@ -7,34 +7,37 @@ namespace Shiron.Manila.API;
 /// Represents a file in the scripting context. Mostly used for syntax sugar.
 /// </summary>
 public class FileHandle {
-    public string path { get; private set; }
+    public string Handle { get; private set; }
 
     public FileHandle(string dir, string name) {
-        this.path = Path.Combine(dir, name);
+        this.Handle = Path.Combine(dir, name);
     }
     public FileHandle(string path) {
-        this.path = path;
+        this.Handle = Path.Combine(Directory.GetCurrentDirectory(), path);
     }
 
     public DirHandle getDir() {
-        return new DirHandle(Path.GetDirectoryName(this.path));
+        return new DirHandle(Path.GetDirectoryName(this.Handle));
     }
 
     public bool isAbsolute() {
-        return Path.IsPathRooted(this.path);
+        return Path.IsPathRooted(this.Handle);
     }
     public bool exists() {
-        return System.IO.File.Exists(this.path);
+        return System.IO.File.Exists(this.Handle);
     }
     public void create() {
-        System.IO.File.Create(this.path);
+        System.IO.File.Create(this.Handle);
     }
 
     public string get() {
-        return this.path;
+        return this.Handle;
     }
 
     public static implicit operator string(FileHandle f) {
-        return f.path;
+        return f.Handle;
+    }
+    public override string ToString() {
+        return Handle;
     }
 }

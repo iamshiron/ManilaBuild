@@ -1,9 +1,11 @@
 using System.Reflection;
+using System.Security;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Shiron.Manila.API;
 using Shiron.Manila.Ext;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Logging;
 
@@ -95,8 +97,10 @@ public sealed class PluginInfo(string name, string group, string version) {
 }
 public sealed class TaskInfo(API.Task task) {
     public readonly string Name = task.Name;
+    public readonly string ID = task.GetIdentifier();
     public readonly string ScriptPath = task.ScriptPath;
     public readonly string Description = task.Description;
+    public readonly ComponentInfo Component = new(task.Component);
 }
 public sealed class ComponentInfo(Component component) {
     public readonly bool IsProject = component is Project;
@@ -112,6 +116,32 @@ public sealed class ProjectInfo(Project project) {
     public readonly string? Description = project.Description;
     public readonly string Root = project.Path.get();
 }
+public sealed class ExecutableObjectInfo(ExecutableObject obj) {
+    public readonly string ID = obj.GetID();
+    public readonly string Type = obj.GetType().FullName ?? "Unknown";
+    public readonly bool Blocking = obj.IsBlocking();
+}
+public sealed class ExecutionLayerInfo(ExecutionGraph.ExecutionLayer layer) {
+    public readonly ExecutableObjectInfo[] Items = layer.Items.Select(obj => new ExecutableObjectInfo(obj)).ToArray();
+}
+
+public sealed class ExceptionInfo(Exception e) {
+    public readonly string Type = e.GetType().FullName ?? "Unknown Exception";
+    public readonly string Message = e.Message;
+    public readonly string StackTrace = e.StackTrace ?? "Empty Stack Trace";
+    public readonly List<ExceptionInfo> CausedBy = GetCausedBy(e);
+
+    private static List<ExceptionInfo> GetCausedBy(Exception ex) {
+        var list = new List<ExceptionInfo>();
+        var inner = ex.InnerException;
+        while (inner != null) {
+            list.Add(new ExceptionInfo(inner));
+            inner = inner.InnerException;
+        }
+        return list;
+    }
+}
+
 // --- Misc Logging Events --- //
 
 public class BasicLogEntry(string message, LogLevel level) : BaseLogEntry {
@@ -132,6 +162,21 @@ public class EngineStartedLogEntry(string rootDir, string dataDir) : BaseLogEntr
     public string DataDirectory { get; } = dataDir;
 }
 
+public class BuildLayersLogEntry(ExecutionGraph.ExecutionLayer[] layers) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public ExecutionLayerInfo[] Layers { get; } = layers.Select(layer => new ExecutionLayerInfo(layer)).ToArray();
+}
+public class BuildLayerStartedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public ExecutionLayerInfo Layer = new(layer);
+    public string ContextID = contextID.ToString();
+}
+public class BuildLayerCompletedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public ExecutionLayerInfo Layer = new(layer);
+    public string ContextID = contextID.ToString();
+}
+
 public class BuildStartedLogEntry : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
 }
@@ -144,6 +189,7 @@ public class BuildCompletedLogEntry(long duration) : BaseLogEntry {
 public class BuildFailedLogEntry(long duration, Exception e) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
     public long Duration { get; } = duration;
+    public ExceptionInfo Exception = new(e);
 }
 
 public class ProjectsInitializedLogEntry(long duration) : BaseLogEntry {
@@ -190,6 +236,14 @@ public class TaskExecutionFinishedLogEntry(API.Task task, Guid contextID) : Base
     public override LogLevel Level => LogLevel.Info;
     public TaskInfo Task { get; } = new(task);
     public string ContextID { get; } = contextID.ToString();
+}
+
+public class TaskExecutionFailedLogEntry(API.Task task, Guid contextID, Exception e) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public TaskInfo Task { get; } = new(task);
+    public string ContextID { get; } = contextID.ToString();
+    public string Messager = e.Message;
+    public string StackTrace = e.StackTrace ?? "No Stacktrace";
 }
 
 // -- Discovery Logs -- //

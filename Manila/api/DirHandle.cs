@@ -7,14 +7,15 @@ namespace Shiron.Manila.API;
 /// Represents a directory in the scripting context. Mostly used for syntax sugar.
 /// </summary>
 public class DirHandle {
-    public string path { get; private set; }
+    public string Handle { get; private set; }
 
     public DirHandle(string path) {
-        this.path = path;
+        if (System.IO.Path.IsPathFullyQualified(path)) Handle = path;
+        else Handle = Path.Join(Directory.GetCurrentDirectory(), path);
     }
 
     public FileHandle[] files() {
-        string[] files = Directory.GetFiles(this.path);
+        string[] files = Directory.GetFiles(this.Handle);
         FileHandle[] result = new FileHandle[files.Length];
         for (int i = 0; i < files.Length; i++) {
             result[i] = new FileHandle(files[i]);
@@ -23,35 +24,38 @@ public class DirHandle {
     }
 
     public FileHandle file(string name) {
-        return new FileHandle(Path.Combine(this.path, name));
+        return new FileHandle(System.IO.Path.Combine(this.Handle, name));
     }
 
     public DirHandle join(params object[] path) {
-        var newPath = this.path;
+        var newPath = this.Handle;
         foreach (var p in path) {
-            newPath = Path.Combine(newPath, p.ToString());
+            newPath = System.IO.Path.Combine(newPath, p.ToString());
         }
         return new DirHandle(newPath);
     }
     public DirHandle join(DirHandle dir) {
-        return new DirHandle(Path.Combine(this.path, dir.path));
+        return new DirHandle(System.IO.Path.Combine(this.Handle, dir.Handle));
     }
 
     public bool isAbsolute() {
-        return Path.IsPathRooted(this.path);
+        return System.IO.Path.IsPathRooted(this.Handle);
     }
     public bool exists() {
-        return Directory.Exists(this.path);
+        return Directory.Exists(this.Handle);
     }
     public void create() {
-        Directory.CreateDirectory(this.path);
+        Directory.CreateDirectory(this.Handle);
     }
 
     public string get() {
-        return this.path;
+        return this.Handle;
     }
 
     public static implicit operator string(DirHandle d) {
-        return d.path;
+        return d.Handle;
+    }
+    public override string ToString() {
+        return Handle;
     }
 }

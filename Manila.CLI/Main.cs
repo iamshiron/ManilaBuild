@@ -6,7 +6,7 @@ using Spectre.Console;
 using Shiron.Manila.API;
 
 #if DEBUG
-Directory.SetCurrentDirectory("./run");
+Directory.SetCurrentDirectory("E:\\dev\\Manila\\manila\\run");
 #endif
 
 var logOptions = new {
@@ -40,7 +40,7 @@ if (engine.Workspace == null) throw new Exception("Workspace not found");
 foreach (var arg in args) {
     if (arg.StartsWith(":")) {
         try {
-            engine.ExecuteBuildLogic(arg);
+            engine.ExecuteBuildLogic(arg[1..]);
         } catch (Exception e) {
             Console.WriteLine(e);
         }
@@ -60,7 +60,7 @@ foreach (var arg in args) {
                 workspaceTable.AddRow(
                     $"[bold cyan]{t.GetIdentifier()}[/]",
                     t.Description ?? "",
-                    t.dependencies.Count > 0 ? $"[italic]{string.Join(", ", t.dependencies)}[/]" : "");
+                    t.Dependencies.Count > 0 ? $"[italic]{string.Join(", ", t.Dependencies)}[/]" : "");
             }
 
             AnsiConsole.MarkupLine("\n[bold blue]Workspace Tasks[/]");
@@ -79,7 +79,7 @@ foreach (var arg in args) {
                     projectTable.AddRow(
                         $"[bold cyan]{t.GetIdentifier()}[/]",
                         t.Description ?? "",
-                        t.dependencies.Count > 0 ? $"[italic]{string.Join(", ", t.dependencies)}[/]" : "");
+                        t.Dependencies.Count > 0 ? $"[italic]{string.Join(", ", t.Dependencies)}[/]" : "");
                 }
 
                 AnsiConsole.MarkupLine($"\n[bold blue]{project.Name}[/]");

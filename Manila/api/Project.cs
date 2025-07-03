@@ -43,4 +43,8 @@ public class Project : Component {
         this.Name = name;
         this.Workspace = workspace;
     }
+
+    public override string ToString() {
+        return $"Project({GetIdentifier()})";
+    }
 }

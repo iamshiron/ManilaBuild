@@ -48,6 +48,6 @@ public class SourceSet {
         }
 
         var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(Root)));
-        return result.Files.Select(f => new FileHandle(f.Path)).ToArray();
+        return result.Files.Select(f => new FileHandle(Root, f.Path)).ToArray();
     }
 }
