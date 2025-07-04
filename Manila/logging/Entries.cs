@@ -7,6 +7,9 @@ using Newtonsoft.Json.Linq;
 using Shiron.Manila.API;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Utils;
+using System.Data.Common;
+using System.Runtime.Intrinsics.Arm;
+using System.Text.RegularExpressions;
 
 namespace Shiron.Manila.Logging;
 
@@ -198,14 +201,16 @@ public class BuildLayersLogEntry(ExecutionGraph.ExecutionLayer[] layers) : BaseL
     public override LogLevel Level => LogLevel.System;
     public ExecutionLayerInfo[] Layers { get; } = layers.Select(layer => new ExecutionLayerInfo(layer)).ToArray();
 }
-public class BuildLayerStartedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID) : BaseLogEntry {
+public class BuildLayerStartedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID, int layerIndex) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
     public ExecutionLayerInfo Layer { get; } = new(layer);
+    public int LayerIndex { get; } = layerIndex;
     public string ContextID { get; } = contextID.ToString();
 }
-public class BuildLayerCompletedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID) : BaseLogEntry {
+public class BuildLayerCompletedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID, int layerIndex) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
     public ExecutionLayerInfo Layer { get; } = new(layer);
+    public int LayerIndex { get; } = layerIndex;
     public string ContextID { get; } = contextID.ToString();
 }
 
@@ -332,11 +337,35 @@ public class CommandStdErrLogEntry(Guid contextID, string message, bool quiet) :
     public string Message { get; } = message;
     public bool Quiet { get; } = quiet;
 }
-public class NuGetPackageLoadingLogEntry(string id, string version, ManilaPlugin plugin) : BaseLogEntry {
+
+// --- Plugin Loading Entries --- //
+public class NuGetPackageLoadingLogEntry(string id, string version, ManilaPlugin plugin, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Debug;
     public string PackageID { get; } = id;
     public string PackageVersion { get; } = version;
     public PluginInfo Plugin { get; } = new(plugin);
+    public string ContextID { get; } = contextID.ToString();
+}
+public partial class NuGetSubPackageLoadingEntry(string assembly, Guid contextID) : BaseLogEntry {
+    public static readonly Regex assemblyRegex = AssemblyRegex();
+
+    public override LogLevel Level => LogLevel.Debug;
+    public string PackageID { get; } = GetPackageID(assembly);
+    public string PackageVersion { get; } = GetPackageVersion(assembly);
+    public string ContextID { get; } = contextID.ToString();
+
+    private static string GetPackageID(string assembly) {
+        var match = assemblyRegex.Match(assembly);
+        return match.Success ? match.Groups["package"].Value : assembly;
+    }
+
+    private static string GetPackageVersion(string assembly) {
+        var match = assemblyRegex.Match(assembly);
+        return match.Success ? match.Groups["version"].Value : assembly;
+    }
+
+    [GeneratedRegex(@"(?<package>[\w\.]+?)_(?<version>[\d\.]+?)[\\\/]")]
+    private static partial Regex AssemblyRegex();
 }
 public class LoadingPluginLogEntry(ManilaPlugin plugin, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Debug;

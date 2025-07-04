@@ -210,7 +210,7 @@ public static class AnsiConsoleRenderer {
     }
 
     private static void HandleBuildLayerStartedLogEntry(BuildLayerStartedLogEntry entry) {
-        PushLog("[yellow]📦 Layer[/]", entry.ParentContextID.ToString(), entry.ContextID);
+        PushLog($"[yellow]📦 Layer {entry.LayerIndex}[/]", entry.ParentContextID.ToString(), entry.ContextID);
 
         _refresh?.Invoke();
     }
@@ -249,7 +249,7 @@ public static class AnsiConsoleRenderer {
         Logger.Info($"Building using [yellow]{entry.Layers.Length}[/] layers!");
     }
     private static void HandleBuildLayerCompletedLogEntry(BuildLayerCompletedLogEntry entry) {
-        PushLog("[green]📦 Layer completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
+        PushLog($"[green]📦 Layer [yellow]{entry.LayerIndex}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
     }
     private static void HandleProjectsInitializedLogEntry(ProjectsInitializedLogEntry entry) {
         Logger.Info($"Initialization took [yellow]{entry.Duration}[/]ms!");

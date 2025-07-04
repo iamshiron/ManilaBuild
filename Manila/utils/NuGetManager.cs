@@ -9,12 +9,14 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using System.Runtime.Loader;
 using Shiron.Manila.Logging;
+using System.Text.Json;
 
 namespace Shiron.Manila.Utils;
 
 public class NuGetManager {
     public readonly string PackageDir;
-    private readonly Dictionary<string, List<string>> _packageCache = new();
+    private readonly Dictionary<string, List<string>> _packageCache = [];
+    private static List<string>? _basePackages = null;
 
     public NuGetManager(string packageDir) {
         PackageDir = packageDir;
@@ -26,6 +28,31 @@ public class NuGetManager {
                    .GetCustomAttribute<TargetFrameworkAttribute>()?
                    .FrameworkName
                ?? throw new InvalidOperationException("Could not determine target framework.");
+    }
+
+    private void PopulateInstalledPackages() {
+        _basePackages = [];
+        var depsFilePath = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetEntryAssembly().GetName().Name}.deps.json");
+
+        if (!File.Exists(depsFilePath)) {
+            Logger.Warning("Could not find the .deps.json file.");
+        }
+
+        var fileContent = File.ReadAllText(depsFilePath);
+        using var jsonDocument = JsonDocument.Parse(fileContent);
+        var root = jsonDocument.RootElement;
+
+        if (root.TryGetProperty("libraries", out var libraries)) {
+            foreach (var property in libraries.EnumerateObject()) {
+                var libraryName = property.Name;
+                if (property.Value.TryGetProperty("type", out var type) && type.GetString() == "package") {
+                    var packageName = libraryName.Split('/')[0];
+                    _basePackages.Add(packageName);
+                }
+            }
+        }
+
+        Logger.Debug($"Found {_basePackages.Count} installed base packages!");
     }
 
     public async Task<List<string>> DownloadPackageWithDependenciesAsync(string packageId, string version) {
@@ -56,6 +83,10 @@ public class NuGetManager {
     }
 
     private async Task WalkDependencyTreeAsync(string packageId, NuGetVersion version, DependencyInfoResource resource, HashSet<SourcePackageDependencyInfo> collectedPackages) {
+        if (_basePackages == null) PopulateInstalledPackages();
+        if (packageId.StartsWith("System")) return; // Skip all .NET core packages
+        if (_basePackages!.Contains(packageId)) return; // Skip all packages that already have been provided by the assembly
+
         var cacheContext = new SourceCacheContext();
         var currentFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
 

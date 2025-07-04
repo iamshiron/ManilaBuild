@@ -145,9 +145,10 @@ public sealed class ManilaEngine {
         Logger.Log(new BuildStartedLogEntry());
 
         try {
+            int layerIndex = 0;
             foreach (var layer in layers) {
                 Guid layerContextID = Guid.NewGuid();
-                Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID));
+                Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
                 var oldID = LogContext.CurrentContextId;
                 LogContext.CurrentContextId = layerContextID;
 
@@ -168,8 +169,10 @@ public sealed class ManilaEngine {
                 }
 
                 System.Threading.Tasks.Task.WaitAll(layerTasks);
-                Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID));
+                Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
                 LogContext.CurrentContextId = oldID;
+
+                layerIndex++;
             }
             Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
         } catch (Exception e) {

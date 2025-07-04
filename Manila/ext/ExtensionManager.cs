@@ -108,10 +108,11 @@ public class ExtensionManager {
                         if (string.IsNullOrEmpty(version)) throw new Exception("Invalid dependency: " + dep + " (version is empty)");
                         Logger.Info("Plugin " + plugin.Name + " has dependency: " + package + (version == null ? "" : "@" + version));
 
-                        Logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin));
-
+                        var nugetContextID = Guid.NewGuid();
+                        Logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin, nugetContextID));
                         var nugetPackages = nugetManager.DownloadPackageWithDependenciesAsync(package, version).GetAwaiter().GetResult();
                         foreach (var assemblyPath in nugetPackages) {
+                            Logger.Log(new NuGetSubPackageLoadingEntry(assemblyPath, nugetContextID));
                             loadContext.AddDependency(assemblyPath);
                         }
 

@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.ClearScript" Version="7.5.0" />
     <PackageReference Include="Microsoft.ClearScript.Core" Version="7.5.0" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="9.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NuGet.Packaging" Version="6.14.0" />
     <PackageReference Include="NuGet.Protocol" Version="6.14.0" />
     <PackageReference Include="Spectre.Console" Version="0.49.2-preview.0.76" />
