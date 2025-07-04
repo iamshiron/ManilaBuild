@@ -65,7 +65,7 @@ public class Task : ExecutableObject {
         this.Action = () => {
             try {
                 action();
-            } catch (Exception e) {
+            } catch {
                 throw;
             }
         };
@@ -123,7 +123,7 @@ public class Task : ExecutableObject {
         Logger.Log(new TaskExecutionStartedLogEntry(this, ExecutableID));
         using (LogContext.PushContext(ExecutableID)) {
             try {
-                Action.Invoke();
+                Action?.Invoke();
             } catch (Exception e) {
                 Logger.Log(new TaskExecutionFailedLogEntry(this, ExecutableID, e));
                 throw;

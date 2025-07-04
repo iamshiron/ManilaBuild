@@ -23,7 +23,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <exception cref="Exception">Thrown when not in a project context.</exception>
     public Project getProject() {
         if (ManilaEngine.GetInstance().CurrentProject == null) throw new ContextException(Exceptions.Context.WORKSPACE, Exceptions.Context.PROJECT);
-        return ManilaEngine.GetInstance().CurrentProject;
+        return ManilaEngine.GetInstance().CurrentProject!;
     }
 
     /// <summary>
@@ -181,6 +181,9 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     public object import(string key) {
         var t = Activator.CreateInstance(ExtensionManager.GetInstance().GetAPIType(key));
         Logger.Debug($"Importing {key} as {t}");
+
+        if (t == null)
+            throw new Exception($"Failed to import API type for key: {key}");
 
         return t;
     }

@@ -150,7 +150,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                     taskCompletion.TrySetException(new Exception("Script error: " + e.ToString()));
                     return;
                 }
-                taskCompletion.TrySetException(e as Exception);
+                taskCompletion.TrySetException((e as Exception)!);
             }));
 
             ScriptEngine.AllowReflection = true;

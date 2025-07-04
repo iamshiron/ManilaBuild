@@ -37,7 +37,7 @@ public abstract class ProjectFilter {
                 }
             }
 
-            string objString = o.ToString();
+            string objString = o?.ToString() ?? string.Empty;
             if (objString.StartsWith("/") && objString.Contains("/")) {
                 int lastSlashIndex = objString.LastIndexOf('/');
                 string pattern = objString.Substring(1, lastSlashIndex - 1);

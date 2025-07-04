@@ -57,7 +57,7 @@ public static class LogContext {
         _contextStack.Value = newStack;
 
         // Return a restorer that knows how to put the original stack back.
-        return new ContextRestorer(originalStack);
+        return new ContextRestorer(originalStack ?? new Stack<Guid>());
     }
 }
 

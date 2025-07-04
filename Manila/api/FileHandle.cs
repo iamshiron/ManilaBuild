@@ -17,7 +17,8 @@ public class FileHandle {
     }
 
     public DirHandle getDir() {
-        return new DirHandle(Path.GetDirectoryName(this.Handle));
+        var dirName = Path.GetDirectoryName(this.Handle) ?? string.Empty;
+        return new DirHandle(dirName);
     }
 
     public bool isAbsolute() {

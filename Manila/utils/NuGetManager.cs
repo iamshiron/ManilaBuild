@@ -42,7 +42,12 @@ public class NuGetManager {
 
     private void PopulateInstalledPackages() {
         _basePackages = [];
-        var depsFilePath = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetEntryAssembly().GetName().Name}.deps.json");
+        var entryAssembly = Assembly.GetEntryAssembly();
+        if (entryAssembly == null) {
+            Logger.Warning("Could not get entry assembly.");
+            return;
+        }
+        var depsFilePath = Path.Combine(AppContext.BaseDirectory, $"{entryAssembly.GetName().Name}.deps.json");
 
         if (!File.Exists(depsFilePath)) {
             Logger.Warning("Could not find the .deps.json file.");
@@ -112,7 +117,7 @@ public class NuGetManager {
 
         foreach (var dependency in package.Dependencies) {
             var dependencyVersion = dependency.VersionRange.MinVersion;
-            await WalkDependencyTreeAsync(dependency.Id, dependencyVersion, resource, collectedPackages);
+            await WalkDependencyTreeAsync(dependency.Id, dependencyVersion!, resource, collectedPackages);
         }
     }
 
@@ -186,7 +191,7 @@ public class PluginLoadContext(string pluginPath) : AssemblyLoadContext(isCollec
             return LoadFromAssemblyPath(assemblyPath);
         }
 
-        if (_dependencyMap.TryGetValue(assemblyName.Name, out string mappedPath)) {
+        if (assemblyName.Name != null && _dependencyMap.TryGetValue(assemblyName.Name, out string? mappedPath) && mappedPath != null) {
             return LoadFromAssemblyPath(mappedPath);
         }
 
@@ -195,7 +200,7 @@ public class PluginLoadContext(string pluginPath) : AssemblyLoadContext(isCollec
 
     protected override Assembly? Load(AssemblyName assemblyName) {
         // Defer system assemblies to the default AssemblyLoadContext.
-        if (assemblyName.Name.StartsWith("System.") || assemblyName.Name.StartsWith("Microsoft.")) {
+        if (assemblyName.Name != null && (assemblyName.Name.StartsWith("System.") || assemblyName.Name.StartsWith("Microsoft."))) {
             return null;
         }
 

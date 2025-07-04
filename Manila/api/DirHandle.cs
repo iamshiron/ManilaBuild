@@ -30,7 +30,11 @@ public class DirHandle {
     public DirHandle join(params object[] path) {
         var newPath = this.Handle;
         foreach (var p in path) {
-            newPath = System.IO.Path.Combine(newPath, p.ToString());
+            if (p != null) {
+                var pStr = p.ToString();
+                if (!string.IsNullOrEmpty(pStr))
+                    newPath = System.IO.Path.Combine(newPath, pStr);
+            }
         }
         return new DirHandle(newPath);
     }

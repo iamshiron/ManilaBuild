@@ -92,7 +92,7 @@ public static class FunctionUtils {
         if (methodParams.Length != args.Length) return false;
 
         for (int i = 0; i < methodParams.Length; ++i)
-            if (!methodParams[i].ParameterType.Equals(args[i].GetType())) return false;
+            if (!methodParams[i].ParameterType.Equals(args[i]!.GetType())) return false;
 
         return true;
     }

@@ -132,11 +132,12 @@ public sealed class ManilaEngine {
     public void RunProjectScript(string path) {
         var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path));
         var scriptPath = Path.Join(Directory.GetCurrentDirectory(), path);
-        var projectName = Path.GetRelativePath(Directory.GetCurrentDirectory(), projectRoot).ToLower().Replace(Path.DirectorySeparatorChar, ':');
+        var safeProjectRoot = projectRoot ?? Directory.GetCurrentDirectory();
+        var projectName = Path.GetRelativePath(Directory.GetCurrentDirectory(), safeProjectRoot).ToLower().Replace(Path.DirectorySeparatorChar, ':');
 
         Logger.Log(new ProjectDiscoveredLogEntry(projectRoot!, scriptPath));
 
-        CurrentProject = new Project(projectName, projectRoot, Workspace);
+        CurrentProject = new Project(projectName, projectRoot!, Workspace);
         Workspace!.Projects.Add(projectName, CurrentProject);
         CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(RootDir, path));
 

@@ -40,7 +40,7 @@ public abstract class ExposedDynamicObject : DynamicObject, IScriptableObject {
     /// <param name="info">The property</param>
     /// <param name="target">The target</param>
     /// <exception cref="Exception">Property is not a ScriptProperty</exception>
-    public void AddProperty(PropertyInfo info, object target = null) {
+    public void AddProperty(PropertyInfo info, object? target = null) {
         var attribute = info.GetCustomAttribute<ScriptProperty>();
         if (attribute == null) throw new Exception($"Property '{info.Name}' is not a script property.");
 
@@ -86,7 +86,9 @@ public abstract class ExposedDynamicObject : DynamicObject, IScriptableObject {
         }
     }
 
-    override public bool TryInvokeMember(InvokeMemberBinder binder, object?[] args, out object? result) {
+    override public bool TryInvokeMember(InvokeMemberBinder binder, object?[]? args, out object? result) {
+        args ??= [];
+
         if (_functions.TryGetValue(binder.Name, out var methods)) {
             foreach (var method in methods) {
                 if (!FunctionUtils.SameParametes(method.Method, args)) continue;
@@ -99,7 +101,10 @@ public abstract class ExposedDynamicObject : DynamicObject, IScriptableObject {
                     // Convert enum strings to enum values
                     if (param.ParameterType.IsEnum) {
                         var type = param.ParameterType;
-                        args[i] = Enum.Parse(type, args[i].ToString());
+                        var argValue = args[i]?.ToString();
+                        if (argValue == null)
+                            throw new ArgumentNullException(param.Name, $"Argument for enum parameter '{param.Name}' cannot be null.");
+                        args[i] = Enum.Parse(type, argValue);
                     }
                 }
 

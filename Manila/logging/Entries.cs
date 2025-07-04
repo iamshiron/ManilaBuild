@@ -61,7 +61,7 @@ public sealed class PluginInfo(ManilaPlugin plugin) {
     public string[] Authors { get; init; } = plugin.Authors.ToArray();
     public string Entry { get; init; } = plugin.GetType().FullName!;
     public string[] NuGetDependencies { get; init; } = plugin.NugetDependencies.ToArray();
-    public string File { get; init; } = plugin.File;
+    public string File { get; init; } = plugin.File!;
 }
 
 /// <summary>
