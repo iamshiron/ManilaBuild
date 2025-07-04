@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Utils;
 
 /// <summary>
 /// Class for loading and managing plugins. Global singleton.
@@ -38,7 +39,7 @@ public class ExtensionManager {
     /// <summary>
     /// Regular expression pattern for matching NuGet dependencies.
     /// </summary>
-    public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d]+)", RegexOptions.Compiled);
+    public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d-]+)", RegexOptions.Compiled);
 
     /// <summary>
     /// Returns the singleton instance of the extension manager.
@@ -78,7 +79,10 @@ public class ExtensionManager {
             return;
         }
 
+        var nugetManager = ManilaEngine.GetInstance().NuGetManager;
         foreach (var file in Directory.GetFiles(PluginDir, "*.dll")) {
+            var loadContext = new PluginLoadContext(file);
+            PluginContextManager.AddContext(loadContext);
             var assembly = Assembly.LoadFile(Path.Join(Directory.GetCurrentDirectory(), file));
             foreach (var type in assembly.GetTypes()) {
                 if (type.IsSubclassOf(typeof(ManilaPlugin))) {
@@ -92,10 +96,20 @@ public class ExtensionManager {
                         if (!match.Success) throw new Exception("Invalid dependency: " + dep);
                         var package = match.Groups["package"].Value;
                         var version = match.Groups["version"].Value;
-                        if (version == String.Empty) throw new Exception("Invalid dependency: " + dep + " (version is empty)");
+                        if (string.IsNullOrEmpty(version)) throw new Exception("Invalid dependency: " + dep + " (version is empty)");
                         Logger.Info("Plugin " + plugin.Name + " has dependency: " + package + (version == null ? "" : "@" + version));
+
+                        Logger.Debug($"Loading {package}@{version}...");
+
+                        var nugetPackages = nugetManager.DownloadPackageWithDependenciesAsync(package, version).GetAwaiter().GetResult();
+                        foreach (var assemblyPath in nugetPackages) {
+                            loadContext.AddDependency(assemblyPath);
+                        }
+
+                        Logger.Info($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
                     }
 
+                    Logger.Debug($"Loaded {plugin.GetType().FullName}!");
                     foreach (var prop in type.GetProperties()) {
                         if (prop.GetCustomAttribute<PluginInstance>() != null)
                             prop.SetValue(null, plugin);

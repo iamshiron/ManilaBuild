@@ -37,7 +37,8 @@ extensionManager.InitPlugins();
 
 try {
     engine.Run();
-} catch {
+} catch (Exception e) {
+    Console.WriteLine(e);
     return; // Terminate the program, exception will already have been logged
 }
 

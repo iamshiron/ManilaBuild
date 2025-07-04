@@ -20,14 +20,16 @@ public sealed class ManilaEngine {
     public bool verboseLogger = false;
     public readonly long EngineCreatedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     public ExecutionGraph ExecutionGraph = new();
+    public NuGetManager NuGetManager { get; }
 
     public static readonly string VERSION = "0.0.0";
 
     private ManilaEngine() {
         RootDir = Directory.GetCurrentDirectory();
-        Workspace = new Workspace(RootDir);
+        Workspace = new(RootDir);
         WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(RootDir, "Manila.js"));
         DataDir = Path.Join(RootDir, ".manila");
+        NuGetManager = new(Path.Join(DataDir, "nuget"));
     }
 
     /// <summary>
