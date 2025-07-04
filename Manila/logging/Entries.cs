@@ -3,6 +3,7 @@ using System.Security;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
+using Newtonsoft.Json.Linq;
 using Shiron.Manila.API;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Utils;
@@ -87,6 +88,32 @@ public class LogEntryConverter : JsonConverter<ILogEntry> {
 
         writer.WriteEndObject();
         writer.WriteEndObject();
+    }
+}
+public class ExceptionConverter : JsonConverter {
+    public override bool CanConvert(Type objectType) {
+        return typeof(Exception).IsAssignableFrom(objectType);
+    }
+
+    public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
+        var exception = (Exception) value;
+        var jo = new JObject {
+            { "message", exception.Message },
+            { "stackTrace", exception.StackTrace },
+            { "hResult", exception.HResult },
+            { "source", exception.Source }
+        };
+
+        if (exception.InnerException != null) {
+            jo.Add("innerException", JToken.FromObject(exception.InnerException, serializer));
+        }
+
+        jo.WriteTo(writer);
+    }
+
+    public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+        // Deserialization is not implemented for this example.
+        throw new NotSupportedException("Deserializing exceptions is not supported.");
     }
 }
 
@@ -190,7 +217,7 @@ public class BuildCompletedLogEntry(long duration) : BaseLogEntry {
 public class BuildFailedLogEntry(long duration, Exception e) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
     public long Duration { get; } = duration;
-    public ExceptionInfo Exception { get; } = new(e);
+    public Exception Exception { get; } = e;
 }
 
 public class ProjectsInitializedLogEntry(long duration) : BaseLogEntry {
@@ -219,11 +246,10 @@ public class ScriptExecutedSuccessfullyLogEntry(string scriptPath, long executio
     public string ContextID { get; } = contextID.ToString();
 }
 
-public class ScriptExecutionFailedLogEntry(string scriptPath, string errorMessage, Guid contextID, string? stackTrace = null) : BaseLogEntry {
+public class ScriptExecutionFailedLogEntry(string scriptPath, Exception exception, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
     public string ScriptPath { get; } = scriptPath;
-    public string ErrorMessage { get; } = errorMessage;
-    public string? StackTrace { get; } = stackTrace;
+    public Exception Exception { get; } = exception;
     public string ContextID { get; } = contextID.ToString();
 }
 
@@ -239,12 +265,11 @@ public class TaskExecutionFinishedLogEntry(API.Task task, Guid contextID) : Base
     public string ContextID { get; } = contextID.ToString();
 }
 
-public class TaskExecutionFailedLogEntry(API.Task task, Guid contextID, Exception e) : BaseLogEntry {
+public class TaskExecutionFailedLogEntry(API.Task task, Guid contextID, Exception exception) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
     public TaskInfo Task { get; } = new(task);
     public string ContextID { get; } = contextID.ToString();
-    public string Message { get; } = e.Message;
-    public string StackTrace { get; } = e.StackTrace ?? "No Stacktrace";
+    public Exception Exception { get; } = exception;
 }
 
 // -- Discovery Logs -- //
@@ -273,20 +298,22 @@ public class CommandExecutionLogEntry(Guid contextID, string executable, string[
     public string WorkingDir { get; } = workingDir;
 }
 
-public class CommandExecutionFinishedLogEntry(Guid contextID, string stdOut, string stdErr, long duration) : BaseLogEntry {
+public class CommandExecutionFinishedLogEntry(Guid contextID, string stdOut, string stdErr, long duration, int exitCode) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Debug;
     public string ContextID { get; } = contextID.ToString();
     public string StdOut { get; } = stdOut;
     public string StdErr { get; } = stdErr;
     public long Duration { get; } = duration;
+    public int ExitCode { get; } = exitCode;
 }
 
-public class CommandExecutionFailedLogEntry(Guid contextID, string stdOut, string stdErr, long duration) : BaseLogEntry {
+public class CommandExecutionFailedLogEntry(Guid contextID, string stdOut, string stdErr, long duration, int exitCode) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
     public string ContextID { get; } = contextID.ToString();
     public string StdOut { get; } = stdOut;
     public string StdErr { get; } = stdErr;
     public long Duration { get; } = duration;
+    public int ExitCode { get; } = exitCode;
 }
 
 public class CommandStdOutLogEntry(Guid contextID, string message, bool quiet) : BaseLogEntry {

@@ -4,6 +4,7 @@ using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 using Spectre.Console;
 using Shiron.Manila.API;
+using System.Diagnostics;
 
 #if DEBUG
 Directory.SetCurrentDirectory("E:\\dev\\Manila\\manila\\run");
@@ -28,13 +29,17 @@ var engine = ManilaEngine.GetInstance();
 
 var extensionManager = ExtensionManager.GetInstance();
 
-AnsiConsoleRenderer.Init(logOptions.Quiet, logOptions.Structured);
+AnsiConsoleRenderer.Init(logOptions.Quiet, logOptions.Verbose, logOptions.Structured);
 
 extensionManager.Init("./.manila/plugins");
 extensionManager.LoadPlugins();
 extensionManager.InitPlugins();
 
-engine.Run();
+try {
+    engine.Run();
+} catch {
+    return; // Terminate the program, exception will already have been logged
+}
 
 if (engine.Workspace == null) throw new Exception("Workspace not found");
 foreach (var arg in args) {

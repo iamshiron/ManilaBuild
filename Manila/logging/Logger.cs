@@ -28,44 +28,51 @@ public static class Logger {
     /// This method is the main entry point for logging messages.
     /// It raises the OnLogEntry event with the provided log entry.
     /// </summary>
-    /// <param name="entry"></param>
-    public static void Log(ILogEntry entry, Guid? contextID = null) {
+    /// <param name="entry">The log entry.</param>
+    public static void Log(ILogEntry entry) {
         OnLogEntry?.Invoke(entry);
     }
 
     /// <summary>
     /// Logs a message at the Info level.
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="message">The message.</param>
     public static void Info(string message) {
         Log(new BasicLogEntry(message, LogLevel.Info));
     }
     /// <summary>
     /// Logs a message at the Debug level.
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="message">The message.</param>
     public static void Debug(string message) {
         Log(new BasicLogEntry(message, LogLevel.Debug));
     }
     /// <summary>
     /// Logs a message at the Warning level.
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="message">The message.</param>
     public static void Warning(string message) {
         Log(new BasicLogEntry(message, LogLevel.Warning));
     }
     /// <summary>
     /// Logs a message at the Error level.
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="message">The message.</param>
     public static void Error(string message) {
         Log(new BasicLogEntry(message, LogLevel.Error));
     }
     /// <summary>
     /// Logs a message at the Critical level.
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="message">The message.</param>
     public static void Critical(string message) {
         Log(new BasicLogEntry(message, LogLevel.Critical));
+    }
+    /// <summary>
+    /// Logs a message at the System level.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    public static void System(string message) {
+        Log(new BasicLogEntry(message, LogLevel.System));
     }
 }

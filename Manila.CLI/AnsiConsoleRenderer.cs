@@ -17,7 +17,7 @@ using System.Text;
 /// for a cleaner and more informative output.
 /// </summary>
 public static class AnsiConsoleRenderer {
-    private static readonly ConcurrentDictionary<LogLevel, string> LogLevelColorMappings = new() {
+    private static readonly ConcurrentDictionary<LogLevel, string> _logLevelColorMappings = new() {
         [LogLevel.System] = "grey93",
         [LogLevel.Debug] = "dim",
         [LogLevel.Info] = "deepskyblue1",
@@ -31,6 +31,7 @@ public static class AnsiConsoleRenderer {
     private static Action? _refresh; // Action to refresh the LiveDisplay
     private static TaskCompletionSource<bool>? _buildCompletion; // Controls the LiveDisplay lifetime
     private static Dictionary<string, TaskCompletionSource> _nodeCompletiosn = [];
+    private static bool _verbose = false;
 
     private static readonly ConcurrentDictionary<string, TreeNode> _executionNodes = [];
 
@@ -41,7 +42,11 @@ public static class AnsiConsoleRenderer {
     /// </summary>
     /// <param name="quiet">If true, only logs with level Error or higher.</param>
     /// <param name="structured">If true, outputs raw JSON instead of rendering.</param>
-    public static void Init(bool quiet, bool structured) {
+    public static void Init(bool quiet, bool verbose, bool structured) {
+        if (quiet && structured) throw new Exception("Cannot use quiet logging while structured logging is enabled!");
+
+        _verbose = verbose;
+
         var jsonSerializerSettings = new JsonSerializerSettings {
             ContractResolver = new CamelCasePropertyNamesContractResolver(),
             Formatting = Formatting.None,
@@ -52,12 +57,12 @@ public static class AnsiConsoleRenderer {
 
         Logger.OnLogEntry += entry => {
             if (structured) {
-                AnsiConsole.WriteLine(JsonConvert.SerializeObject(entry, jsonSerializerSettings));
+                Console.WriteLine(JsonConvert.SerializeObject(entry, jsonSerializerSettings));
                 return;
             }
 
             // Filter logs based on the quiet flag and log level.
-            if ((quiet && entry.Level < LogLevel.Error) || entry.Level < LogLevel.Debug) {
+            if ((quiet && entry.Level < LogLevel.Error) || (!verbose && entry.Level < LogLevel.Info)) {
                 return;
             }
 
@@ -65,6 +70,8 @@ public static class AnsiConsoleRenderer {
                 RenderLog(entry);
             }
         };
+
+        if (structured && verbose) { Logger.Warning("Ignoring 'verbose' flag is the logger is running in structured mode!"); Logger.Info("Logger always logs everything when running on structured mode!"); }
     }
 
     /// <summary>
@@ -198,7 +205,6 @@ public static class AnsiConsoleRenderer {
             .StartAsync(async ctx => {
                 _refresh = ctx.Refresh; // Store the refresh delegate
                 await _buildCompletion.Task; // Wait until build is marked as complete
-                _executionTree.AddNode("[bold blue]✔️ Build Finished![/]");
                 ctx.Refresh();
             });
     }
@@ -218,43 +224,73 @@ public static class AnsiConsoleRenderer {
     private static void HandleBuildCompletedLogEntry(BuildCompletedLogEntry entry) {
         // Signal the LiveDisplay to stop
         _buildCompletion?.SetResult(true);
+        AnsiConsole.MarkupLine($"[green]BUILD SUCCESSFUL![/] [grey]in {entry.Duration}ms[/]");
     }
 
     private static void HandleBuildFailedLogEntry(BuildFailedLogEntry entry) {
-        if (_executionTree is not null) {
-            _executionTree.AddNode($"[bold red]❌ Build Failed: {entry.Exception.Message}[/]");
-            _refresh?.Invoke();
-        }
         // Signal the LiveDisplay to stop
         _buildCompletion?.SetResult(true);
+        AnsiConsole.MarkupLine($"\n[red]BUILD FAILED![/] [grey]in {entry.Duration}ms[/]");
+
+        if (_verbose) AnsiConsole.WriteException(entry.Exception);
+        else AnsiConsole.MarkupLine($"[red]Error: {entry.Exception.Message}[/]");
     }
 
-    private static void HandleBasicLogEntry(BasicLogEntry entry) { }
-    private static void HandleBasicPluginLogEntry(BasicPluginLogEntry entry) { }
-    private static void HandleEngineStartedLogEntry(EngineStartedLogEntry entry) { }
-    private static void HandleBuildLayersLogEntry(BuildLayersLogEntry entry) { }
-    private static void HandleBuildLayerCompletedLogEntry(BuildLayerCompletedLogEntry entry) {
+    private static void HandleBasicLogEntry(BasicLogEntry entry) {
+        PushLog($"[[[{_logLevelColorMappings[entry.Level]}]{entry.Level}[/]]]: {entry.Message}", entry.ParentContextID.ToString());
     }
-    private static void HandleProjectsInitializedLogEntry(ProjectsInitializedLogEntry entry) { }
-    private static void HandleScriptExecutionStartedLogEntry(ScriptExecutionStartedLogEntry entry) { }
+    private static void HandleBasicPluginLogEntry(BasicPluginLogEntry entry) {
+        PushLog($"[[[grey]{entry.Plugin.Name}[/]/[{_logLevelColorMappings[entry.Level]}]{entry.Level}[/]]]: {entry.Message}", entry.ParentContextID.ToString());
+    }
+    private static void HandleEngineStartedLogEntry(EngineStartedLogEntry entry) {
+        Logger.Info("ManilaEngine started!");
+    }
+    private static void HandleBuildLayersLogEntry(BuildLayersLogEntry entry) {
+        Logger.Info($"Building using [yellow]{entry.Layers.Length}[/] layers!");
+    }
+    private static void HandleBuildLayerCompletedLogEntry(BuildLayerCompletedLogEntry entry) {
+        PushLog("[green]📦 Layer completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
+    }
+    private static void HandleProjectsInitializedLogEntry(ProjectsInitializedLogEntry entry) {
+        Logger.Info($"Initialization took [yellow]{entry.Duration}[/]ms!");
+    }
+    private static void HandleScriptExecutionStartedLogEntry(ScriptExecutionStartedLogEntry entry) {
+        Logger.Debug($"Running script {entry.ScriptPath}");
+    }
     private static void HandleScriptLogEntry(ScriptLogEntry entry) {
         PushLog($"[yellow]>[/] {entry.Message}", entry.ParentContextID.ToString(), entry.ContextID);
     }
     private static void HandleScriptExecutedSuccessfullyLogEntry(ScriptExecutedSuccessfullyLogEntry entry) { }
-    private static void HandleScriptExecutionFailedLogEntry(ScriptExecutionFailedLogEntry entry) { }
-    private static void HandleTaskExecutionFinishedLogEntry(TaskExecutionFinishedLogEntry entry) { }
-    private static void HandleTaskExecutionFailedLogEntry(TaskExecutionFailedLogEntry entry) { }
-    private static void HandleProjectDiscoveredLogEntry(ProjectDiscoveredLogEntry entry) { }
-    private static void HandleProjectInitializedLogEntry(ProjectInitializedLogEntry entry) { }
-    private static void HandleTaskDiscoveredLogEntry(TaskDiscoveredLogEntry entry) { }
-    private static void HandleCommandExecutionLogEntry(CommandExecutionLogEntry entry) {
-        PushLog($"[grey]{Path.GetFileName(entry.Executable)}[/]", entry.ParentContextID.ToString(), entry.ContextID);
+    private static void HandleScriptExecutionFailedLogEntry(ScriptExecutionFailedLogEntry entry) {
+        AnsiConsole.WriteException(entry.Exception);
     }
-    private static void HandleCommandExecutionFinishedLogEntry(CommandExecutionFinishedLogEntry entry) { }
-    private static void HandleCommandExecutionFailedLogEntry(CommandExecutionFailedLogEntry entry) { }
+    private static void HandleTaskExecutionFinishedLogEntry(TaskExecutionFinishedLogEntry entry) {
+        PushLog($"[green]Task [skyblue1]{entry.Task.Name}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
+    }
+    private static void HandleTaskExecutionFailedLogEntry(TaskExecutionFailedLogEntry entry) {
+        AnsiConsole.WriteException(entry.Exception);
+    }
+    private static void HandleProjectDiscoveredLogEntry(ProjectDiscoveredLogEntry entry) {
+        Logger.System($"Found project in {entry.Root}");
+    }
+    private static void HandleProjectInitializedLogEntry(ProjectInitializedLogEntry entry) {
+        Logger.System($"Project {entry.Projet.Name} initialized!");
+    }
+    private static void HandleTaskDiscoveredLogEntry(TaskDiscoveredLogEntry entry) {
+        Logger.System($"Discovered task {entry.Task.Name} for {entry.Component.Root} in {entry.Component.Root}");
+    }
+    private static void HandleCommandExecutionLogEntry(CommandExecutionLogEntry entry) {
+        PushLog($"[green]$>[/] [grey]{Path.GetFileName(entry.Executable)} {Markup.Escape(string.Join(" ", entry.Args))}[/]", entry.ParentContextID.ToString(), entry.ContextID);
+    }
+    private static void HandleCommandExecutionFinishedLogEntry(CommandExecutionFinishedLogEntry entry) {
+        PushLog($"[green]>[/] [green]Command Exited with exit code {entry.ExitCode}[/]", entry.ParentContextID.ToString(), entry.ContextID);
+    }
+    private static void HandleCommandExecutionFailedLogEntry(CommandExecutionFailedLogEntry entry) {
+        PushLog($"[green]>[/] [red]Command Exited with exit code {entry.ExitCode}[/]", entry.ParentContextID.ToString(), entry.ContextID);
+    }
     private static void HandleCommandStdOutLogEntry(CommandStdOutLogEntry entry) {
         if (entry.ParentContextID != null) {
-            PushLog(entry.Message, entry.ParentContextID.ToString(), entry.ContextID);
+            PushLog($"[green]>[/] {entry.Message}", entry.ParentContextID.ToString(), entry.ContextID);
         }
     }
     private static void HandleCommandStdErrLogEntry(CommandStdErrLogEntry entry) { }

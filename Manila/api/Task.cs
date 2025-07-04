@@ -1,4 +1,5 @@
 
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 using Spectre.Console;
@@ -65,8 +66,6 @@ public class Task : ExecutableObject {
             try {
                 action();
             } catch (Exception e) {
-                Logger.Error("Task failed: " + Name);
-                Logger.Error(e.GetType().Name + ": " + e.Message);
                 throw;
             }
         };

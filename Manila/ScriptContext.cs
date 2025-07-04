@@ -158,7 +158,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
 
 
             // Execute the script with proper error handling
-            ScriptEngine.Execute($@"
+            ScriptEngine.Execute(new DocumentInfo(ScriptPath), $@"
                 (async function() {{
                     try {{
                         {File.ReadAllText(ScriptPath)}
@@ -172,7 +172,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             // Wait for the script to either complete or throw an exception
             taskCompletion.Task.Wait();
         } catch (Exception e) {
-            Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, e.Message, ContextID, e.StackTrace));
+            Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, e, ContextID));
             throw;
         }
         Logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));

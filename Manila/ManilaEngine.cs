@@ -46,9 +46,13 @@ public sealed class ManilaEngine {
             .Where(f => !Path.GetFullPath(f).Equals(Path.GetFullPath("Manila.js")))
             .ToList();
 
-        RunWorkspaceScript();
-        foreach (var script in files) {
-            RunProjectScript(script);
+        try {
+            RunWorkspaceScript();
+            foreach (var script in files) {
+                RunProjectScript(script);
+            }
+        } catch {
+            throw;
         }
 
         foreach (var f in Workspace!.ProjectFilters) {
@@ -105,7 +109,11 @@ public sealed class ManilaEngine {
         WorkspaceContext.ApplyEnum<EArchitecture>();
 
         WorkspaceContext.Init();
-        WorkspaceContext.Execute();
+        try {
+            WorkspaceContext.Execute();
+        } catch {
+            throw;
+        }
     }
 
     public void ExecuteBuildLogic(string taskID) {

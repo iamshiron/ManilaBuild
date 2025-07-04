@@ -120,11 +120,11 @@ public static class ShellUtils {
 
         if (process.ExitCode == 0) {
             Logger.Log(new CommandExecutionFinishedLogEntry(
-                contextID, stdOutBuilder.ToString(), stdErrBuilder.ToString(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime
+                contextID, stdOutBuilder.ToString(), stdErrBuilder.ToString(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, process.ExitCode
             ));
         } else {
             Logger.Log(new CommandExecutionFailedLogEntry(
-                contextID, stdOutBuilder.ToString(), stdErrBuilder.ToString(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime
+                contextID, stdOutBuilder.ToString(), stdErrBuilder.ToString(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, process.ExitCode
             ));
         }
 
