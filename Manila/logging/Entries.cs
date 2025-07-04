@@ -1,29 +1,473 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
-using System.Security;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Linq;
-using Shiron.Manila.API;
-using Shiron.Manila.Ext;
-using Shiron.Manila.Utils;
-using System.Data.Common;
-using System.Runtime.Intrinsics.Arm;
-using System.Text.RegularExpressions;
+using Newtonsoft.Json.Serialization;
+using Shiron.Manila.API; // Assumed to be a project reference
+using Shiron.Manila.Ext;  // Assumed to be a project reference
+using Shiron.Manila.Utils; // Assumed to be a project reference
 
 namespace Shiron.Manila.Logging;
 
+#region Core Interfaces & Base Classes
+
+/// <summary>
+/// Defines the essential properties for any log entry.
+/// </summary>
 public interface ILogEntry {
-    public abstract long Timestamp { get; }
-    public abstract LogLevel Level { get; }
+    /// <summary>
+    /// The UTC timestamp when the log entry was created, in Unix milliseconds.
+    /// </summary>
+    long Timestamp { get; }
+
+    /// <summary>
+    /// The severity level of the log entry.
+    /// </summary>
+    LogLevel Level { get; }
 }
 
+/// <summary>
+/// A base implementation of <see cref="ILogEntry"/> that provides a timestamp
+/// and captures the current logging context ID.
+/// </summary>
 public abstract class BaseLogEntry : ILogEntry {
+    /// <inheritdoc />
     public long Timestamp { get; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    /// <inheritdoc />
     public abstract LogLevel Level { get; }
+
+    /// <summary>
+    /// The ID of the parent logging context, if any.
+    /// </summary>
     public Guid? ParentContextID { get; } = LogContext.CurrentContextId;
 }
 
+#endregion
+
+#region Log Data Transfer Objects
+
+/// <summary>
+/// Represents a snapshot of a plugin's information for logging.
+/// </summary>
+public sealed class PluginInfo(ManilaPlugin plugin) {
+    public string Name { get; init; } = plugin.Name;
+    public string Group { get; init; } = plugin.Group;
+    public string Version { get; init; } = plugin.Version;
+    public string[] Authors { get; init; } = plugin.Authors.ToArray();
+    public string Entry { get; init; } = plugin.GetType().FullName!;
+    public string[] NuGetDependencies { get; init; } = plugin.NugetDependencies.ToArray();
+    public string File { get; init; } = plugin.File;
+}
+
+/// <summary>
+/// Represents a snapshot of a task's information for logging.
+/// </summary>
+public sealed class TaskInfo(API.Task task) {
+    public string Name { get; init; } = task.Name;
+    public string ID { get; init; } = task.GetIdentifier();
+    public string ScriptPath { get; init; } = task.ScriptPath;
+    public string Description { get; init; } = task.Description;
+    public ComponentInfo Component { get; init; } = new(task.Component);
+}
+
+/// <summary>
+/// Represents a snapshot of a component's information for logging.
+/// </summary>
+public sealed class ComponentInfo(Component component) {
+    public bool IsProject { get; init; } = component is Project;
+    public bool IsWorkspace { get; init; } = component is Workspace;
+    public string Root { get; init; } = component.Path.get();
+    public string ID { get; init; } = component.GetIdentifier();
+}
+
+/// <summary>
+/// Represents a snapshot of a project's information for logging.
+/// </summary>
+public sealed class ProjectInfo(Project project) {
+    public string Name { get; init; } = project.Name;
+    public string Identifier { get; init; } = project.GetIdentifier();
+    public string? Version { get; init; } = project.Version;
+    public string? Group { get; init; } = project.Group;
+    public string? Description { get; init; } = project.Description;
+    public string Root { get; init; } = project.Path.get();
+}
+
+/// <summary>
+/// Represents a snapshot of an executable object's information for logging.
+/// </summary>
+public sealed class ExecutableObjectInfo(ExecutableObject obj) {
+    public string ID { get; init; } = obj.GetID();
+    public string Type { get; init; } = obj.GetType().FullName ?? "Unknown";
+    public bool Blocking { get; init; } = obj.IsBlocking();
+}
+
+/// <summary>
+/// Represents a snapshot of an execution layer for logging.
+/// </summary>
+public sealed class ExecutionLayerInfo(ExecutionGraph.ExecutionLayer layer) {
+    public ExecutableObjectInfo[] Items { get; init; } = layer.Items.Select(obj => new ExecutableObjectInfo(obj)).ToArray();
+}
+
+#endregion
+
+#region General Log Entries
+
+/// <summary>
+/// A basic log entry with a simple message.
+/// </summary>
+public class BasicLogEntry(string message, LogLevel level) : BaseLogEntry {
+    public override LogLevel Level { get; } = level;
+    public string Message { get; } = message;
+}
+
+/// <summary>
+/// A basic log entry associated with a specific plugin.
+/// </summary>
+public class BasicPluginLogEntry(ManilaPlugin plugin, string message, LogLevel level) : BaseLogEntry {
+    public override LogLevel Level { get; } = level;
+    public string Message { get; } = message;
+    public PluginInfo Plugin { get; } = new(plugin);
+}
+
+#endregion
+
+#region Build Lifecycle Log Entries
+
+/// <summary>
+/// Logged when the engine starts.
+/// </summary>
+public class EngineStartedLogEntry(string rootDir, string dataDir) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public string RootDirectory { get; } = rootDir;
+    public string DataDirectory { get; } = dataDir;
+}
+
+/// <summary>
+/// Logged when the build execution graph layers are determined.
+/// </summary>
+public class BuildLayersLogEntry(ExecutionGraph.ExecutionLayer[] layers) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public ExecutionLayerInfo[] Layers { get; } = layers.Select(layer => new ExecutionLayerInfo(layer)).ToArray();
+}
+
+/// <summary>
+/// Logged when the execution of a build layer starts.
+/// </summary>
+public class BuildLayerStartedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID, int layerIndex) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public ExecutionLayerInfo Layer { get; } = new(layer);
+    public int LayerIndex { get; } = layerIndex;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when the execution of a build layer completes.
+/// </summary>
+public class BuildLayerCompletedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID, int layerIndex) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public ExecutionLayerInfo Layer { get; } = new(layer);
+    public int LayerIndex { get; } = layerIndex;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when the overall build process starts.
+/// </summary>
+public class BuildStartedLogEntry : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+}
+
+/// <summary>
+/// Logged when the build completes successfully.
+/// </summary>
+public class BuildCompletedLogEntry(long duration) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public long Duration { get; } = duration;
+}
+
+/// <summary>
+/// Logged when the build fails.
+/// </summary>
+public class BuildFailedLogEntry(long duration, Exception e) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Error;
+    public long Duration { get; } = duration;
+    public Exception Exception { get; } = e;
+}
+
+#endregion
+
+#region Project & Task Discovery Log Entries
+
+/// <summary>
+/// Logged when projects have been fully initialized.
+/// </summary>
+public class ProjectsInitializedLogEntry(long duration) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public long Duration { get; } = duration;
+}
+
+/// <summary>
+/// Logged when a project is discovered from a script file.
+/// </summary>
+public class ProjectDiscoveredLogEntry(string root, string script) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public string Root { get; } = root;
+    public string Script { get; } = script;
+}
+
+/// <summary>
+/// Logged when a discovered project is initialized.
+/// </summary>
+public class ProjectInitializedLogEntry(Project project) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public ProjectInfo Project { get; } = new(project);
+}
+
+/// <summary>
+/// Logged when a task is discovered within a component.
+/// </summary>
+public class TaskDiscoveredLogEntry(API.Task task, Component component) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public ComponentInfo Component { get; } = new(component);
+    public TaskInfo Task { get; } = new(task);
+}
+
+#endregion
+
+#region Script & Task Execution Log Entries
+
+/// <summary>
+/// Logged when a script begins execution.
+/// </summary>
+public class ScriptExecutionStartedLogEntry(string scriptPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public string ScriptPath { get; } = scriptPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Represents a log message originating from within a script.
+/// </summary>
+public class ScriptLogEntry(string scriptPath, string message, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public string ScriptPath { get; } = scriptPath;
+    public string Message { get; } = message;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when a script completes successfully.
+/// </summary>
+public class ScriptExecutedSuccessfullyLogEntry(string scriptPath, long executionTimeMS, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public string ScriptPath { get; } = scriptPath;
+    public long ExecutionTimeMS { get; } = executionTimeMS;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when script execution fails.
+/// </summary>
+public class ScriptExecutionFailedLogEntry(string scriptPath, Exception exception, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Error;
+    public string ScriptPath { get; } = scriptPath;
+    public Exception Exception { get; } = exception;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when a task begins execution.
+/// </summary>
+public class TaskExecutionStartedLogEntry(API.Task task, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public TaskInfo Task { get; } = new(task);
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when a task finishes execution.
+/// </summary>
+public class TaskExecutionFinishedLogEntry(API.Task task, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public TaskInfo Task { get; } = new(task);
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when a task fails to execute.
+/// </summary>
+public class TaskExecutionFailedLogEntry(API.Task task, Guid contextID, Exception exception) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Error;
+    public TaskInfo Task { get; } = new(task);
+    public string ContextID { get; } = contextID.ToString();
+    public Exception Exception { get; } = exception;
+}
+
+#endregion
+
+#region Command Execution Log Entries
+
+/// <summary>
+/// Logged when an external command is about to be executed.
+/// </summary>
+public class CommandExecutionLogEntry(Guid contextID, string executable, string[] args, string workingDir) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ContextID { get; } = contextID.ToString();
+    public string Executable { get; } = executable;
+    public string[] Args { get; } = args;
+    public string WorkingDir { get; } = workingDir;
+}
+
+/// <summary>
+/// Logged when an external command finishes successfully.
+/// </summary>
+public class CommandExecutionFinishedLogEntry(Guid contextID, string stdOut, string stdErr, long duration, int exitCode) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ContextID { get; } = contextID.ToString();
+    public string StdOut { get; } = stdOut;
+    public string StdErr { get; } = stdErr;
+    public long Duration { get; } = duration;
+    public int ExitCode { get; } = exitCode;
+}
+
+/// <summary>
+/// Logged when an external command fails.
+/// </summary>
+public class CommandExecutionFailedLogEntry(Guid contextID, string stdOut, string stdErr, long duration, int exitCode) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Error;
+    public string ContextID { get; } = contextID.ToString();
+    public string StdOut { get; } = stdOut;
+    public string StdErr { get; } = stdErr;
+    public long Duration { get; } = duration;
+    public int ExitCode { get; } = exitCode;
+}
+
+/// <summary>
+/// Represents a standard output message from an executed command.
+/// </summary>
+public class CommandStdOutLogEntry(Guid contextID, string message, bool quiet) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Info;
+    public string ContextID { get; } = contextID.ToString();
+    public string Message { get; } = message;
+    public bool Quiet { get; } = quiet;
+}
+
+/// <summary>
+/// Represents a standard error message from an executed command.
+/// </summary>
+public class CommandStdErrLogEntry(Guid contextID, string message, bool quiet) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Error;
+    public string ContextID { get; } = contextID.ToString();
+    public string Message { get; } = message;
+    public bool Quiet { get; } = quiet;
+}
+
+#endregion
+
+#region Plugin Loading Log Entries
+
+/// <summary>
+/// Logged when loading plugins from a specific path.
+/// </summary>
+public class LoadingPluginsLogEntry(string pluginPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public string PluginPath { get; } = pluginPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when a specific plugin assembly begins to load.
+/// </summary>
+public class LoadingPluginLogEntry(ManilaPlugin plugin, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public PluginInfo Plugin { get; } = new(plugin);
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when a NuGet package dependency for a plugin is being loaded.
+/// </summary>
+public class NuGetPackageLoadingLogEntry(string id, string version, ManilaPlugin plugin, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string PackageID { get; } = id;
+    public string PackageVersion { get; } = version;
+    public PluginInfo Plugin { get; } = new(plugin);
+    public string ContextID { get; } = contextID.ToString();
+}
+
+/// <summary>
+/// Logged when a sub-package or assembly from a NuGet dependency is being loaded.
+/// Uses regex to parse package details from the assembly path.
+/// </summary>
+public partial class NuGetSubPackageLoadingEntry(string assembly, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string PackageID { get; } = GetPackageID(assembly);
+    public string PackageVersion { get; } = GetPackageVersion(assembly);
+    public string ContextID { get; } = contextID.ToString();
+
+    private static string GetPackageID(string assembly) {
+        var match = AssemblyRegex().Match(assembly);
+        return match.Success ? match.Groups["package"].Value : assembly;
+    }
+
+    private static string GetPackageVersion(string assembly) {
+        var match = AssemblyRegex().Match(assembly);
+        return match.Success ? match.Groups["version"].Value : assembly;
+    }
+
+    [GeneratedRegex(@"(?<package>[\w\.]+?)_(?<version>[\d\.]+?)[\\\/]")]
+    private static partial Regex AssemblyRegex();
+}
+
+#endregion
+
+#region JSON Converters
+
+/// <summary>
+/// Custom JSON converter for <see cref="Exception"/> types. Serializes key properties
+/// of an exception, including its inner exception. Deserialization is not supported.
+/// </summary>
+public class ExceptionConverter : JsonConverter {
+    public override bool CanConvert(Type objectType) {
+        return typeof(Exception).IsAssignableFrom(objectType);
+    }
+
+    public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+        if (value is not Exception exception) {
+            writer.WriteNull();
+            return;
+        }
+
+        var jo = new JObject
+        {
+            { "message", exception.Message },
+            { "stackTrace", exception.StackTrace },
+            { "hResult", exception.HResult },
+            { "source", exception.Source }
+        };
+
+        if (exception.InnerException != null) {
+            jo.Add("innerException", JToken.FromObject(exception.InnerException, serializer));
+        }
+
+        jo.WriteTo(writer);
+    }
+
+    public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
+        throw new NotSupportedException("Deserializing exceptions is not supported by this converter.");
+    }
+}
+
+/// <summary>
+/// Custom JSON converter for <see cref="ILogEntry"/>. Serializes log entries into a
+/// structured format with a 'type' discriminator and a nested 'data' object for
+/// all custom properties. Deserialization is not supported.
+/// </summary>
 public class LogEntryConverter : JsonConverter<ILogEntry> {
     public override bool CanWrite => true;
     public override bool CanRead => false;
@@ -38,342 +482,55 @@ public class LogEntryConverter : JsonConverter<ILogEntry> {
             return;
         }
 
-        writer.WriteStartObject();
-
-        // Serialize the main properties of ILogEntry directly
+        // This nested serializer is configured to handle the 'data' object's contents.
         var nestedSerializer = new JsonSerializer {
             ContractResolver = new CamelCasePropertyNamesContractResolver(),
             Converters = { new StringEnumConverter() },
-            TypeNameHandling = TypeNameHandling.None
+            TypeNameHandling = TypeNameHandling.None,
+            // Inherit settings from the parent serializer to respect context.
+            ReferenceLoopHandling = serializer.ReferenceLoopHandling,
+            PreserveReferencesHandling = serializer.PreserveReferencesHandling
         };
 
-        // Explicitly remove this converter from the nested serializer to prevent stack overflow
-        if (nestedSerializer.Converters.Any(c => c.GetType() == typeof(LogEntryConverter))) {
-            nestedSerializer.Converters.Remove(nestedSerializer.Converters.First(c => c.GetType() == typeof(LogEntryConverter)));
-        }
-        // Inherit settings from parent serializer
-        nestedSerializer.ReferenceLoopHandling = serializer.ReferenceLoopHandling;
-        nestedSerializer.PreserveReferencesHandling = serializer.PreserveReferencesHandling;
-
-        // Cast ContractResolver to DefaultContractResolver to access NamingStrategy
-        var contractResolver = nestedSerializer.ContractResolver as DefaultContractResolver;
-        var namingStrategy = contractResolver?.NamingStrategy;
-
-        string GetFormattedPropertyName(string name) {
-            return namingStrategy?.GetPropertyName(name, false) ?? name;
+        // CRITICAL: Remove this converter from the nested serializer to prevent a stack overflow.
+        var self = nestedSerializer.Converters.FirstOrDefault(c => c is LogEntryConverter);
+        if (self != null) {
+            nestedSerializer.Converters.Remove(self);
         }
 
+        var namingStrategy = (nestedSerializer.ContractResolver as DefaultContractResolver)?.NamingStrategy;
+        string GetFormattedPropertyName(string name) => namingStrategy?.GetPropertyName(name, false) ?? name;
+
+        writer.WriteStartObject();
+
+        // Write metadata properties to the top level.
         writer.WritePropertyName("type");
         writer.WriteValue(value.GetType().FullName);
-
         writer.WritePropertyName(GetFormattedPropertyName(nameof(ILogEntry.Timestamp)));
         writer.WriteValue(value.Timestamp);
-
         writer.WritePropertyName(GetFormattedPropertyName(nameof(ILogEntry.Level)));
-        writer.WriteValue(value.Level.ToString());
+        nestedSerializer.Serialize(writer, value.Level);
 
-        // Put all custom properties into a nested "data" object
-        writer.WritePropertyName(GetFormattedPropertyName("data"));
+        // Write all other properties into a nested 'data' object.
+        writer.WritePropertyName("data");
         writer.WriteStartObject();
 
         Type type = value.GetType();
+        var ignoredProps = new HashSet<string> { nameof(ILogEntry.Timestamp), nameof(ILogEntry.Level) };
+
         foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
-            if (property.Name == nameof(ILogEntry.Timestamp) ||
-                property.Name == nameof(ILogEntry.Level)) {
+            if (ignoredProps.Contains(property.Name)) {
                 continue;
             }
 
             object? propertyValue = property.GetValue(value);
-
             writer.WritePropertyName(GetFormattedPropertyName(property.Name));
             nestedSerializer.Serialize(writer, propertyValue);
         }
 
-        writer.WriteEndObject();
-        writer.WriteEndObject();
-    }
-}
-public class ExceptionConverter : JsonConverter {
-    public override bool CanConvert(Type objectType) {
-        return typeof(Exception).IsAssignableFrom(objectType);
-    }
-
-    public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-        var exception = (Exception) value;
-        var jo = new JObject {
-            { "message", exception.Message },
-            { "stackTrace", exception.StackTrace },
-            { "hResult", exception.HResult },
-            { "source", exception.Source }
-        };
-
-        if (exception.InnerException != null) {
-            jo.Add("innerException", JToken.FromObject(exception.InnerException, serializer));
-        }
-
-        jo.WriteTo(writer);
-    }
-
-    public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-        // Deserialization is not implemented for this example.
-        throw new NotSupportedException("Deserializing exceptions is not supported.");
+        writer.WriteEndObject(); // End 'data'
+        writer.WriteEndObject(); // End root
     }
 }
 
-// --- Data Classes for Log Events --- //
-public sealed class PluginInfo(ManilaPlugin plugin) {
-    public readonly string Name = plugin.Name;
-    public readonly string Group = plugin.Group;
-    public readonly string Version = plugin.Version;
-    public readonly string[] Authors = plugin.Authors.ToArray();
-    public readonly string Entry = plugin.GetType().FullName;
-    public readonly string[] NuGetDependencies = plugin.NugetDependencies.ToArray();
-    public readonly string File = plugin.File;
-}
-public sealed class TaskInfo(API.Task task) {
-    public readonly string Name = task.Name;
-    public readonly string ID = task.GetIdentifier();
-    public readonly string ScriptPath = task.ScriptPath;
-    public readonly string Description = task.Description;
-    public readonly ComponentInfo Component = new(task.Component);
-}
-public sealed class ComponentInfo(Component component) {
-    public readonly bool IsProject = component is Project;
-    public readonly bool IsWorkspace = component is Workspace;
-    public readonly string Root = component.Path.get();
-    public readonly string ID = component.GetIdentifier();
-}
-public sealed class ProjectInfo(Project project) {
-    public readonly string Name = project.Name;
-    public readonly string Identifier = project.GetIdentifier();
-    public readonly string? Version = project.Version;
-    public readonly string? Group = project.Group;
-    public readonly string? Description = project.Description;
-    public readonly string Root = project.Path.get();
-}
-public sealed class ExecutableObjectInfo(ExecutableObject obj) {
-    public readonly string ID = obj.GetID();
-    public readonly string Type = obj.GetType().FullName ?? "Unknown";
-    public readonly bool Blocking = obj.IsBlocking();
-}
-public sealed class ExecutionLayerInfo(ExecutionGraph.ExecutionLayer layer) {
-    public readonly ExecutableObjectInfo[] Items = layer.Items.Select(obj => new ExecutableObjectInfo(obj)).ToArray();
-}
-
-public sealed class ExceptionInfo(Exception e) {
-    public readonly string Type = e.GetType().FullName ?? "Unknown Exception";
-    public readonly string Message = e.Message;
-    public readonly string StackTrace = e.StackTrace ?? "Empty Stack Trace";
-    public readonly List<ExceptionInfo> CausedBy = GetCausedBy(e);
-
-    private static List<ExceptionInfo> GetCausedBy(Exception ex) {
-        var list = new List<ExceptionInfo>();
-        var inner = ex.InnerException;
-        while (inner != null) {
-            list.Add(new ExceptionInfo(inner));
-            inner = inner.InnerException;
-        }
-        return list;
-    }
-}
-
-// --- Misc Logging Events --- //
-
-public class BasicLogEntry(string message, LogLevel level) : BaseLogEntry {
-    public override LogLevel Level { get; } = level;
-    public string Message { get; } = message;
-}
-
-public class BasicPluginLogEntry(ManilaPlugin plugin, string message, LogLevel level) : BaseLogEntry {
-    public override LogLevel Level { get; } = level;
-    public string Message { get; } = message;
-    public PluginInfo Plugin { get; } = new(plugin);
-}
-
-// --- Lifecycle Logging Events --- //
-public class EngineStartedLogEntry(string rootDir, string dataDir) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public string RootDirectory { get; } = rootDir;
-    public string DataDirectory { get; } = dataDir;
-}
-
-public class BuildLayersLogEntry(ExecutionGraph.ExecutionLayer[] layers) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public ExecutionLayerInfo[] Layers { get; } = layers.Select(layer => new ExecutionLayerInfo(layer)).ToArray();
-}
-public class BuildLayerStartedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID, int layerIndex) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public ExecutionLayerInfo Layer { get; } = new(layer);
-    public int LayerIndex { get; } = layerIndex;
-    public string ContextID { get; } = contextID.ToString();
-}
-public class BuildLayerCompletedLogEntry(ExecutionGraph.ExecutionLayer layer, Guid contextID, int layerIndex) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public ExecutionLayerInfo Layer { get; } = new(layer);
-    public int LayerIndex { get; } = layerIndex;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class BuildStartedLogEntry : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-}
-
-public class BuildCompletedLogEntry(long duration) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public long Duration { get; } = duration;
-}
-
-public class BuildFailedLogEntry(long duration, Exception e) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Error;
-    public long Duration { get; } = duration;
-    public Exception Exception { get; } = e;
-}
-
-public class ProjectsInitializedLogEntry(long duration) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public long Duration { get; } = duration;
-}
-
-// --- Script Logging Events --- //
-public class ScriptExecutionStartedLogEntry(string scriptPath, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public string ScriptPath { get; } = scriptPath;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class ScriptLogEntry(string scriptPath, string message, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public string ScriptPath { get; } = scriptPath;
-    public string Message { get; } = message;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class ScriptExecutedSuccessfullyLogEntry(string scriptPath, long executionTimeMS, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public string ScriptPath { get; } = scriptPath;
-    public long ExecutionTimeMS { get; } = executionTimeMS;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class ScriptExecutionFailedLogEntry(string scriptPath, Exception exception, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Error;
-    public string ScriptPath { get; } = scriptPath;
-    public Exception Exception { get; } = exception;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class TaskExecutionStartedLogEntry(API.Task task, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public TaskInfo Task { get; } = new(task);
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class TaskExecutionFinishedLogEntry(API.Task task, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public TaskInfo Task { get; } = new(task);
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class TaskExecutionFailedLogEntry(API.Task task, Guid contextID, Exception exception) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public TaskInfo Task { get; } = new(task);
-    public string ContextID { get; } = contextID.ToString();
-    public Exception Exception { get; } = exception;
-}
-
-// -- Discovery Logs -- //
-public class ProjectDiscoveredLogEntry(string root, string script) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public string Root { get; } = root;
-    public string Script { get; } = script;
-}
-public class ProjectInitializedLogEntry(Project project) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public ProjectInfo Projet { get; } = new(project);
-}
-
-public class TaskDiscoveredLogEntry(API.Task task, Component component) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public ComponentInfo Component { get; } = new(component);
-    public TaskInfo Task { get; } = new(task);
-}
-
-// --- Misc Log Entries --- //
-public class CommandExecutionLogEntry(Guid contextID, string executable, string[] args, string workingDir) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public string ContextID { get; } = contextID.ToString();
-    public string Executable { get; } = executable;
-    public string[] Args { get; } = args;
-    public string WorkingDir { get; } = workingDir;
-}
-
-public class CommandExecutionFinishedLogEntry(Guid contextID, string stdOut, string stdErr, long duration, int exitCode) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public string ContextID { get; } = contextID.ToString();
-    public string StdOut { get; } = stdOut;
-    public string StdErr { get; } = stdErr;
-    public long Duration { get; } = duration;
-    public int ExitCode { get; } = exitCode;
-}
-
-public class CommandExecutionFailedLogEntry(Guid contextID, string stdOut, string stdErr, long duration, int exitCode) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Error;
-    public string ContextID { get; } = contextID.ToString();
-    public string StdOut { get; } = stdOut;
-    public string StdErr { get; } = stdErr;
-    public long Duration { get; } = duration;
-    public int ExitCode { get; } = exitCode;
-}
-
-public class CommandStdOutLogEntry(Guid contextID, string message, bool quiet) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
-    public string ContextID { get; } = contextID.ToString();
-    public string Message { get; } = message;
-    public bool Quiet { get; } = quiet;
-}
-public class CommandStdErrLogEntry(Guid contextID, string message, bool quiet) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Error;
-    public string ContextID { get; } = contextID.ToString();
-    public string Message { get; } = message;
-    public bool Quiet { get; } = quiet;
-}
-
-// --- Plugin Loading Entries --- //
-public class NuGetPackageLoadingLogEntry(string id, string version, ManilaPlugin plugin, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public string PackageID { get; } = id;
-    public string PackageVersion { get; } = version;
-    public PluginInfo Plugin { get; } = new(plugin);
-    public string ContextID { get; } = contextID.ToString();
-}
-public partial class NuGetSubPackageLoadingEntry(string assembly, Guid contextID) : BaseLogEntry {
-    public static readonly Regex assemblyRegex = AssemblyRegex();
-
-    public override LogLevel Level => LogLevel.Debug;
-    public string PackageID { get; } = GetPackageID(assembly);
-    public string PackageVersion { get; } = GetPackageVersion(assembly);
-    public string ContextID { get; } = contextID.ToString();
-
-    private static string GetPackageID(string assembly) {
-        var match = assemblyRegex.Match(assembly);
-        return match.Success ? match.Groups["package"].Value : assembly;
-    }
-
-    private static string GetPackageVersion(string assembly) {
-        var match = assemblyRegex.Match(assembly);
-        return match.Success ? match.Groups["version"].Value : assembly;
-    }
-
-    [GeneratedRegex(@"(?<package>[\w\.]+?)_(?<version>[\d\.]+?)[\\\/]")]
-    private static partial Regex AssemblyRegex();
-}
-public class LoadingPluginLogEntry(ManilaPlugin plugin, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public PluginInfo Plugin { get; } = new(plugin);
-    public string ContextID { get; } = contextID.ToString();
-}
-public class LoadingPluginsLogEntry(string pluginPath, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.System;
-    public string PluginPath { get; } = pluginPath;
-    public string ContextID { get; } = contextID.ToString();
-}
+#endregion

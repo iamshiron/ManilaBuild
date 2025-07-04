@@ -13,11 +13,21 @@ using System.Text.Json;
 
 namespace Shiron.Manila.Utils;
 
+/// <summary>
+/// Manages downloading, caching, and resolving NuGet packages and their dependencies.
+/// </summary>
 public class NuGetManager {
+    /// <summary>
+    /// The directory where NuGet packages are stored.
+    /// </summary>
     public readonly string PackageDir;
     private readonly Dictionary<string, List<string>> _packageCache = [];
     private static List<string>? _basePackages = null;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NuGetManager"/> class.
+    /// </summary>
+    /// <param name="packageDir">The directory to store downloaded packages.</param>
     public NuGetManager(string packageDir) {
         PackageDir = packageDir;
         if (!Directory.Exists(PackageDir)) Directory.CreateDirectory(PackageDir);
@@ -25,8 +35,8 @@ public class NuGetManager {
 
     private string GetCurrentFrameworkName() {
         return Assembly.GetEntryAssembly()?
-                   .GetCustomAttribute<TargetFrameworkAttribute>()?
-                   .FrameworkName
+                       .GetCustomAttribute<TargetFrameworkAttribute>()?
+                       .FrameworkName
                ?? throw new InvalidOperationException("Could not determine target framework.");
     }
 
@@ -36,6 +46,7 @@ public class NuGetManager {
 
         if (!File.Exists(depsFilePath)) {
             Logger.Warning("Could not find the .deps.json file.");
+            return;
         }
 
         var fileContent = File.ReadAllText(depsFilePath);
@@ -55,10 +66,16 @@ public class NuGetManager {
         Logger.Debug($"Found {_basePackages.Count} installed base packages!");
     }
 
+    /// <summary>
+    /// Downloads a NuGet package and all its dependencies, returning the paths to all relevant DLLs.
+    /// </summary>
+    /// <param name="packageId">The ID of the package to download.</param>
+    /// <param name="version">The version of the package to download.</param>
+    /// <returns>A list of file paths to the downloaded DLLs.</returns>
     public async Task<List<string>> DownloadPackageWithDependenciesAsync(string packageId, string version) {
         string cacheKey = $"{packageId}@{version}";
-        if (_packageCache.ContainsKey(cacheKey)) {
-            return _packageCache[cacheKey];
+        if (_packageCache.TryGetValue(cacheKey, out var cachedPaths)) {
+            return cachedPaths;
         }
 
         var repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
@@ -70,10 +87,7 @@ public class NuGetManager {
         var allDllPaths = new List<string>();
         foreach (var package in allPackages) {
             var nupkgPath = await DownloadPackageAsync(package.Id, package.Version.ToNormalizedString());
-
-            // **FIXED**: Extract to a predictable, non-temporary sub-directory within PackageDir.
             var extractPath = Path.Combine(PackageDir, $"{package.Id}_{package.Version.ToNormalizedString()}");
-
             var packageDlls = GetAssemblyPaths(nupkgPath, extractPath);
             allDllPaths.AddRange(packageDlls);
         }
@@ -84,12 +98,12 @@ public class NuGetManager {
 
     private async Task WalkDependencyTreeAsync(string packageId, NuGetVersion version, DependencyInfoResource resource, HashSet<SourcePackageDependencyInfo> collectedPackages) {
         if (_basePackages == null) PopulateInstalledPackages();
-        if (packageId.StartsWith("System")) return; // Skip all .NET core packages
-        if (_basePackages!.Contains(packageId)) return; // Skip all packages that already have been provided by the assembly
+
+        // Skip system packages or packages already provided by the host application.
+        if (packageId.StartsWith("System") || _basePackages!.Contains(packageId)) return;
 
         var cacheContext = new SourceCacheContext();
         var currentFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
-
         var package = await resource.ResolvePackage(new PackageIdentity(packageId, version), currentFramework, cacheContext, NullLogger.Instance, CancellationToken.None);
 
         if (package == null || !collectedPackages.Add(package)) {
@@ -97,7 +111,6 @@ public class NuGetManager {
         }
 
         foreach (var dependency in package.Dependencies) {
-            // Use the minimal version from the allowed range.
             var dependencyVersion = dependency.VersionRange.MinVersion;
             await WalkDependencyTreeAsync(dependency.Id, dependencyVersion, resource, collectedPackages);
         }
@@ -125,13 +138,12 @@ public class NuGetManager {
     }
 
     private List<string> GetAssemblyPaths(string nupkgPath, string extractPath) {
-        // Only extract if the directory doesn't already exist with files in it.
         if (!Directory.Exists(extractPath) || !Directory.EnumerateFiles(extractPath, "*", SearchOption.AllDirectories).Any()) {
             ZipFile.ExtractToDirectory(nupkgPath, extractPath, true);
         }
 
         var libPath = Path.Combine(extractPath, "lib");
-        if (!Directory.Exists(libPath)) return new List<string>();
+        if (!Directory.Exists(libPath)) return [];
 
         var currentFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
         var frameworkReducer = new FrameworkReducer();
@@ -139,38 +151,41 @@ public class NuGetManager {
         var availableFrameworks = Directory.EnumerateDirectories(libPath)
             .Select(dir => NuGetFramework.Parse(Path.GetFileName(dir)));
 
-        // **FIXED**: Use GetNearest to find the most compatible framework.
         var bestFramework = frameworkReducer.GetNearest(currentFramework, availableFrameworks);
+        if (bestFramework == null) return [];
 
-        if (bestFramework == null) return new List<string>();
-
-        // **FIXED**: Construct the path directly from the best framework's folder name.
         var bestLibDir = Path.Combine(libPath, bestFramework.GetShortFolderName());
-
         return Directory.EnumerateFiles(bestLibDir, "*.dll").ToList();
     }
 }
 
+/// <summary>
+/// A custom AssemblyLoadContext for loading plugin assemblies and their dependencies.
+/// </summary>
 public class PluginLoadContext(string pluginPath) : AssemblyLoadContext(isCollectible: false) {
-    private readonly AssemblyDependencyResolver _resolver = new AssemblyDependencyResolver(pluginPath);
-    // Use a dictionary for fast, accurate lookups.
+    private readonly AssemblyDependencyResolver _resolver = new(pluginPath);
     private readonly Dictionary<string, string> _dependencyMap = [];
 
+    /// <summary>
+    /// Adds a dependency path to the context's internal map.
+    /// </summary>
+    /// <param name="path">The full path to the dependency DLL.</param>
     public void AddDependency(string path) {
         string assemblyName = Path.GetFileNameWithoutExtension(path);
-        if (!_dependencyMap.ContainsKey(assemblyName)) {
-            _dependencyMap.Add(assemblyName, path);
-        }
+        _dependencyMap.TryAdd(assemblyName, path);
     }
 
-    public Assembly TryLoad(AssemblyName assemblyName) {
-        // Check the default resolver first
-        string assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
+    /// <summary>
+    /// Tries to load an assembly by its name, checking the default resolver and then the custom dependency map.
+    /// </summary>
+    /// <param name="assemblyName">The name of the assembly to load.</param>
+    /// <returns>The loaded Assembly, or null if it could not be found.</returns>
+    public Assembly? TryLoad(AssemblyName assemblyName) {
+        string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
         if (assemblyPath != null) {
             return LoadFromAssemblyPath(assemblyPath);
         }
 
-        // Check the custom dependency map
         if (_dependencyMap.TryGetValue(assemblyName.Name, out string mappedPath)) {
             return LoadFromAssemblyPath(mappedPath);
         }
@@ -178,36 +193,37 @@ public class PluginLoadContext(string pluginPath) : AssemblyLoadContext(isCollec
         return null;
     }
 
-    // Your existing protected override Load method now just calls TryLoad
     protected override Assembly? Load(AssemblyName assemblyName) {
+        // Defer system assemblies to the default AssemblyLoadContext.
         if (assemblyName.Name.StartsWith("System.") || assemblyName.Name.StartsWith("Microsoft.")) {
-            // Returning null tells the runtime to check the next context (the default one).
             return null;
         }
 
-        var assembly = TryLoad(assemblyName);
-        if (assembly == null) {
-            return null;
-        }
-        return assembly;
+        return TryLoad(assemblyName);
     }
 }
+
+/// <summary>
+/// Manages multiple PluginLoadContexts and resolves assemblies across them.
+/// </summary>
 public static class PluginContextManager {
-    private static readonly List<PluginLoadContext> _contexts = new();
+    private static readonly List<PluginLoadContext> _contexts = [];
     private static bool _isHandlerRegistered = false;
 
+    /// <summary>
+    /// Adds a new plugin context to the manager and registers the resolving event handler if needed.
+    /// </summary>
+    /// <param name="context">The PluginLoadContext to add.</param>
     public static void AddContext(PluginLoadContext context) {
         _contexts.Add(context);
 
-        // Register the event handler only once.
         if (!_isHandlerRegistered) {
             AssemblyLoadContext.Default.Resolving += OnDefaultContextResolving;
             _isHandlerRegistered = true;
         }
     }
 
-    private static Assembly OnDefaultContextResolving(AssemblyLoadContext context, AssemblyName name) {
-        // Check every loaded plugin context for the missing assembly.
+    private static Assembly? OnDefaultContextResolving(AssemblyLoadContext context, AssemblyName name) {
         foreach (var pluginContext in _contexts) {
             var assembly = pluginContext.TryLoad(name);
             if (assembly != null) {

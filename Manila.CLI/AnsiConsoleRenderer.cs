@@ -1,14 +1,9 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
-using NuGet.Protocol;
 using Shiron.Manila.Logging;
 using Spectre.Console;
-using Spectre.Console.Rendering;
 using System.Collections.Concurrent;
-using System.Data;
-using System.Diagnostics;
-using System.Text;
 
 /// <summary>
 /// Handles rendering structured log entries into a human-readable format
@@ -276,7 +271,7 @@ public static class AnsiConsoleRenderer {
         Logger.System($"Found project in {entry.Root}");
     }
     private static void HandleProjectInitializedLogEntry(ProjectInitializedLogEntry entry) {
-        Logger.System($"Project {entry.Projet.Name} initialized!");
+        Logger.System($"Project {entry.Project.Name} initialized!");
     }
     private static void HandleTaskDiscoveredLogEntry(TaskDiscoveredLogEntry entry) {
         Logger.System($"Discovered task {entry.Task.Name} for {entry.Component.Root} in {entry.Component.Root}");

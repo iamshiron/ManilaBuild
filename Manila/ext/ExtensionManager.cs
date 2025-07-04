@@ -7,141 +7,123 @@ using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
 /// <summary>
-/// Class for loading and managing plugins. Global singleton.
+/// Manages the loading, retrieval, and lifecycle of plugins. This is a global singleton.
 /// </summary>
 public class ExtensionManager {
-    /// <summary>
-    /// Private constructor to prevent instantiation.
-    /// </summary>
     private ExtensionManager() { }
 
-    /// <summary>
-    /// Singleton instance of the extension manager.
-    /// </summary>
     private static readonly ExtensionManager _instance = new();
+
     /// <summary>
-    /// Default group for plugins. Used when no group is specified.
+    /// The default group assigned to plugins that do not specify one.
     /// </summary>
     public static readonly string DEFAULT_GROUP = "shiron.manila";
 
     /// <summary>
-    /// Regular expression pattern for matching plugin keys.
+    /// Matches plugin keys in the format: "group:name@version". Version is optional.
     /// </summary>
     public static readonly Regex pluginPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?", RegexOptions.Compiled);
+
     /// <summary>
-    /// Regular expression pattern for matching component keys inside of plugins.
+    /// Matches component keys in the format: "group:name@version:component". Version is optional.
     /// </summary>
     public static readonly Regex componentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)", RegexOptions.Compiled);
+
     /// <summary>
-    /// Regular expression pattern for matching API classes inside of plugins.
+    /// Matches API class keys in the format: "group:name@version/class". Version is optional.
     /// </summary>
     public static readonly Regex apiClassPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?/(?<class>[\w.\d]+)", RegexOptions.Compiled);
+
     /// <summary>
-    /// Regular expression pattern for matching NuGet dependencies.
+    /// Matches NuGet dependencies in the format: "Package.Name@1.2.3".
     /// </summary>
     public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d-]+)", RegexOptions.Compiled);
 
-    /// <summary>
-    /// Returns the singleton instance of the extension manager.
-    /// </summary>
-    /// <returns></returns>
     public static ExtensionManager GetInstance() {
-        if (_instance == null) throw new Exception("Extension manager not initialized");
         return _instance;
     }
 
-    /// <summary>
-    /// The directory where plugins are located.
-    /// </summary>
     public string? PluginDir { get; private set; }
-    /// <summary>
-    /// List of loaded plugins.
-    /// </summary>
-    public List<ManilaPlugin> Plugins = [];
+    public List<ManilaPlugin> Plugins { get; } = [];
 
     /// <summary>
-    /// Initializes the extension manager with the plugin directory.
+    /// Initializes the manager with the plugin directory.
     /// </summary>
-    /// <param name="pluginDir">The directory that will be searched. Does not support recursive search of subdirectories.</param>
+    /// <param name="pluginDir">The directory to search for plugins. Subdirectories are not searched.</param>
     public void Init(string pluginDir) {
         this.PluginDir = pluginDir;
     }
+
     /// <summary>
-    /// Loads all plugins from the plugin directory.
+    /// Discovers and loads all plugins from the specified plugin directory.
     /// </summary>
-    /// <exception cref="Exception">Plugin instance could not be created.</exception>
     public void LoadPlugins() {
-        var prevContextID = LogContext.CurrentContextId;
-        var pluginLoadingContextID = Guid.NewGuid();
+        if (PluginDir == null) throw new Exception("Plugin directory not set. Call Init() first.");
 
-        if (PluginDir == null) throw new Exception("Plugin directory not set");
-        Logger.Log(new LoadingPluginsLogEntry(PluginDir, pluginLoadingContextID));
-        using (LogContext.PushContext(pluginLoadingContextID)) {
+        Logger.Log(new LoadingPluginsLogEntry(PluginDir, Guid.NewGuid()));
 
-            if (!Directory.Exists(PluginDir)) {
-                Logger.Warning("Plugin directory does not exist: " + PluginDir);
-                Logger.Info("Skipping plugin loading");
-                return;
-            }
+        if (!Directory.Exists(PluginDir)) {
+            Logger.Warning($"Plugin directory does not exist: {PluginDir}. Skipping plugin loading.");
+            return;
+        }
 
-            var nugetManager = ManilaEngine.GetInstance().NuGetManager;
-            foreach (var file in Directory.GetFiles(PluginDir, "*.dll")) {
-                var loadContext = new PluginLoadContext(file);
-                PluginContextManager.AddContext(loadContext);
-                var assembly = Assembly.LoadFile(Path.Join(Directory.GetCurrentDirectory(), file));
-                foreach (var type in assembly.GetTypes()) {
-                    if (type.IsSubclassOf(typeof(ManilaPlugin))) {
-                        var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
-                        if (plugin == null) throw new Exception("Failed to create plugin instance of type " + type + " loaded from " + file);
-                        plugin.File = file;
-                        Plugins.Add(plugin);
+        var nugetManager = ManilaEngine.GetInstance().NuGetManager;
+        foreach (var file in Directory.GetFiles(PluginDir, "*.dll")) {
+            var loadContext = new PluginLoadContext(file);
+            PluginContextManager.AddContext(loadContext);
+            var assembly = Assembly.LoadFile(Path.GetFullPath(file));
 
-                        var pluginContextID = Guid.NewGuid();
-                        Logger.Log(new LoadingPluginLogEntry(plugin, pluginContextID));
-                        using (LogContext.PushContext(pluginContextID)) {
-                            foreach (var dep in plugin.NugetDependencies) {
-                                var match = nugetDependencyPattern.Match(dep);
-                                if (!match.Success) throw new Exception("Invalid dependency: " + dep);
-                                var package = match.Groups["package"].Value;
-                                var version = match.Groups["version"].Value;
-                                if (string.IsNullOrEmpty(version)) throw new Exception("Invalid dependency: " + dep + " (version is empty)");
-                                Logger.Info("Plugin " + plugin.Name + " has dependency: " + package + (version == null ? "" : "@" + version));
+            foreach (var type in assembly.GetTypes()) {
+                if (!type.IsSubclassOf(typeof(ManilaPlugin)) || type.IsAbstract) continue;
 
-                                var nugetContextID = Guid.NewGuid();
-                                Logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin, nugetContextID));
-                                var nugetPackages = nugetManager.DownloadPackageWithDependenciesAsync(package, version).GetAwaiter().GetResult();
-                                foreach (var assemblyPath in nugetPackages) {
-                                    Logger.Log(new NuGetSubPackageLoadingEntry(assemblyPath, nugetContextID));
-                                    loadContext.AddDependency(assemblyPath);
-                                }
+                var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
+                if (plugin == null) throw new Exception($"Failed to create instance of plugin {type} from {file}.");
 
-                                Logger.Info($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
-                            }
+                plugin.File = file;
+                Plugins.Add(plugin);
+                Logger.Log(new LoadingPluginLogEntry(plugin, Guid.NewGuid()));
 
-                            Logger.Debug($"Loaded {plugin.GetType().FullName}!");
-                            foreach (var prop in type.GetProperties()) {
-                                if (prop.GetCustomAttribute<PluginInstance>() != null)
-                                    prop.SetValue(null, plugin);
-                            }
+                // Handle NuGet dependencies
+                foreach (var dep in plugin.NugetDependencies) {
+                    var match = nugetDependencyPattern.Match(dep);
+                    if (!match.Success) throw new Exception($"Invalid NuGet dependency format: '{dep}' in plugin {plugin.Name}.");
 
-                        }
+                    var package = match.Groups["package"].Value;
+                    var version = match.Groups["version"].Value;
+
+                    Logger.Info($"Plugin {plugin.Name} requires dependency: {package}@{version}");
+                    var nugetContextID = Guid.NewGuid();
+                    Logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin, nugetContextID));
+
+                    var nugetPackages = nugetManager.DownloadPackageWithDependenciesAsync(package, version).GetAwaiter().GetResult();
+                    foreach (var assemblyPath in nugetPackages) {
+                        Logger.Log(new NuGetSubPackageLoadingEntry(assemblyPath, nugetContextID));
+                        loadContext.AddDependency(assemblyPath);
                     }
+                    Logger.Info($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
+                }
+
+                Logger.Debug($"Loaded {plugin.GetType().FullName}!");
+                // Inject plugin instance into static properties marked with [PluginInstance]
+                foreach (var prop in type.GetProperties()) {
+                    if (prop.GetCustomAttribute<PluginInstance>() != null)
+                        prop.SetValue(null, plugin);
                 }
             }
         }
     }
 
     /// <summary>
-    /// Initializes all loaded plugins.
+    /// Calls the Init() method on all loaded plugins.
     /// </summary>
     public void InitPlugins() {
         foreach (var plugin in Plugins) {
-
             plugin.Init();
         }
     }
+
     /// <summary>
-    /// Releases all loaded plugins.
+    /// Calls the Release() method on all loaded plugins.
     /// </summary>
     public void ReleasePlugins() {
         foreach (var plugin in Plugins) {
@@ -150,71 +132,54 @@ public class ExtensionManager {
     }
 
     /// <summary>
-    /// Returns a plugin by its type by using a generic.
+    /// Gets a loaded plugin by its type.
     /// </summary>
-    /// <typeparam name="T">The plugin type</typeparam>
-    /// <returns>The plugin instance</returns>
-    /// <exception cref="Exception">Plugin has noot been found.</exception>
-    public ManilaPlugin GetPlugin<T>() {
-        return GetPlugin(typeof(T));
+    /// <typeparam name="T">The type of the plugin to find.</typeparam>
+    /// <returns>The plugin instance.</returns>
+    /// <exception cref="Exception">Thrown if the plugin is not found.</exception>
+    public T GetPlugin<T>() where T : ManilaPlugin {
+        return (T) GetPlugin(typeof(T));
     }
-    /// <summary>
-    /// Returns a plugin by its type by passing the type as a parameter.
-    /// </summary>
-    /// <param name="type">The type</param>
-    /// <returns>The plugin instance</returns>
-    /// <exception cref="Exception"></exception>
+
     public ManilaPlugin GetPlugin(Type type) {
         foreach (var plugin in Plugins) {
             if (plugin.GetType() == type) return plugin;
         }
-        throw new Exception("Plugin not found: " + type);
+        throw new Exception($"Plugin of type {type} not found.");
     }
 
-    /// <summary>
-    /// Returns a plugin by its group, name and version.
-    /// </summary>
-    /// <param name="group">The group</param>
-    /// <param name="name">The name</param>
-    /// <param name="version">The version</param>
-    /// <returns>The instance of the plugin</returns>
-    /// <exception cref="Exception">Plugin has not been found.</exception>
     public ManilaPlugin GetPlugin(string group, string name, string? version = null) {
-        if (version == String.Empty) version = null;
+        if (version == string.Empty) version = null;
         foreach (var plugin in Plugins) {
-            if (plugin.Group == group && plugin.Name == name && (version == null || plugin.Version == version)) return plugin;
+            if (plugin.Group == group && plugin.Name == name && (version == null || plugin.Version == version)) {
+                return plugin;
+            }
         }
-        throw new Exception("Plugin not found: " + group + ":" + name + (version == null ? "" : "." + version));
+        throw new Exception($"Plugin not found: {group}:{name}{(version == null ? "" : "@" + version)}");
     }
-    /// <summary>
-    /// Returns a plugin component by its group, name, component and version.
-    /// </summary>
-    /// <param name="group">The group</param>
-    /// <param name="name">The name</param>
-    /// <param name="component">The component name</param>
-    /// <param name="version">The version</param>
-    /// <returns>The instance of the plugin component</returns>
+
     public PluginComponent GetPluginComponent(string group, string name, string component, string? version = null) {
         return GetPlugin(group, name, version).GetComponent(component);
     }
 
     /// <summary>
-    /// Returns a plugin by its key.
+    /// Gets a plugin by its string key.
     /// </summary>
-    /// <param name="key">Key compliant to the regex <see cref="pluginPattern"/></param>
-    /// <returns>The instance of the plugin</returns>
-    /// <exception cref="Exception">Plugin key was invalid</exception>
+    /// <param name="key">The key, compliant to the format specified in <see cref="pluginPattern"/>.</param>
+    /// <returns>The plugin instance.</returns>
+    /// <exception cref="Exception">Thrown if the key is invalid or plugin is not found.</exception>
     public ManilaPlugin GetPlugin(string key) {
         var match = pluginPattern.Match(key);
         if (!match.Success) throw new Exception("Invalid plugin key: " + key);
         return GetPlugin(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["version"].Value);
     }
+
     /// <summary>
-    /// Returns a plugin component by its key.
+    /// Gets a plugin component by its string key.
     /// </summary>
-    /// <param name="key">Key compliant to the regex <see cref="componentPattern"/></param>
-    /// <returns>The instance of the component</returns>
-    /// <exception cref="Exception">Component key was invalid</exception>
+    /// <param name="key">The key, compliant to the format specified in <see cref="componentPattern"/>.</param>
+    /// <returns>The component instance.</returns>
+    /// <exception cref="Exception">Thrown if the key is invalid or component is not found.</exception>
     public PluginComponent GetPluginComponent(string key) {
         var match = componentPattern.Match(key);
         if (!match.Success) throw new Exception("Invalid component key: " + key);
@@ -222,11 +187,11 @@ public class ExtensionManager {
     }
 
     /// <summary>
-    /// Returns a plugin API class by its key.
+    /// Gets a plugin's exported API type by its string key.
     /// </summary>
-    /// <param name="key">The key</param>
-    /// <returns>The type</returns>
-    /// <exception cref="Exception">Class was not found or regex was incorrect</exception>
+    /// <param name="key">The key, compliant to the format specified in <see cref="apiClassPattern"/>.</param>
+    /// <returns>The API type.</returns>
+    /// <exception cref="Exception">Thrown if the key is invalid or the class is not found.</exception>
     public Type GetAPIType(string key) {
         var match = apiClassPattern.Match(key);
         if (!match.Success) throw new Exception("Invalid API class key: " + key);

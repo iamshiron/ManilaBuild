@@ -1,28 +1,78 @@
 ﻿using Shiron.Manila.API;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
-using Spectre.Console;
 
 namespace Shiron.Manila;
 
 public sealed class ManilaEngine {
-    internal static ManilaEngine? instance = null;
-    public static ManilaEngine GetInstance() { if (instance == null) instance = new ManilaEngine(); return instance; }
+    private static ManilaEngine? instance;
 
-    public string RootDir { get; private set; }
-    public Workspace? Workspace { get; }
+    /// <summary>
+    /// Gets the singleton instance of the ManilaEngine.
+    /// </summary>
+    public static ManilaEngine GetInstance() {
+        // Use null-coalescing assignment for a concise, thread-safe (in modern .NET) singleton initialization.
+        instance ??= new ManilaEngine();
+        return instance;
+    }
+
+    #region Properties
+
+    /// <summary>
+    /// Gets the root directory of the workspace.
+    /// </summary>
+    public string RootDir { get; }
+
+    /// <summary>
+    /// Gets the current workspace.
+    /// </summary>
+    public Workspace Workspace { get; }
+
+    /// <summary>
+    /// Gets the currently executing project. This is null if no project script is running.
+    /// </summary>
     public Project? CurrentProject { get; private set; }
+
+    /// <summary>
+    /// Gets the script context for the currently executing project.
+    /// </summary>
     public ScriptContext? CurrentContext { get; private set; }
+
+    /// <summary>
+    /// Gets the script context for the workspace.
+    /// </summary>
     public ScriptContext WorkspaceContext { get; }
-    public string DataDir { get; private set; }
+
+    /// <summary>
+    /// Gets the directory for Manila's data files.
+    /// </summary>
+    public string DataDir { get; }
+
+    // This is reverted to a public field to maintain API compatibility.
     public bool verboseLogger = false;
+
+    /// <summary>
+    /// Gets the timestamp (in Unix milliseconds) when the engine was created.
+    /// </summary>
     public readonly long EngineCreatedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    public ExecutionGraph ExecutionGraph = new();
+
+    /// <summary>
+    /// Gets the execution graph for managing task dependencies.
+    /// </summary>
+    public ExecutionGraph ExecutionGraph { get; } = new();
+
+    /// <summary>
+    /// Gets the NuGet package manager.
+    /// </summary>
     public NuGetManager NuGetManager { get; }
 
+    /// <summary>
+    /// Gets the version of the Manila engine.
+    /// </summary>
     public static readonly string VERSION = "0.0.0";
+
+    #endregion
 
     private ManilaEngine() {
         RootDir = Directory.GetCurrentDirectory();
@@ -76,9 +126,9 @@ public sealed class ManilaEngine {
     }
 
     /// <summary>
-    /// Runs a project script.
+    /// Executes a specific project script.
     /// </summary>
-    /// <param name="path">The relative path from the root</param>
+    /// <param name="path">The relative path to the project script from the root directory.</param>
     public void RunProjectScript(string path) {
         var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path));
         var scriptPath = Path.Join(Directory.GetCurrentDirectory(), path);
@@ -102,7 +152,7 @@ public sealed class ManilaEngine {
         CurrentContext = null;
     }
     /// <summary>
-    /// Runs the workspace script. Always Manila.js in the root directory.
+    /// Executes the workspace script (Manila.js in the root directory).
     /// </summary>
     public void RunWorkspaceScript() {
         Logger.Debug("Running workspace script: " + WorkspaceContext.ScriptPath);
@@ -118,6 +168,10 @@ public sealed class ManilaEngine {
         }
     }
 
+    /// <summary>
+    /// Constructs the execution graph and runs the build logic for a specified task.
+    /// </summary>
+    /// <param name="taskID">The ID of the task to execute.</param>
     public void ExecuteBuildLogic(string taskID) {
         // Add all existing tasks to the graph, hopefully I'll find a better solution for this in the future
         foreach (var t in Workspace.Tasks) {

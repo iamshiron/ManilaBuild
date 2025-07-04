@@ -11,7 +11,6 @@ public static class LogContext {
 
     /// <summary>
     /// A private helper class that restores the previous context stack when disposed.
-    /// This is the key to the immutable pattern.
     /// </summary>
     private sealed class ContextRestorer : IDisposable {
         private readonly Stack<Guid> _stackToRestore;
