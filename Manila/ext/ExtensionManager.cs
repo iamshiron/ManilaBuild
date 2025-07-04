@@ -76,61 +76,59 @@ public class ExtensionManager {
 
         if (PluginDir == null) throw new Exception("Plugin directory not set");
         Logger.Log(new LoadingPluginsLogEntry(PluginDir, pluginLoadingContextID));
-        LogContext.CurrentContextId = pluginLoadingContextID;
+        using (LogContext.PushContext(pluginLoadingContextID)) {
 
-        if (!Directory.Exists(PluginDir)) {
-            Logger.Warning("Plugin directory does not exist: " + PluginDir);
-            Logger.Info("Skipping plugin loading");
-            return;
-        }
+            if (!Directory.Exists(PluginDir)) {
+                Logger.Warning("Plugin directory does not exist: " + PluginDir);
+                Logger.Info("Skipping plugin loading");
+                return;
+            }
 
-        var nugetManager = ManilaEngine.GetInstance().NuGetManager;
-        foreach (var file in Directory.GetFiles(PluginDir, "*.dll")) {
-            var loadContext = new PluginLoadContext(file);
-            PluginContextManager.AddContext(loadContext);
-            var assembly = Assembly.LoadFile(Path.Join(Directory.GetCurrentDirectory(), file));
-            foreach (var type in assembly.GetTypes()) {
-                if (type.IsSubclassOf(typeof(ManilaPlugin))) {
-                    var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
-                    if (plugin == null) throw new Exception("Failed to create plugin instance of type " + type + " loaded from " + file);
-                    plugin.File = file;
-                    Plugins.Add(plugin);
+            var nugetManager = ManilaEngine.GetInstance().NuGetManager;
+            foreach (var file in Directory.GetFiles(PluginDir, "*.dll")) {
+                var loadContext = new PluginLoadContext(file);
+                PluginContextManager.AddContext(loadContext);
+                var assembly = Assembly.LoadFile(Path.Join(Directory.GetCurrentDirectory(), file));
+                foreach (var type in assembly.GetTypes()) {
+                    if (type.IsSubclassOf(typeof(ManilaPlugin))) {
+                        var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
+                        if (plugin == null) throw new Exception("Failed to create plugin instance of type " + type + " loaded from " + file);
+                        plugin.File = file;
+                        Plugins.Add(plugin);
 
-                    var pluginContextID = Guid.NewGuid();
-                    Logger.Log(new LoadingPluginLogEntry(plugin, pluginContextID));
-                    LogContext.CurrentContextId = pluginContextID;
+                        var pluginContextID = Guid.NewGuid();
+                        Logger.Log(new LoadingPluginLogEntry(plugin, pluginContextID));
+                        using (LogContext.PushContext(pluginContextID)) {
+                            foreach (var dep in plugin.NugetDependencies) {
+                                var match = nugetDependencyPattern.Match(dep);
+                                if (!match.Success) throw new Exception("Invalid dependency: " + dep);
+                                var package = match.Groups["package"].Value;
+                                var version = match.Groups["version"].Value;
+                                if (string.IsNullOrEmpty(version)) throw new Exception("Invalid dependency: " + dep + " (version is empty)");
+                                Logger.Info("Plugin " + plugin.Name + " has dependency: " + package + (version == null ? "" : "@" + version));
 
-                    foreach (var dep in plugin.NugetDependencies) {
-                        var match = nugetDependencyPattern.Match(dep);
-                        if (!match.Success) throw new Exception("Invalid dependency: " + dep);
-                        var package = match.Groups["package"].Value;
-                        var version = match.Groups["version"].Value;
-                        if (string.IsNullOrEmpty(version)) throw new Exception("Invalid dependency: " + dep + " (version is empty)");
-                        Logger.Info("Plugin " + plugin.Name + " has dependency: " + package + (version == null ? "" : "@" + version));
+                                var nugetContextID = Guid.NewGuid();
+                                Logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin, nugetContextID));
+                                var nugetPackages = nugetManager.DownloadPackageWithDependenciesAsync(package, version).GetAwaiter().GetResult();
+                                foreach (var assemblyPath in nugetPackages) {
+                                    Logger.Log(new NuGetSubPackageLoadingEntry(assemblyPath, nugetContextID));
+                                    loadContext.AddDependency(assemblyPath);
+                                }
 
-                        var nugetContextID = Guid.NewGuid();
-                        Logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin, nugetContextID));
-                        var nugetPackages = nugetManager.DownloadPackageWithDependenciesAsync(package, version).GetAwaiter().GetResult();
-                        foreach (var assemblyPath in nugetPackages) {
-                            Logger.Log(new NuGetSubPackageLoadingEntry(assemblyPath, nugetContextID));
-                            loadContext.AddDependency(assemblyPath);
+                                Logger.Info($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
+                            }
+
+                            Logger.Debug($"Loaded {plugin.GetType().FullName}!");
+                            foreach (var prop in type.GetProperties()) {
+                                if (prop.GetCustomAttribute<PluginInstance>() != null)
+                                    prop.SetValue(null, plugin);
+                            }
+
                         }
-
-                        Logger.Info($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
                     }
-
-                    Logger.Debug($"Loaded {plugin.GetType().FullName}!");
-                    foreach (var prop in type.GetProperties()) {
-                        if (prop.GetCustomAttribute<PluginInstance>() != null)
-                            prop.SetValue(null, plugin);
-                    }
-
-                    LogContext.CurrentContextId = pluginLoadingContextID;
                 }
             }
         }
-
-        LogContext.CurrentContextId = prevContextID;
     }
 
     /// <summary>

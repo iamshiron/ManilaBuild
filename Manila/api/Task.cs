@@ -120,18 +120,16 @@ public class Task : ExecutableObject {
     }
 
     protected override void Run() {
-        var oldID = LogContext.CurrentContextId;
-
         Logger.Log(new TaskExecutionStartedLogEntry(this, ExecutableID));
-        LogContext.CurrentContextId = ExecutableID;
-        try {
-            Action.Invoke();
-        } catch (Exception e) {
-            Logger.Log(new TaskExecutionFailedLogEntry(this, ExecutableID, e));
-            throw;
+        using (LogContext.PushContext(ExecutableID)) {
+            try {
+                Action.Invoke();
+            } catch (Exception e) {
+                Logger.Log(new TaskExecutionFailedLogEntry(this, ExecutableID, e));
+                throw;
+            }
+            Logger.Log(new TaskExecutionFinishedLogEntry(this, ExecutableID));
         }
-        Logger.Log(new TaskExecutionFinishedLogEntry(this, ExecutableID));
-        LogContext.CurrentContextId = oldID;
     }
     public override string GetID() {
         return GetIdentifier();

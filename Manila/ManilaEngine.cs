@@ -149,28 +149,16 @@ public sealed class ManilaEngine {
             foreach (var layer in layers) {
                 Guid layerContextID = Guid.NewGuid();
                 Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
-                var oldID = LogContext.CurrentContextId;
-                LogContext.CurrentContextId = layerContextID;
+                using (LogContext.PushContext(layerContextID)) {
+                    List<System.Threading.Tasks.Task> layerTasks = [];
 
-                List<System.Threading.Tasks.Task> layerTasks = [];
+                    foreach (var o in layer.Items) {
+                        layerTasks.Add(System.Threading.Tasks.Task.Run(() => o.Execute()));
+                    }
 
-                foreach (var o in layer.Items) {
-                    layerTasks.Add(System.Threading.Tasks.Task.Run(() => {
-                        if (o is API.Task task) {
-                            try {
-                                o.Execute();
-                            } catch (Exception e) {
-                                throw;
-                            }
-                        } else {
-                            o.Execute();
-                        }
-                    }));
+                    System.Threading.Tasks.Task.WhenAll(layerTasks).GetAwaiter().GetResult();
+                    Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
                 }
-
-                System.Threading.Tasks.Task.WaitAll(layerTasks);
-                Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
-                LogContext.CurrentContextId = oldID;
 
                 layerIndex++;
             }
