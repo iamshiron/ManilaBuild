@@ -71,7 +71,12 @@ public class ExtensionManager {
     /// </summary>
     /// <exception cref="Exception">Plugin instance could not be created.</exception>
     public void LoadPlugins() {
+        var prevContextID = LogContext.CurrentContextId;
+        var pluginLoadingContextID = Guid.NewGuid();
+
         if (PluginDir == null) throw new Exception("Plugin directory not set");
+        Logger.Log(new LoadingPluginsLogEntry(PluginDir, pluginLoadingContextID));
+        LogContext.CurrentContextId = pluginLoadingContextID;
 
         if (!Directory.Exists(PluginDir)) {
             Logger.Warning("Plugin directory does not exist: " + PluginDir);
@@ -91,6 +96,10 @@ public class ExtensionManager {
                     plugin.File = file;
                     Plugins.Add(plugin);
 
+                    var pluginContextID = Guid.NewGuid();
+                    Logger.Log(new LoadingPluginLogEntry(plugin, pluginContextID));
+                    LogContext.CurrentContextId = pluginContextID;
+
                     foreach (var dep in plugin.NugetDependencies) {
                         var match = nugetDependencyPattern.Match(dep);
                         if (!match.Success) throw new Exception("Invalid dependency: " + dep);
@@ -99,7 +108,7 @@ public class ExtensionManager {
                         if (string.IsNullOrEmpty(version)) throw new Exception("Invalid dependency: " + dep + " (version is empty)");
                         Logger.Info("Plugin " + plugin.Name + " has dependency: " + package + (version == null ? "" : "@" + version));
 
-                        Logger.Debug($"Loading {package}@{version}...");
+                        Logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin));
 
                         var nugetPackages = nugetManager.DownloadPackageWithDependenciesAsync(package, version).GetAwaiter().GetResult();
                         foreach (var assemblyPath in nugetPackages) {
@@ -114,9 +123,13 @@ public class ExtensionManager {
                         if (prop.GetCustomAttribute<PluginInstance>() != null)
                             prop.SetValue(null, plugin);
                     }
+
+                    LogContext.CurrentContextId = pluginLoadingContextID;
                 }
             }
         }
+
+        LogContext.CurrentContextId = prevContextID;
     }
 
     /// <summary>

@@ -5,7 +5,7 @@ using Shiron.Manila.Ext;
 using Shiron.Manila.Attributes;
 
 public class ManilaDiscord : ManilaPlugin {
-    public ManilaDiscord() : base("shiron.manila", "discord", "1.0.0", ["Shiron"], ["Discord.Net.Core@3.17.4.0", "Discord.Net.Webhook@3.17.4.0"]) {
+    public ManilaDiscord() : base("shiron.manila", "discord", "1.0.0", ["Shiron"], ["Discord.Net@3.17.4"]) {
     }
 
     [PluginInstance]

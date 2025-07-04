@@ -118,10 +118,14 @@ public class ExceptionConverter : JsonConverter {
 }
 
 // --- Data Classes for Log Events --- //
-public sealed class PluginInfo(string name, string group, string version) {
-    public readonly string Name = name;
-    public readonly string Group = group;
-    public readonly string Version = version;
+public sealed class PluginInfo(ManilaPlugin plugin) {
+    public readonly string Name = plugin.Name;
+    public readonly string Group = plugin.Group;
+    public readonly string Version = plugin.Version;
+    public readonly string[] Authors = plugin.Authors.ToArray();
+    public readonly string Entry = plugin.GetType().FullName;
+    public readonly string[] NuGetDependencies = plugin.NugetDependencies.ToArray();
+    public readonly string File = plugin.File;
 }
 public sealed class TaskInfo(API.Task task) {
     public readonly string Name = task.Name;
@@ -180,7 +184,7 @@ public class BasicLogEntry(string message, LogLevel level) : BaseLogEntry {
 public class BasicPluginLogEntry(ManilaPlugin plugin, string message, LogLevel level) : BaseLogEntry {
     public override LogLevel Level { get; } = level;
     public string Message { get; } = message;
-    public PluginInfo Plugin { get; } = new(plugin.Name, plugin.Version, plugin.Group);
+    public PluginInfo Plugin { get; } = new(plugin);
 }
 
 // --- Lifecycle Logging Events --- //
@@ -327,4 +331,20 @@ public class CommandStdErrLogEntry(Guid contextID, string message, bool quiet) :
     public string ContextID { get; } = contextID.ToString();
     public string Message { get; } = message;
     public bool Quiet { get; } = quiet;
+}
+public class NuGetPackageLoadingLogEntry(string id, string version, ManilaPlugin plugin) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string PackageID { get; } = id;
+    public string PackageVersion { get; } = version;
+    public PluginInfo Plugin { get; } = new(plugin);
+}
+public class LoadingPluginLogEntry(ManilaPlugin plugin, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public PluginInfo Plugin { get; } = new(plugin);
+    public string ContextID { get; } = contextID.ToString();
+}
+public class LoadingPluginsLogEntry(string pluginPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.System;
+    public string PluginPath { get; } = pluginPath;
+    public string ContextID { get; } = contextID.ToString();
 }
