@@ -192,7 +192,7 @@ public static class AnsiConsoleRenderer {
 
     private static void HandleBuildStartedLogEntry(BuildStartedLogEntry entry) {
         _buildCompletion = new TaskCompletionSource<bool>();
-        _executionTree = new Tree($"[green]🚀 Build Started![/]");
+        _executionTree = new Tree($"[green]{Emoji.Known.Rocket} Build Started![/]");
 
         AnsiConsole.Live(_executionTree)
             .AutoClear(false)
@@ -205,7 +205,7 @@ public static class AnsiConsoleRenderer {
     }
 
     private static void HandleBuildLayerStartedLogEntry(BuildLayerStartedLogEntry entry) {
-        PushLog($"[yellow]📦 Layer {entry.LayerIndex}[/]", entry.ParentContextID.ToString(), entry.ContextID);
+        PushLog($"[yellow]{Emoji.Known.Package} Layer {entry.LayerIndex}[/]", entry.ParentContextID.ToString(), entry.ContextID);
 
         _refresh?.Invoke();
     }
@@ -244,7 +244,7 @@ public static class AnsiConsoleRenderer {
         Logger.Info($"Building using [yellow]{entry.Layers.Length}[/] layers!");
     }
     private static void HandleBuildLayerCompletedLogEntry(BuildLayerCompletedLogEntry entry) {
-        PushLog($"[green]📦 Layer [yellow]{entry.LayerIndex}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
+        PushLog($"[green]{Emoji.Known.Package} Layer [yellow]{entry.LayerIndex}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
     }
     private static void HandleProjectsInitializedLogEntry(ProjectsInitializedLogEntry entry) {
         Logger.Info($"Initialization took [yellow]{entry.Duration}[/]ms!");
@@ -257,7 +257,7 @@ public static class AnsiConsoleRenderer {
     }
     private static void HandleScriptExecutedSuccessfullyLogEntry(ScriptExecutedSuccessfullyLogEntry entry) { }
     private static void HandleScriptExecutionFailedLogEntry(ScriptExecutionFailedLogEntry entry) {
-        AnsiConsole.WriteException(entry.Exception);
+        Console.WriteLine(entry.Exception); // Apparently Spectre.Consol renderer is unable to render script exceptions
     }
     private static void HandleTaskExecutionFinishedLogEntry(TaskExecutionFinishedLogEntry entry) {
         PushLog($"[green]Task [skyblue1]{entry.Task.Name}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);

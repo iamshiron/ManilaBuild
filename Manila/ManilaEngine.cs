@@ -70,7 +70,7 @@ public sealed class ManilaEngine {
     /// <summary>
     /// Gets the version of the Manila engine.
     /// </summary>
-    public static readonly string VERSION = "0.0.0";
+    public static readonly string VERSION = "0.0.1";
 
     #endregion
 

@@ -1,10 +1,6 @@
 using Shiron.Manila;
 using Shiron.Manila.Ext;
-using Shiron.Manila.Exceptions;
-using Shiron.Manila.Utils;
 using Spectre.Console;
-using Shiron.Manila.API;
-using System.Diagnostics;
 
 #if DEBUG
 Directory.SetCurrentDirectory("E:\\dev\\Manila\\manila\\run");

@@ -443,8 +443,7 @@ public class ExceptionConverter : JsonConverter {
             return;
         }
 
-        var jo = new JObject
-        {
+        var jo = new JObject {
             { "message", exception.Message },
             { "stackTrace", exception.StackTrace },
             { "hResult", exception.HResult },
