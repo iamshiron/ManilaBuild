@@ -24,6 +24,11 @@ public class NuGetManager {
     private readonly Dictionary<string, List<string>> _packageCache = [];
     private static List<string>? _basePackages = null;
 
+    private readonly string _repositoryURL = "https://api.nuget.org/v3/index.json";
+    private readonly SourceRepository _repository;
+    private readonly DependencyInfoResource _dependencyResource;
+    private readonly FindPackageByIdResource _findPackageByIdResource;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="NuGetManager"/> class.
     /// </summary>
@@ -31,6 +36,10 @@ public class NuGetManager {
     public NuGetManager(string packageDir) {
         PackageDir = packageDir;
         if (!Directory.Exists(PackageDir)) Directory.CreateDirectory(PackageDir);
+
+        _repository = Repository.Factory.GetCoreV3(_repositoryURL);
+        _dependencyResource = _repository.GetResource<DependencyInfoResource>();
+        _findPackageByIdResource = _repository.GetResource<FindPackageByIdResource>();
     }
 
     private string GetCurrentFrameworkName() {
@@ -44,13 +53,13 @@ public class NuGetManager {
         _basePackages = [];
         var entryAssembly = Assembly.GetEntryAssembly();
         if (entryAssembly == null) {
-            Logger.Warning("Could not get entry assembly.");
+            Logger.Warning("Could not get entry assembly. Unable to populate installed packages, loading packages will be slower!");
             return;
         }
         var depsFilePath = Path.Combine(AppContext.BaseDirectory, $"{entryAssembly.GetName().Name}.deps.json");
 
         if (!File.Exists(depsFilePath)) {
-            Logger.Warning("Could not find the .deps.json file.");
+            Logger.Warning("Could not find the .deps.json file. Unable to populate installed packages, loading packages will be slower!");
             return;
         }
 
@@ -74,20 +83,20 @@ public class NuGetManager {
     /// <summary>
     /// Downloads a NuGet package and all its dependencies, returning the paths to all relevant DLLs.
     /// </summary>
-    /// <param name="packageId">The ID of the package to download.</param>
+    /// <param name="packageID">The ID of the package to download.</param>
     /// <param name="version">The version of the package to download.</param>
     /// <returns>A list of file paths to the downloaded DLLs.</returns>
-    public async Task<List<string>> DownloadPackageWithDependenciesAsync(string packageId, string version) {
-        string cacheKey = $"{packageId}@{version}";
+    public async Task<List<string>> DownloadPackageWithDependenciesAsync(string packageID, string version) {
+        string cacheKey = $"{packageID}@{version}";
         if (_packageCache.TryGetValue(cacheKey, out var cachedPaths)) {
             return cachedPaths;
         }
 
-        var repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
-        var dependencyInfoResource = await repository.GetResourceAsync<DependencyInfoResource>();
+        Console.WriteLine($"Downloading dependency {packageID}@{version}");
+
         var allPackages = new HashSet<SourcePackageDependencyInfo>(PackageIdentityComparer.Default);
 
-        await WalkDependencyTreeAsync(packageId, new NuGetVersion(version), dependencyInfoResource, allPackages);
+        await WalkDependencyTreeAsync(packageID, new NuGetVersion(version), _dependencyResource, allPackages);
 
         var allDllPaths = new List<string>();
         foreach (var package in allPackages) {
@@ -125,13 +134,11 @@ public class NuGetManager {
         var downloadPath = Path.Combine(PackageDir, $"{id}_{version}.nupkg");
         if (File.Exists(downloadPath)) return downloadPath;
 
-        var repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
-        var resource = await repository.GetResourceAsync<FindPackageByIdResource>();
         var packageVersion = new NuGetVersion(version);
         var cacheContext = new SourceCacheContext();
 
         using var packageStream = new MemoryStream();
-        bool success = await resource.CopyNupkgToStreamAsync(id, packageVersion, packageStream, cacheContext, NullLogger.Instance, CancellationToken.None);
+        bool success = await _findPackageByIdResource.CopyNupkgToStreamAsync(id, packageVersion, packageStream, cacheContext, NullLogger.Instance, CancellationToken.None);
 
         if (!success) throw new Exception($"Failed to download package: {id}@{version}");
 

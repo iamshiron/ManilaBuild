@@ -182,8 +182,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
                 currentContext.ManilaAPI.AddFunction(
                     (Activator.CreateInstance(t) as Dependency)?.Type!,
                     delegate (dynamic[] args) {
-                        var dep = Activator.CreateInstance(t) as Dependency;
-                        if (dep == null) {
+                        if (Activator.CreateInstance(t) is not Dependency dep) {
                             Logger.Warning($"Could not create instance of dependency type '{t}'.");
                             return null;
                         }

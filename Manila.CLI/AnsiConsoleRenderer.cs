@@ -257,9 +257,7 @@ public static class AnsiConsoleRenderer {
     }
     private static void HandleScriptExecutedSuccessfullyLogEntry(ScriptExecutedSuccessfullyLogEntry entry) { }
     private static void HandleScriptExecutionFailedLogEntry(ScriptExecutionFailedLogEntry entry) {
-        Console.WriteLine(entry.Exception);
-
-        //AnsiConsole.WriteException(entry.Exception);
+        AnsiConsole.WriteException(entry.Exception);
     }
     private static void HandleTaskExecutionFinishedLogEntry(TaskExecutionFinishedLogEntry entry) {
         PushLog($"[green]Task [skyblue1]{entry.Task.Name}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
