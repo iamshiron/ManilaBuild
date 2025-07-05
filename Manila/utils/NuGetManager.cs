@@ -10,6 +10,8 @@ using NuGet.Versioning;
 using System.Runtime.Loader;
 using Shiron.Manila.Logging;
 using System.Text.Json;
+using Shiron.Manila.Profiling;
+using Newtonsoft.Json; // Assuming this namespace contains ProfileScope
 
 namespace Shiron.Manila.Utils;
 
@@ -34,50 +36,56 @@ public class NuGetManager {
     /// </summary>
     /// <param name="packageDir">The directory to store downloaded packages.</param>
     public NuGetManager(string packageDir) {
-        PackageDir = packageDir;
-        if (!Directory.Exists(PackageDir)) Directory.CreateDirectory(PackageDir);
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            PackageDir = packageDir;
+            if (!Directory.Exists(PackageDir)) Directory.CreateDirectory(PackageDir);
 
-        _repository = Repository.Factory.GetCoreV3(_repositoryURL);
-        _dependencyResource = _repository.GetResource<DependencyInfoResource>();
-        _findPackageByIdResource = _repository.GetResource<FindPackageByIdResource>();
+            _repository = Repository.Factory.GetCoreV3(_repositoryURL);
+            _dependencyResource = _repository.GetResource<DependencyInfoResource>();
+            _findPackageByIdResource = _repository.GetResource<FindPackageByIdResource>();
+        }
     }
 
     private string GetCurrentFrameworkName() {
-        return Assembly.GetEntryAssembly()?
-                       .GetCustomAttribute<TargetFrameworkAttribute>()?
-                       .FrameworkName
-               ?? throw new InvalidOperationException("Could not determine target framework.");
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            return Assembly.GetEntryAssembly()?
+                               .GetCustomAttribute<TargetFrameworkAttribute>()?
+                               .FrameworkName
+                       ?? throw new InvalidOperationException("Could not determine target framework.");
+        }
     }
 
     private void PopulateInstalledPackages() {
-        _basePackages = [];
-        var entryAssembly = Assembly.GetEntryAssembly();
-        if (entryAssembly == null) {
-            Logger.Warning("Could not get entry assembly. Unable to populate installed packages, loading packages will be slower!");
-            return;
-        }
-        var depsFilePath = Path.Combine(AppContext.BaseDirectory, $"{entryAssembly.GetName().Name}.deps.json");
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            _basePackages = [];
+            var entryAssembly = Assembly.GetEntryAssembly();
+            if (entryAssembly == null) {
+                Logger.Warning("Could not get entry assembly. Unable to populate installed packages, loading packages will be slower!");
+                return;
+            }
+            var depsFilePath = Path.Combine(AppContext.BaseDirectory, $"{entryAssembly.GetName().Name}.deps.json");
 
-        if (!File.Exists(depsFilePath)) {
-            Logger.Warning("Could not find the .deps.json file. Unable to populate installed packages, loading packages will be slower!");
-            return;
-        }
+            if (!File.Exists(depsFilePath)) {
+                Logger.Warning("Could not find the .deps.json file. Unable to populate installed packages, loading packages will be slower!");
+                return;
+            }
 
-        var fileContent = File.ReadAllText(depsFilePath);
-        using var jsonDocument = JsonDocument.Parse(fileContent);
-        var root = jsonDocument.RootElement;
+            var fileContent = File.ReadAllText(depsFilePath);
+            using var jsonDocument = JsonDocument.Parse(fileContent);
+            var root = jsonDocument.RootElement;
 
-        if (root.TryGetProperty("libraries", out var libraries)) {
-            foreach (var property in libraries.EnumerateObject()) {
-                var libraryName = property.Name;
-                if (property.Value.TryGetProperty("type", out var type) && type.GetString() == "package") {
-                    var packageName = libraryName.Split('/')[0];
-                    _basePackages.Add(packageName);
+            if (root.TryGetProperty("libraries", out var libraries)) {
+                foreach (var property in libraries.EnumerateObject()) {
+                    var libraryName = property.Name;
+                    if (property.Value.TryGetProperty("type", out var type) && type.GetString() == "package") {
+                        var packageName = libraryName.Split('/')[0];
+                        _basePackages.Add(packageName);
+                    }
                 }
             }
-        }
 
-        Logger.Debug($"Found {_basePackages.Count} installed base packages!");
+            Logger.Debug($"Found {_basePackages.Count} installed base packages!");
+        }
     }
 
     /// <summary>
@@ -87,87 +95,122 @@ public class NuGetManager {
     /// <param name="version">The version of the package to download.</param>
     /// <returns>A list of file paths to the downloaded DLLs.</returns>
     public async Task<List<string>> DownloadPackageWithDependenciesAsync(string packageID, string version) {
-        string cacheKey = $"{packageID}@{version}";
-        if (_packageCache.TryGetValue(cacheKey, out var cachedPaths)) {
-            return cachedPaths;
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            string cacheKey = $"{packageID}@{version}";
+            if (_packageCache.TryGetValue(cacheKey, out var cachedPaths)) {
+                return cachedPaths;
+            }
+
+            Console.WriteLine($"Downloading dependency {packageID}@{version}");
+
+            var allPackages = new HashSet<SourcePackageDependencyInfo>(PackageIdentityComparer.Default);
+
+            using (new ProfileScope("Download Dependencies")) // Added ProfileScope
+            {
+                await WalkDependencyTreeAsync(packageID, new NuGetVersion(version), _dependencyResource, allPackages);
+            }
+
+
+            using (new ProfileScope("Search for libraries")) {
+                var allDllPaths = new List<string>();
+                foreach (var package in allPackages) {
+                    var nupkgPath = await DownloadPackageAsync(package.Id, package.Version.ToNormalizedString());
+                    var extractPath = Path.Combine(PackageDir, $"{package.Id}_{package.Version.ToNormalizedString()}");
+                    var packageDlls = GetAssemblyPaths(nupkgPath, extractPath);
+                    allDllPaths.AddRange(packageDlls);
+                }
+
+                _packageCache[cacheKey] = allDllPaths;
+                return allDllPaths;
+            }
         }
+    }
 
-        Console.WriteLine($"Downloading dependency {packageID}@{version}");
-
-        var allPackages = new HashSet<SourcePackageDependencyInfo>(PackageIdentityComparer.Default);
-
-        await WalkDependencyTreeAsync(packageID, new NuGetVersion(version), _dependencyResource, allPackages);
-
-        var allDllPaths = new List<string>();
-        foreach (var package in allPackages) {
-            var nupkgPath = await DownloadPackageAsync(package.Id, package.Version.ToNormalizedString());
-            var extractPath = Path.Combine(PackageDir, $"{package.Id}_{package.Version.ToNormalizedString()}");
-            var packageDlls = GetAssemblyPaths(nupkgPath, extractPath);
-            allDllPaths.AddRange(packageDlls);
+    private static Dictionary<string, SourcePackageDependencyInfo> _cachedPackages = [];
+    private static async Task<SourcePackageDependencyInfo> ResolvePackage(DependencyInfoResource resource, string packageID, NuGetVersion version, NuGetFramework projectFramework, SourceCacheContext cacheContext, ILogger log, CancellationToken token) {
+        var key = $"{packageID}@{version}";
+        if (_cachedPackages.TryGetValue(key, out SourcePackageDependencyInfo? value)) {
+            return value;
         }
-
-        _packageCache[cacheKey] = allDllPaths;
-        return allDllPaths;
+        var res = await resource.ResolvePackage(new PackageIdentity(packageID, version), projectFramework, cacheContext, NullLogger.Instance, CancellationToken.None);
+        _cachedPackages[key] = res;
+        return res;
     }
 
     private async Task WalkDependencyTreeAsync(string packageId, NuGetVersion version, DependencyInfoResource resource, HashSet<SourcePackageDependencyInfo> collectedPackages) {
-        if (_basePackages == null) PopulateInstalledPackages();
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            if (_basePackages == null) PopulateInstalledPackages();
+            if (packageId.StartsWith("System") || _basePackages!.Contains(packageId)) return;
 
-        // Skip system packages or packages already provided by the host application.
-        if (packageId.StartsWith("System") || _basePackages!.Contains(packageId)) return;
+            var cacheContext = new SourceCacheContext();
+            var currentFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
 
-        var cacheContext = new SourceCacheContext();
-        var currentFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
-        var package = await resource.ResolvePackage(new PackageIdentity(packageId, version), currentFramework, cacheContext, NullLogger.Instance, CancellationToken.None);
+            SourcePackageDependencyInfo? package = null;
+            using (new ProfileScope("Resolve Package")) {
+                package = await ResolvePackage(resource, packageId, version, currentFramework, cacheContext, NullLogger.Instance, CancellationToken.None); ;
 
-        if (package == null || !collectedPackages.Add(package)) {
-            return;
-        }
+                if (package == null || !collectedPackages.Add(package)) {
+                    return;
+                }
+            }
 
-        foreach (var dependency in package.Dependencies) {
-            var dependencyVersion = dependency.VersionRange.MinVersion;
-            await WalkDependencyTreeAsync(dependency.Id, dependencyVersion!, resource, collectedPackages);
+            using (new ProfileScope("Process Dependencies")) {
+                foreach (var dependency in package.Dependencies) {
+                    var dependencyVersion = dependency.VersionRange.MinVersion;
+                    await WalkDependencyTreeAsync(dependency.Id, dependencyVersion!, resource, collectedPackages);
+                }
+            }
         }
     }
 
     private async Task<string> DownloadPackageAsync(string id, string version) {
-        var downloadPath = Path.Combine(PackageDir, $"{id}_{version}.nupkg");
-        if (File.Exists(downloadPath)) return downloadPath;
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            var downloadPath = Path.Combine(PackageDir, $"{id}_{version}.nupkg");
+            if (File.Exists(downloadPath)) return downloadPath;
 
-        var packageVersion = new NuGetVersion(version);
-        var cacheContext = new SourceCacheContext();
+            var packageVersion = new NuGetVersion(version);
+            var cacheContext = new SourceCacheContext();
 
-        using var packageStream = new MemoryStream();
-        bool success = await _findPackageByIdResource.CopyNupkgToStreamAsync(id, packageVersion, packageStream, cacheContext, NullLogger.Instance, CancellationToken.None);
+            using (new ProfileScope("Copy Nupkg To Stream")) // Added ProfileScope
+            {
+                using var packageStream = new MemoryStream();
+                bool success = await _findPackageByIdResource.CopyNupkgToStreamAsync(id, packageVersion, packageStream, cacheContext, NullLogger.Instance, CancellationToken.None);
 
-        if (!success) throw new Exception($"Failed to download package: {id}@{version}");
+                if (!success) throw new Exception($"Failed to download package: {id}@{version}");
 
-        using var fileStream = new FileStream(downloadPath, FileMode.Create);
-        packageStream.Position = 0;
-        await packageStream.CopyToAsync(fileStream);
+                using var fileStream = new FileStream(downloadPath, FileMode.Create);
+                packageStream.Position = 0;
+                await packageStream.CopyToAsync(fileStream);
+            }
 
-        return downloadPath;
+            return downloadPath;
+        }
     }
 
     private List<string> GetAssemblyPaths(string nupkgPath, string extractPath) {
-        if (!Directory.Exists(extractPath) || !Directory.EnumerateFiles(extractPath, "*", SearchOption.AllDirectories).Any()) {
-            ZipFile.ExtractToDirectory(nupkgPath, extractPath, true);
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            if (!Directory.Exists(extractPath) || !Directory.EnumerateFiles(extractPath, "*", SearchOption.AllDirectories).Any()) {
+                using (new ProfileScope("Extract Nupkg")) // Added ProfileScope
+                {
+                    ZipFile.ExtractToDirectory(nupkgPath, extractPath, true);
+                }
+            }
+
+            var libPath = Path.Combine(extractPath, "lib");
+            if (!Directory.Exists(libPath)) return [];
+
+            var currentFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
+            var frameworkReducer = new FrameworkReducer();
+
+            var availableFrameworks = Directory.EnumerateDirectories(libPath)
+                .Select(dir => NuGetFramework.Parse(Path.GetFileName(dir)));
+
+            var bestFramework = frameworkReducer.GetNearest(currentFramework, availableFrameworks);
+            if (bestFramework == null) return [];
+
+            var bestLibDir = Path.Combine(libPath, bestFramework.GetShortFolderName());
+            return Directory.EnumerateFiles(bestLibDir, "*.dll").ToList();
         }
-
-        var libPath = Path.Combine(extractPath, "lib");
-        if (!Directory.Exists(libPath)) return [];
-
-        var currentFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
-        var frameworkReducer = new FrameworkReducer();
-
-        var availableFrameworks = Directory.EnumerateDirectories(libPath)
-            .Select(dir => NuGetFramework.Parse(Path.GetFileName(dir)));
-
-        var bestFramework = frameworkReducer.GetNearest(currentFramework, availableFrameworks);
-        if (bestFramework == null) return [];
-
-        var bestLibDir = Path.Combine(libPath, bestFramework.GetShortFolderName());
-        return Directory.EnumerateFiles(bestLibDir, "*.dll").ToList();
     }
 }
 
@@ -183,8 +226,10 @@ public class PluginLoadContext(string pluginPath) : AssemblyLoadContext(isCollec
     /// </summary>
     /// <param name="path">The full path to the dependency DLL.</param>
     public void AddDependency(string path) {
-        string assemblyName = Path.GetFileNameWithoutExtension(path);
-        _dependencyMap.TryAdd(assemblyName, path);
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            string assemblyName = Path.GetFileNameWithoutExtension(path);
+            _dependencyMap.TryAdd(assemblyName, path);
+        }
     }
 
     /// <summary>
@@ -193,25 +238,29 @@ public class PluginLoadContext(string pluginPath) : AssemblyLoadContext(isCollec
     /// <param name="assemblyName">The name of the assembly to load.</param>
     /// <returns>The loaded Assembly, or null if it could not be found.</returns>
     public Assembly? TryLoad(AssemblyName assemblyName) {
-        string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
-        if (assemblyPath != null) {
-            return LoadFromAssemblyPath(assemblyPath);
-        }
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
+            if (assemblyPath != null) {
+                return LoadFromAssemblyPath(assemblyPath);
+            }
 
-        if (assemblyName.Name != null && _dependencyMap.TryGetValue(assemblyName.Name, out string? mappedPath) && mappedPath != null) {
-            return LoadFromAssemblyPath(mappedPath);
-        }
+            if (assemblyName.Name != null && _dependencyMap.TryGetValue(assemblyName.Name, out string? mappedPath) && mappedPath != null) {
+                return LoadFromAssemblyPath(mappedPath);
+            }
 
-        return null;
+            return null;
+        }
     }
 
     protected override Assembly? Load(AssemblyName assemblyName) {
-        // Defer system assemblies to the default AssemblyLoadContext.
-        if (assemblyName.Name != null && (assemblyName.Name.StartsWith("System.") || assemblyName.Name.StartsWith("Microsoft."))) {
-            return null;
-        }
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            // Defer system assemblies to the default AssemblyLoadContext.
+            if (assemblyName.Name != null && (assemblyName.Name.StartsWith("System.") || assemblyName.Name.StartsWith("Microsoft."))) {
+                return null;
+            }
 
-        return TryLoad(assemblyName);
+            return TryLoad(assemblyName);
+        }
     }
 }
 
@@ -227,21 +276,25 @@ public static class PluginContextManager {
     /// </summary>
     /// <param name="context">The PluginLoadContext to add.</param>
     public static void AddContext(PluginLoadContext context) {
-        _contexts.Add(context);
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            _contexts.Add(context);
 
-        if (!_isHandlerRegistered) {
-            AssemblyLoadContext.Default.Resolving += OnDefaultContextResolving;
-            _isHandlerRegistered = true;
+            if (!_isHandlerRegistered) {
+                AssemblyLoadContext.Default.Resolving += OnDefaultContextResolving;
+                _isHandlerRegistered = true;
+            }
         }
     }
 
     private static Assembly? OnDefaultContextResolving(AssemblyLoadContext context, AssemblyName name) {
-        foreach (var pluginContext in _contexts) {
-            var assembly = pluginContext.TryLoad(name);
-            if (assembly != null) {
-                return assembly;
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            foreach (var pluginContext in _contexts) {
+                var assembly = pluginContext.TryLoad(name);
+                if (assembly != null) {
+                    return assembly;
+                }
             }
+            return null;
         }
-        return null;
     }
 }

@@ -1,7 +1,9 @@
-﻿using Shiron.Manila.API;
+﻿using System.Reflection;
+using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
@@ -99,31 +101,33 @@ public sealed class ManilaEngine {
             .Where(f => !Path.GetFullPath(f).Equals(Path.GetFullPath("Manila.js")))
             .ToList();
 
-        try {
-            RunWorkspaceScript();
-            foreach (var script in files) {
-                RunProjectScript(script);
+        using (new ProfileScope("Running Scripts")) {
+            try {
+                RunWorkspaceScript();
+                foreach (var script in files) {
+                    RunProjectScript(script);
+                }
+            } catch {
+                throw;
             }
-        } catch {
-            throw;
-        }
 
-        foreach (var f in Workspace!.ProjectFilters) {
-            foreach (var p in Workspace.Projects.Values) {
-                if (f.Item1.Predicate(p)) {
-                    foreach (var type in p.plugins) {
-                        var plugin = ExtensionManager.GetInstance().GetPlugin(type);
-                        foreach (var e in plugin.Enums) {
-                            // Applying duplicate enums is already handled in the ApplyEnum method.
-                            WorkspaceContext.ApplyEnum(e);
+            foreach (var f in Workspace!.ProjectFilters) {
+                foreach (var p in Workspace.Projects.Values) {
+                    if (f.Item1.Predicate(p)) {
+                        foreach (var type in p.plugins) {
+                            var plugin = ExtensionManager.GetInstance().GetPlugin(type);
+                            foreach (var e in plugin.Enums) {
+                                // Applying duplicate enums is already handled in the ApplyEnum method.
+                                WorkspaceContext.ApplyEnum(e);
+                            }
                         }
+                        f.Item2.Invoke(p);
                     }
-                    f.Item2.Invoke(p);
                 }
             }
-        }
 
-        Logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - EngineCreatedTime));
+            Logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - EngineCreatedTime));
+        }
     }
 
     /// <summary>
@@ -131,46 +135,50 @@ public sealed class ManilaEngine {
     /// </summary>
     /// <param name="path">The relative path to the project script from the root directory.</param>
     public void RunProjectScript(string path) {
-        var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path));
-        var scriptPath = Path.Join(Directory.GetCurrentDirectory(), path);
-        var safeProjectRoot = projectRoot ?? Directory.GetCurrentDirectory();
-        var projectName = Path.GetRelativePath(Directory.GetCurrentDirectory(), safeProjectRoot).ToLower().Replace(Path.DirectorySeparatorChar, ':');
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path));
+            var scriptPath = Path.Join(Directory.GetCurrentDirectory(), path);
+            var safeProjectRoot = projectRoot ?? Directory.GetCurrentDirectory();
+            var projectName = Path.GetRelativePath(Directory.GetCurrentDirectory(), safeProjectRoot).ToLower().Replace(Path.DirectorySeparatorChar, ':');
 
-        Logger.Log(new ProjectDiscoveredLogEntry(projectRoot!, scriptPath));
+            Logger.Log(new ProjectDiscoveredLogEntry(projectRoot!, scriptPath));
 
-        CurrentProject = new Project(projectName, projectRoot!, Workspace);
-        Workspace!.Projects.Add(projectName, CurrentProject);
-        CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(RootDir, path));
+            CurrentProject = new Project(projectName, projectRoot!, Workspace);
+            Workspace!.Projects.Add(projectName, CurrentProject);
+            CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(RootDir, path));
 
-        CurrentContext.ApplyEnum<EPlatform>();
-        CurrentContext.ApplyEnum<EArchitecture>();
+            CurrentContext.ApplyEnum<EPlatform>();
+            CurrentContext.ApplyEnum<EArchitecture>();
 
-        CurrentContext.Init();
-        try {
-            CurrentContext.Execute();
-        } catch {
-            throw;
+            CurrentContext.Init();
+            try {
+                CurrentContext.Execute();
+            } catch {
+                throw;
+            }
+
+            Logger.Log(new ProjectInitializedLogEntry(CurrentProject));
+
+            CurrentProject = null;
+            CurrentContext = null;
         }
-
-        Logger.Log(new ProjectInitializedLogEntry(CurrentProject));
-
-        CurrentProject = null;
-        CurrentContext = null;
     }
     /// <summary>
     /// Executes the workspace script (Manila.js in the root directory).
     /// </summary>
     public void RunWorkspaceScript() {
-        Logger.Debug("Running workspace script: " + WorkspaceContext.ScriptPath);
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            Logger.Debug("Running workspace script: " + WorkspaceContext.ScriptPath);
 
-        WorkspaceContext.ApplyEnum<EPlatform>();
-        WorkspaceContext.ApplyEnum<EArchitecture>();
+            WorkspaceContext.ApplyEnum<EPlatform>();
+            WorkspaceContext.ApplyEnum<EArchitecture>();
 
-        WorkspaceContext.Init();
-        try {
-            WorkspaceContext.Execute();
-        } catch {
-            throw;
+            WorkspaceContext.Init();
+            try {
+                WorkspaceContext.Execute();
+            } catch {
+                throw;
+            }
         }
     }
 
@@ -180,53 +188,61 @@ public sealed class ManilaEngine {
     /// <param name="taskID">The ID of the task to execute.</param>
     public void ExecuteBuildLogic(string taskID) {
         // Add all existing tasks to the graph, hopefully I'll find a better solution for this in the future
-        foreach (var t in Workspace.Tasks) {
-            List<ExecutableObject> dependencies = [];
-            foreach (var d in t.Dependencies) {
-                dependencies.Add(Workspace.GetTask(d));
-            }
-            ExecutionGraph.Attach(t, dependencies);
-        }
-        foreach (var p in Workspace.Projects.Values) {
-            foreach (var t in p.Tasks) {
+
+        ExecutionGraph.ExecutionLayer[] layers = [];
+        using (new ProfileScope("Building Dependency Tree")) {
+            foreach (var t in Workspace.Tasks) {
                 List<ExecutableObject> dependencies = [];
                 foreach (var d in t.Dependencies) {
                     dependencies.Add(Workspace.GetTask(d));
                 }
                 ExecutionGraph.Attach(t, dependencies);
             }
-        }
+            foreach (var p in Workspace.Projects.Values) {
+                foreach (var t in p.Tasks) {
+                    List<ExecutableObject> dependencies = [];
+                    foreach (var d in t.Dependencies) {
+                        dependencies.Add(Workspace.GetTask(d));
+                    }
+                    ExecutionGraph.Attach(t, dependencies);
+                }
+            }
 
-        var layers = ExecutionGraph.GetExecutionLayers(taskID);
+            layers = ExecutionGraph.GetExecutionLayers(taskID);
+        }
 
         Logger.Log(new BuildLayersLogEntry(layers));
 
         long startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         Logger.Log(new BuildStartedLogEntry());
 
-        try {
-            int layerIndex = 0;
-            foreach (var layer in layers) {
-                Guid layerContextID = Guid.NewGuid();
-                Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
-                using (LogContext.PushContext(layerContextID)) {
-                    List<System.Threading.Tasks.Task> layerTasks = [];
+        using (new ProfileScope("Executing Execution Layers")) {
+            try {
+                int layerIndex = 0;
+                foreach (var layer in layers) {
+                    using (new ProfileScope($"Executing Layer {layerIndex}")) {
+                        Guid layerContextID = Guid.NewGuid();
+                        Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
+                        using (LogContext.PushContext(layerContextID)) {
+                            List<System.Threading.Tasks.Task> layerTasks = [];
 
-                    foreach (var o in layer.Items) {
-                        layerTasks.Add(System.Threading.Tasks.Task.Run(() => o.Execute()));
+                            foreach (var o in layer.Items) {
+                                layerTasks.Add(System.Threading.Tasks.Task.Run(() => o.Execute()));
+                            }
+
+                            System.Threading.Tasks.Task.WhenAll(layerTasks).GetAwaiter().GetResult();
+                            Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
+                        }
+
+                        layerIndex++;
                     }
-
-                    System.Threading.Tasks.Task.WhenAll(layerTasks).GetAwaiter().GetResult();
-                    Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
                 }
-
-                layerIndex++;
+                Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
+            } catch (Exception e) {
+                var ex = new BuildException(e.Message, e);
+                Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
+                throw ex;
             }
-            Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
-        } catch (Exception e) {
-            var ex = new BuildException(e.Message, e);
-            Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
-            throw ex;
         }
     }
 }

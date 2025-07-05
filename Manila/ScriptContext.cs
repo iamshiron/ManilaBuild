@@ -8,6 +8,7 @@ using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Profiling;
 
 public sealed class ScriptContext(ManilaEngine engine, API.Component component, string scriptPath) {
     /// <summary>
@@ -44,21 +45,23 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// Initializes the script context.
     /// </summary>
     public void Init() {
-        Logger.Debug($"Initializing script context for '{ScriptPath}'");
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            Logger.Debug($"Initializing script context for '{ScriptPath}'");
 
-        ManilaAPI = new API.Manila(this);
-        ScriptEngine.AddHostObject("Manila", ManilaAPI);
-        ScriptEngine.AddHostObject("print", (params object[] args) => {
-            Logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args), ContextID));
-        });
+            ManilaAPI = new API.Manila(this);
+            ScriptEngine.AddHostObject("Manila", ManilaAPI);
+            ScriptEngine.AddHostObject("print", (params object[] args) => {
+                Logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args), ContextID));
+            });
 
-        foreach (var prop in Component.GetType().GetProperties()) {
-            if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
-            Component.AddScriptProperty(prop);
-        }
-        foreach (var func in Component.GetType().GetMethods()) {
-            if (func.GetCustomAttribute<ScriptFunction>() == null) continue;
-            Component.AddScriptFunction(func, ScriptEngine);
+            foreach (var prop in Component.GetType().GetProperties()) {
+                if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
+                Component.AddScriptProperty(prop);
+            }
+            foreach (var func in Component.GetType().GetMethods()) {
+                if (func.GetCustomAttribute<ScriptFunction>() == null) continue;
+                Component.AddScriptFunction(func, ScriptEngine);
+            }
         }
     }
 
@@ -66,48 +69,50 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// Loads environment variables from a .env file if it exists in the project directory
     /// </summary>
     private void LoadEnvironmentVariables() {
-        // Clear any existing variables to ensure clean state
-        EnvironmentVariables.Clear();
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            // Clear any existing variables to ensure clean state
+            EnvironmentVariables.Clear();
 
-        string? projectDir = System.IO.Path.GetDirectoryName(ScriptPath);
-        if (projectDir == null) {
-            Logger.Warning($"Could not determine project directory for '{ScriptPath}'.");
-            return;
-        }
+            string? projectDir = System.IO.Path.GetDirectoryName(ScriptPath);
+            if (projectDir == null) {
+                Logger.Warning($"Could not determine project directory for '{ScriptPath}'.");
+                return;
+            }
 
-        string envFilePath = System.IO.Path.Combine(projectDir, ".env");
+            string envFilePath = System.IO.Path.Combine(projectDir, ".env");
 
-        if (!System.IO.File.Exists(envFilePath)) {
-            Logger.Debug($"No .env file found for '{ScriptPath}'.");
-            return;
-        }
+            if (!System.IO.File.Exists(envFilePath)) {
+                Logger.Debug($"No .env file found for '{ScriptPath}'.");
+                return;
+            }
 
-        Logger.Debug($"Loading environment variables from '{envFilePath}'.");
-        try {
-            foreach (string line in System.IO.File.ReadAllLines(envFilePath)) {
-                string trimmedLine = line.Trim();
+            Logger.Debug($"Loading environment variables from '{envFilePath}'.");
+            try {
+                foreach (string line in System.IO.File.ReadAllLines(envFilePath)) {
+                    string trimmedLine = line.Trim();
 
-                // Skip comments and empty lines
-                if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#") || trimmedLine.StartsWith("//")) {
-                    continue;
-                }
-
-                int equalIndex = trimmedLine.IndexOf('=');
-                if (equalIndex > 0) {
-                    string key = trimmedLine.Substring(0, equalIndex).Trim();
-                    string value = trimmedLine.Substring(equalIndex + 1).Trim();
-
-                    // Remove quotes if they exist
-                    if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
-                        (value.StartsWith("'") && value.EndsWith("'"))) {
-                        value = value.Substring(1, value.Length - 2);
+                    // Skip comments and empty lines
+                    if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#") || trimmedLine.StartsWith("//")) {
+                        continue;
                     }
 
-                    EnvironmentVariables[key] = value;
+                    int equalIndex = trimmedLine.IndexOf('=');
+                    if (equalIndex > 0) {
+                        string key = trimmedLine.Substring(0, equalIndex).Trim();
+                        string value = trimmedLine.Substring(equalIndex + 1).Trim();
+
+                        // Remove quotes if they exist
+                        if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
+                            (value.StartsWith("'") && value.EndsWith("'"))) {
+                            value = value.Substring(1, value.Length - 2);
+                        }
+
+                        EnvironmentVariables[key] = value;
+                    }
                 }
+            } catch (Exception ex) {
+                Logger.Warning($"Error loading environment variables: {ex.Message}");
             }
-        } catch (Exception ex) {
-            Logger.Warning($"Error loading environment variables: {ex.Message}");
         }
     }
 
@@ -130,37 +135,40 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
          /// Executes the script.
          /// </summary>
     public void Execute() {
-        var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        Logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
-        try {
-            // Load environment variables before executing script
-            LoadEnvironmentVariables();
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            Logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
+            try {
+                // Load environment variables before executing script
+                LoadEnvironmentVariables();
 
-            // Create a TaskCompletionSource to track script completion
-            var taskCompletion = new TaskCompletionSource<bool>();
+                // Create a TaskCompletionSource to track script completion
+                var taskCompletion = new TaskCompletionSource<bool>();
 
-            ScriptEngine.AddHostObject("__Manila_signalCompletion", new Action(() => {
-                taskCompletion.TrySetResult(true);
-            }));
+                ScriptEngine.AddHostObject("__Manila_signalCompletion", new Action(() => {
+                    taskCompletion.TrySetResult(true);
+                }));
 
-            ScriptEngine.AddHostObject("__Manila_handleError", new Action<object>(e => {
-                if (e == null) {
-                    taskCompletion.TrySetException(new Exception("Script error: null exception"));
-                    return;
-                }
-                if (e is not Exception) {
-                    taskCompletion.TrySetException(new Exception("Script error: " + e.ToString()));
-                    return;
-                }
-                taskCompletion.TrySetException((e as Exception)!);
-            }));
+                ScriptEngine.AddHostObject("__Manila_handleError", new Action<object>(e => {
+                    if (e == null) {
+                        taskCompletion.TrySetException(new Exception("Script error: null exception"));
+                        return;
+                    }
+                    if (e is not Exception) {
+                        taskCompletion.TrySetException(new Exception("Script error: " + e.ToString()));
+                        return;
+                    }
+                    taskCompletion.TrySetException((e as Exception)!);
+                }));
 
-            ScriptEngine.AllowReflection = true;
-            ScriptEngine.EnableAutoHostVariables = true;
+                ScriptEngine.AllowReflection = true;
+                ScriptEngine.EnableAutoHostVariables = true;
 
 
-            // Execute the script with proper error handling
-            ScriptEngine.Execute(new DocumentInfo(ScriptPath), $@"
+                // Execute the script with proper error handling
+
+                using (new ProfileScope("Executing Script")) {
+                    ScriptEngine.Execute(new DocumentInfo(ScriptPath), $@"
                 (async function() {{
                     try {{
                         {File.ReadAllText(ScriptPath)}
@@ -170,15 +178,17 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                     }}
                 }})();
             ");
+                }
 
-            // Wait for the script to either complete or throw an exception
-            taskCompletion.Task.Wait();
-        } catch (Exception e) {
-            var ex = new ScriptingException($"An error occurred while executing script: '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}'", e);
-            Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
-            throw ex;
+                // Wait for the script to either complete or throw an exception
+                taskCompletion.Task.Wait();
+            } catch (Exception e) {
+                var ex = new ScriptingException($"An error occurred while executing script: '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}'", e);
+                Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
+                throw ex;
+            }
+            Logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
         }
-        Logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
     }
     /// <summary>
     /// Executes the workspace script.

@@ -3,6 +3,8 @@ using Shiron.Manila.Ext;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Profiling;
+using System.Reflection;
 
 namespace Shiron.Manila.API;
 
@@ -120,8 +122,10 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <param name="component">The plugin component to apply to the current project.</param>
     public void apply(PluginComponent component) {
-        Logger.Debug("Applying: " + component);
-        getProject().ApplyComponent(component);
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            Logger.Debug("Applying: " + component);
+            getProject().ApplyComponent(component);
+        }
     }
 
     /// <summary>
@@ -130,8 +134,10 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <param name="o">The type of filter, a subclass of <see cref="ProjectFilter"/></param>
     /// <param name="a">The action to run</param>
     public void onProject(object o, dynamic a) {
-        var filter = ProjectFilter.From(o);
-        getWorkspace().ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            var filter = ProjectFilter.From(o);
+            getWorkspace().ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
+        }
     }
 
     /// <summary>
@@ -153,11 +159,17 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <param name="project">The project</param>
     /// <param name="config">The config</param>
     public void build(Workspace workspace, Project project, BuildConfig config) {
-        project.GetLanguageComponent().Build(workspace, project, config);
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            project.GetLanguageComponent().Build(workspace, project, config);
+        }
     }
-    public void run(UnresolvedProject project) { run(project.Resolve()); }
+    public void run(UnresolvedProject project) {
+        run(project.Resolve());
+    }
     public void run(Project project) {
-        project.GetLanguageComponent().Run(project);
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            project.GetLanguageComponent().Run(project);
+        }
     }
     public string getEnv(string key) {
         return Context.GetEnvironmentVariable(key);
@@ -179,12 +191,14 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     public object import(string key) {
-        var t = Activator.CreateInstance(ExtensionManager.GetInstance().GetAPIType(key));
-        Logger.Debug($"Importing {key} as {t}");
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            var t = Activator.CreateInstance(ExtensionManager.GetInstance().GetAPIType(key));
+            Logger.Debug($"Importing {key} as {t}");
 
-        if (t == null)
-            throw new Exception($"Failed to import API type for key: {key}");
+            if (t == null)
+                throw new Exception($"Failed to import API type for key: {key}");
 
-        return t;
+            return t;
+        }
     }
 }

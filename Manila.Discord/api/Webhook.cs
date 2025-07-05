@@ -1,7 +1,9 @@
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Discord.Net;
 using Discord.Webhook;
+using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.Discord.API;
 
