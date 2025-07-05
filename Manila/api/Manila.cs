@@ -73,7 +73,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         try {
             return new Task(name, getProject(), Context, Context.ScriptPath);
         } catch (ContextException e) {
-            if (e.cIs != Exceptions.Context.WORKSPACE) throw;
+            if (e.Is != Exceptions.Context.WORKSPACE) throw;
             return new Task(name, getWorkspace(), Context, Context.ScriptPath);
         }
     }

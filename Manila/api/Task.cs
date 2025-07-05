@@ -65,8 +65,8 @@ public class Task : ExecutableObject {
         this.Action = () => {
             try {
                 action();
-            } catch {
-                throw;
+            } catch (Exception e) {
+                throw new TaskFailedException(this, e);
             }
         };
 

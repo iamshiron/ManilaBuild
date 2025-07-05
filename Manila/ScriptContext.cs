@@ -4,7 +4,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
+using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 
 public sealed class ScriptContext(ManilaEngine engine, API.Component component, string scriptPath) {
@@ -172,8 +174,9 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             // Wait for the script to either complete or throw an exception
             taskCompletion.Task.Wait();
         } catch (Exception e) {
-            Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, e, ContextID));
-            throw;
+            var ex = new ScriptingException($"An error occurred while executing script: '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}'", e);
+            Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
+            throw ex;
         }
         Logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
     }

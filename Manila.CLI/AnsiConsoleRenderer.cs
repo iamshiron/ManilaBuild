@@ -5,6 +5,8 @@ using Shiron.Manila.Logging;
 using Spectre.Console;
 using System.Collections.Concurrent;
 
+namespace Shiron.Manila.CLI;
+
 /// <summary>
 /// Handles rendering structured log entries into a human-readable format
 /// using Spectre.Console, creating a rich, structured view of the build process.
@@ -27,6 +29,7 @@ public static class AnsiConsoleRenderer {
     private static TaskCompletionSource<bool>? _buildCompletion; // Controls the LiveDisplay lifetime
     private static Dictionary<string, TaskCompletionSource> _nodeCompletiosn = [];
     private static bool _verbose = false;
+    private static bool _stackTrace = false;
 
     private static readonly ConcurrentDictionary<string, TreeNode> _executionNodes = [];
 
@@ -37,10 +40,11 @@ public static class AnsiConsoleRenderer {
     /// </summary>
     /// <param name="quiet">If true, only logs with level Error or higher.</param>
     /// <param name="structured">If true, outputs raw JSON instead of rendering.</param>
-    public static void Init(bool quiet, bool verbose, bool structured) {
+    public static void Init(bool quiet, bool verbose, bool structured, bool stackTrace) {
         if (quiet && structured) throw new Exception("Cannot use quiet logging while structured logging is enabled!");
 
         _verbose = verbose;
+        _stackTrace = stackTrace;
 
         var jsonSerializerSettings = new JsonSerializerSettings {
             ContractResolver = new CamelCasePropertyNamesContractResolver(),
@@ -218,17 +222,14 @@ public static class AnsiConsoleRenderer {
 
     private static void HandleBuildCompletedLogEntry(BuildCompletedLogEntry entry) {
         // Signal the LiveDisplay to stop
-        _buildCompletion?.SetResult(true);
+        _buildCompletion?.TrySetResult(true);
         AnsiConsole.MarkupLine($"[green]BUILD SUCCESSFUL![/] [grey]in {entry.Duration}ms[/]");
     }
 
     private static void HandleBuildFailedLogEntry(BuildFailedLogEntry entry) {
         // Signal the LiveDisplay to stop
-        _buildCompletion?.SetResult(true);
+        _buildCompletion?.TrySetResult(true);
         AnsiConsole.MarkupLine($"\n[red]BUILD FAILED![/] [grey]in {entry.Duration}ms[/]");
-
-        if (_verbose) AnsiConsole.WriteException(entry.Exception);
-        else AnsiConsole.MarkupLine($"[red]Error: {entry.Exception.Message}[/]");
     }
 
     private static void HandleBasicLogEntry(BasicLogEntry entry) {
@@ -257,13 +258,13 @@ public static class AnsiConsoleRenderer {
     }
     private static void HandleScriptExecutedSuccessfullyLogEntry(ScriptExecutedSuccessfullyLogEntry entry) { }
     private static void HandleScriptExecutionFailedLogEntry(ScriptExecutionFailedLogEntry entry) {
-        Console.WriteLine(entry.Exception); // Apparently Spectre.Consol renderer is unable to render script exceptions
+        _buildCompletion?.TrySetResult(true);
     }
     private static void HandleTaskExecutionFinishedLogEntry(TaskExecutionFinishedLogEntry entry) {
         PushLog($"[green]Task [skyblue1]{entry.Task.Name}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
     }
     private static void HandleTaskExecutionFailedLogEntry(TaskExecutionFailedLogEntry entry) {
-        AnsiConsole.WriteException(entry.Exception);
+        _buildCompletion?.TrySetResult(true);
     }
     private static void HandleProjectDiscoveredLogEntry(ProjectDiscoveredLogEntry entry) {
         Logger.System($"Found project in {entry.Root}");

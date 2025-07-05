@@ -1,4 +1,5 @@
 ﻿using Shiron.Manila.API;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
@@ -145,7 +146,11 @@ public sealed class ManilaEngine {
         CurrentContext.ApplyEnum<EArchitecture>();
 
         CurrentContext.Init();
-        CurrentContext.Execute();
+        try {
+            CurrentContext.Execute();
+        } catch {
+            throw;
+        }
 
         Logger.Log(new ProjectInitializedLogEntry(CurrentProject));
 
@@ -219,7 +224,9 @@ public sealed class ManilaEngine {
             }
             Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
         } catch (Exception e) {
+            var ex = new BuildException(e.Message, e);
             Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
+            throw ex;
         }
     }
 }
