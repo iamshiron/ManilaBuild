@@ -3,9 +3,11 @@ using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.CLI;
 using Spectre.Console;
+using Shiron.Manila.Profiling;
 
 #if DEBUG
 Directory.SetCurrentDirectory("E:\\dev\\Manila\\manila\\run");
+Profiler.IsEnabled = true;
 #endif
 
 var logOptions = new {
@@ -24,24 +26,27 @@ if (!logOptions.Quiet) {
 }
 
 var engine = ManilaEngine.GetInstance();
-
 var extensionManager = ExtensionManager.GetInstance();
 
 AnsiConsoleRenderer.Init(logOptions.Quiet, logOptions.Verbose, logOptions.Structured, logOptions.StackTrace);
 
-extensionManager.Init("./.manila/plugins");
-extensionManager.LoadPlugins();
-extensionManager.InitPlugins();
+using (new ProfileScope("Initializing Plugins")) {
+    extensionManager.Init("./.manila/plugins");
+    extensionManager.LoadPlugins();
+    extensionManager.InitPlugins();
+}
 
 try {
-    engine.Run();
+    using (new ProfileScope("Running Engine")) {
+        engine.Run();
+    }
 
     if (engine.Workspace == null) throw new Exception("Workspace not found");
     foreach (var arg in args) {
         if (arg.StartsWith(":")) {
-            engine.ExecuteBuildLogic(arg[1..]);
-            extensionManager.ReleasePlugins();
-            return;
+            using (new ProfileScope("Executing Build Logic")) {
+                engine.ExecuteBuildLogic(arg[1..]);
+            }
         } else {
             if (arg == "tasks") {
                 AnsiConsole.Write(new Rule("[bold yellow]Available Tasks[/]").RuleStyle("grey").DoubleBorder());
@@ -104,8 +109,6 @@ try {
 
                 extensionManager.ReleasePlugins();
             }
-
-            return;
         }
     }
 } catch (ScriptingException e) {
@@ -149,3 +152,6 @@ try {
 
     return;
 }
+
+extensionManager.ReleasePlugins();
+Profiler.SaveToFile(Path.Combine(ManilaEngine.GetInstance().DataDir, "profiling"));
