@@ -167,7 +167,7 @@ public static class Profiler {
 /// A disposable helper struct for defining a profiling category for a scope of code.
 /// Use with a 'using' statement to set the category for all nested ProfileScope events.
 /// </summary>
-public struct ProfileCategory : IDisposable {
+public readonly struct ProfileCategory : IDisposable {
     private readonly string? _previousCategory;
     private readonly bool _profilerEnabled;
 
@@ -201,7 +201,7 @@ public struct ProfileCategory : IDisposable {
 /// Use with a 'using' statement to automatically record the duration of the scope.
 /// The category is determined by the active <see cref="ProfileCategory"/> scope.
 /// </summary>
-public struct ProfileScope : IDisposable {
+public readonly struct ProfileScope : IDisposable {
     private readonly string _name;
     private readonly long _startTimestampMicroseconds;
     private readonly Dictionary<string, object>? _args;

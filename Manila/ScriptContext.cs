@@ -73,15 +73,15 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             // Clear any existing variables to ensure clean state
             EnvironmentVariables.Clear();
 
-            string? projectDir = System.IO.Path.GetDirectoryName(ScriptPath);
+            string? projectDir = Path.GetDirectoryName(ScriptPath);
             if (projectDir == null) {
                 Logger.Warning($"Could not determine project directory for '{ScriptPath}'.");
                 return;
             }
 
-            string envFilePath = System.IO.Path.Combine(projectDir, ".env");
+            string envFilePath = Path.Combine(projectDir, ".env");
 
-            if (!System.IO.File.Exists(envFilePath)) {
+            if (!File.Exists(envFilePath)) {
                 Logger.Debug($"No .env file found for '{ScriptPath}'.");
                 return;
             }
