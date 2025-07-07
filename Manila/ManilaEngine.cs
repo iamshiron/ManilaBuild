@@ -85,7 +85,6 @@ public sealed class ManilaEngine {
         DataDir = Path.Join(RootDir, ".manila");
         NuGetManager = new(Path.Join(DataDir, "nuget"));
 
-        ExternalLogger.Init();
         ExternalProfiler.Init();
     }
 
