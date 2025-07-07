@@ -38,7 +38,7 @@ using (new ProfileScope("Initializing Plugins")) {
 
 try {
     using (new ProfileScope("Running Engine")) {
-        engine.Run();
+        await engine.Run();
     }
 
     if (engine.Workspace == null) throw new Exception("Workspace not found");

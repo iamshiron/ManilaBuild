@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Threading.Tasks;
 using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
@@ -88,7 +89,7 @@ public sealed class ManilaEngine {
     /// <summary>
     /// Main entry point for the engine. Runs the workspace script and all project scripts.
     /// </summary>
-    public void Run() {
+    public async System.Threading.Tasks.Task Run() {
         if (!File.Exists("Manila.js")) {
             Logger.Error("No Manila.js file found in the current directory.");
             return;
@@ -103,9 +104,9 @@ public sealed class ManilaEngine {
 
         using (new ProfileScope("Running Scripts")) {
             try {
-                RunWorkspaceScript();
+                await RunWorkspaceScript();
                 foreach (var script in files) {
-                    RunProjectScript(script);
+                    await RunProjectScript(script);
                 }
             } catch {
                 throw;
@@ -117,7 +118,6 @@ public sealed class ManilaEngine {
                         foreach (var type in p.plugins) {
                             var plugin = ExtensionManager.GetInstance().GetPlugin(type);
                             foreach (var e in plugin.Enums) {
-                                // Applying duplicate enums is already handled in the ApplyEnum method.
                                 WorkspaceContext.ApplyEnum(e);
                             }
                         }
@@ -134,7 +134,7 @@ public sealed class ManilaEngine {
     /// Executes a specific project script.
     /// </summary>
     /// <param name="path">The relative path to the project script from the root directory.</param>
-    public void RunProjectScript(string path) {
+    public async System.Threading.Tasks.Task RunProjectScript(string path) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path));
             var scriptPath = Path.Join(Directory.GetCurrentDirectory(), path);
@@ -152,7 +152,7 @@ public sealed class ManilaEngine {
 
             CurrentContext.Init();
             try {
-                CurrentContext.Execute();
+                await CurrentContext.ExecuteAsync();
             } catch {
                 throw;
             }
@@ -166,7 +166,7 @@ public sealed class ManilaEngine {
     /// <summary>
     /// Executes the workspace script (Manila.js in the root directory).
     /// </summary>
-    public void RunWorkspaceScript() {
+    public async System.Threading.Tasks.Task RunWorkspaceScript() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             Logger.Debug("Running workspace script: " + WorkspaceContext.ScriptPath);
 
@@ -175,7 +175,7 @@ public sealed class ManilaEngine {
 
             WorkspaceContext.Init();
             try {
-                WorkspaceContext.Execute();
+                await WorkspaceContext.ExecuteAsync();
             } catch {
                 throw;
             }

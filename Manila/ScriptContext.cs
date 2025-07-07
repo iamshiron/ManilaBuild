@@ -131,14 +131,18 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     public void SetEnvironmentVariable(string key, string value) {
         EnvironmentVariables[key] = value;
-    }    /// <summary>
-         /// Executes the script.
-         /// </summary>
-    public void Execute() {
+    }
+
+    /// <summary>
+    /// Executes the script.
+    /// </summary>
+    public async System.Threading.Tasks.Task ExecuteAsync() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             Logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
             try {
+                var scriptContent = File.ReadAllTextAsync(ScriptPath);
+
                 // Load environment variables before executing script
                 LoadEnvironmentVariables();
 
@@ -164,14 +168,11 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 ScriptEngine.AllowReflection = true;
                 ScriptEngine.EnableAutoHostVariables = true;
 
-
-                // Execute the script with proper error handling
-
                 using (new ProfileScope("Executing Script")) {
                     ScriptEngine.Execute(new DocumentInfo(ScriptPath), $@"
                 (async function() {{
                     try {{
-                        {File.ReadAllText(ScriptPath)}
+                        {await scriptContent}
                         __Manila_signalCompletion();
                     }} catch (e) {{
                         __Manila_handleError(e);
@@ -181,7 +182,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 }
 
                 // Wait for the script to either complete or throw an exception
-                taskCompletion.Task.Wait();
+                await taskCompletion.Task;
             } catch (Exception e) {
                 var ex = new ScriptingException($"An error occurred while executing script: '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}'", e);
                 Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));

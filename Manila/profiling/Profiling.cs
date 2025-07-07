@@ -146,7 +146,7 @@ public static class Profiler {
                 }
             }
 
-            string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH_mm");
+            string timestamp = DateTime.Now.ToString("yyyy-MM_dd-HH_mm_ss");
             string fileName = $"profile-{timestamp}.json";
             string filePath = Path.Combine(baseDir, fileName);
 
