@@ -35,9 +35,9 @@ public class NuGetManager {
     private readonly Dictionary<string, SourcePackageDependencyInfo> _resolvedPackageCache = [];
     private List<string>? _basePackages;
 
-    private readonly SourceRepository _repository;
-    private readonly DependencyInfoResource _dependencyResource;
-    private readonly FindPackageByIdResource _findPackageByIdResource;
+    private SourceRepository? _repository;
+    private DependencyInfoResource? _dependencyResource;
+    private FindPackageByIdResource? _findPackageByIdResource;
     private readonly NuGetFramework _currentTargetFramework;
 
     /// <summary>
@@ -50,12 +50,18 @@ public class NuGetManager {
             PackageCacheFilePath = Path.Combine(PackageDir, "nuget.json");
             Directory.CreateDirectory(PackageDir); // Ensures the directory exists.
 
-            _repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
-            _dependencyResource = _repository.GetResource<DependencyInfoResource>();
-            _findPackageByIdResource = _repository.GetResource<FindPackageByIdResource>();
             _currentTargetFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
 
             LoadCache();
+        }
+    }
+
+    public void InitNuGetRepository() {
+        if (_repository != null) return;
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            _repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
+            _dependencyResource = _repository.GetResource<DependencyInfoResource>();
+            _findPackageByIdResource = _repository.GetResource<FindPackageByIdResource>();
         }
     }
 
@@ -96,6 +102,8 @@ public class NuGetManager {
             }
 
             var allPackages = new HashSet<SourcePackageDependencyInfo>(PackageIdentityComparer.Default);
+
+            InitNuGetRepository();
             await WalkDependencyTreeAsync(packageId, new NuGetVersion(version), allPackages).ConfigureAwait(false);
 
             var allDllPaths = new List<string>();
@@ -155,7 +163,7 @@ public class NuGetManager {
         }
 
         var packageIdentity = new PackageIdentity(packageId, version);
-        var packageInfo = await _dependencyResource.ResolvePackage(packageIdentity, _currentTargetFramework, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
+        var packageInfo = await _dependencyResource!.ResolvePackage(packageIdentity, _currentTargetFramework, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
 
         if (packageInfo != null) {
             _resolvedPackageCache[key] = packageInfo;
@@ -169,7 +177,7 @@ public class NuGetManager {
         if (File.Exists(downloadPath)) return downloadPath;
 
         using var packageStream = new MemoryStream();
-        bool success = await _findPackageByIdResource.CopyNupkgToStreamAsync(id, version, packageStream, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
+        bool success = await _findPackageByIdResource!.CopyNupkgToStreamAsync(id, version, packageStream, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
 
         if (!success) throw new InvalidOperationException($"Failed to download package: {id}@{version}");
 
