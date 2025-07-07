@@ -84,8 +84,6 @@ public sealed class ManilaEngine {
         WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(RootDir, "Manila.js"));
         DataDir = Path.Join(RootDir, ".manila");
         NuGetManager = new(Path.Join(DataDir, "nuget"));
-
-        ExternalProfiler.Init();
     }
 
     /// <summary>
