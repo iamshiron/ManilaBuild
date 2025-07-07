@@ -10,15 +10,15 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila;
 
 public sealed class ManilaEngine {
-    private static ManilaEngine? instance;
+    private static ManilaEngine? _instance;
 
     /// <summary>
     /// Gets the singleton instance of the ManilaEngine.
     /// </summary>
     public static ManilaEngine GetInstance() {
         // Use null-coalescing assignment for a concise, thread-safe (in modern .NET) singleton initialization.
-        instance ??= new ManilaEngine();
-        return instance;
+        _instance ??= new ManilaEngine();
+        return _instance;
     }
 
     #region Properties
