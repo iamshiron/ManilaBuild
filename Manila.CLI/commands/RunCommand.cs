@@ -1,6 +1,7 @@
 
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using Shiron.Manila;
 using Shiron.Manila.CLI;
 using Shiron.Manila.CLI.Commands;
@@ -12,12 +13,11 @@ public sealed class RunCommand : Command<RunCommand.Settings> {
     public class Settings : DefaultCommandSettings {
         [CommandArgument(0, "<task>")]
         [Description("The task to run")]
-        public string? Task { get; set; }
+        [Required]
+        public string Task { get; set; } = "";
     }
 
     public override int Execute(CommandContext context, Settings settings) {
-        if (settings.Task == null) throw new ManilaException("No task provided!");
-
         ManilaCLI.SetupInitialComponents(settings);
         ManilaCLI.InitExtensions();
 
