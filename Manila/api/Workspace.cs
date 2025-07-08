@@ -34,6 +34,7 @@ public class Workspace : Component {
         return HasTask(Projects[parts[0]], parts[1]);
     }
     public bool HasTask(Component component, string key) {
+        Console.WriteLine($"{component.GetType().FullName}, {key}");
         return component.Tasks.FirstOrDefault(t => t.Name == key) != null;
     }
 
