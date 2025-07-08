@@ -11,7 +11,8 @@ if (Manila.getEnvBool('ENABLE')) {
 	print('Disabled')
 }
 
-Manila.onProject('*', p => {
+Manila.onProject(['client', 'core'], p => {
+	print(p)
 	p.setToolChain(ToolChain.Clang)
 })
 
