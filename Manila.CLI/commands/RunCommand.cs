@@ -1,13 +1,10 @@
-
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
-using Shiron.Manila;
-using Shiron.Manila.CLI;
-using Shiron.Manila.CLI.Commands;
-using Shiron.Manila.Exceptions;
+using Shiron.Manila.CLI.Exceptions;
 using Shiron.Manila.Ext;
 using Spectre.Console.Cli;
+
+namespace Shiron.Manila.CLI.Commands;
 
 public sealed class RunCommand : Command<RunCommand.Settings> {
     public class Settings : DefaultCommandSettings {
@@ -24,8 +21,9 @@ public sealed class RunCommand : Command<RunCommand.Settings> {
         var engine = ManilaEngine.GetInstance();
         var extensionManager = ExtensionManager.GetInstance();
 
-        var task = ManilaCLI.RunTask(engine, extensionManager, settings, settings.Task);
-        task.Wait();
-        return task.Result;
+        ManilaCLI.StartEngine(engine).Wait();
+        if (!engine.HasTask(settings.Task)) throw new TaskNotFoundException(settings.Task);
+
+        return ManilaCLI.RunTask(engine, extensionManager, settings, settings.Task);
     }
 }

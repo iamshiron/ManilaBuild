@@ -1,6 +1,4 @@
-
 using Shiron.Manila.Ext;
-using Shiron.Manila.Profiling;
 using Spectre.Console;
 using Spectre.Console.Cli;
 

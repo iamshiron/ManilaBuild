@@ -254,8 +254,9 @@ public class ExecutionGraph {
         var targetNode = GetByTask(task);
         if (targetNode == null) throw new Exception($"Task '{task}' not inside graph!");
 
-        var subgraphNodes = new HashSet<ExecutionNode>();
-        subgraphNodes.Add(targetNode);
+        var subgraphNodes = new HashSet<ExecutionNode> {
+            targetNode
+        };
         GetAllAncestors(targetNode, subgraphNodes);
 
         var directChildrenMap = subgraphNodes.ToDictionary(n => n, n => new List<ExecutionNode>());

@@ -245,4 +245,8 @@ public sealed class ManilaEngine {
             }
         }
     }
+
+    public bool HasTask(string task) {
+        return Workspace.HasTask(task);
+    }
 }

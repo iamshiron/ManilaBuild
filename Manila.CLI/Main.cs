@@ -6,6 +6,7 @@ using Shiron.Manila.CLI.Commands;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using Shiron.Manila.Profiling;
+using Shiron.Manila.CLI.Exceptions;
 
 namespace Shiron.Manila.CLI;
 
@@ -28,14 +29,13 @@ public static class ManilaCLI {
         }
     }
 
-    public static async Task<int> RunTask(ManilaEngine engine, ExtensionManager extensionManager, DefaultCommandSettings settings, string task) {
+    public static async Task StartEngine(ManilaEngine engine) {
+        await engine.Run();
+        if (engine.Workspace == null) throw new Exception("Workspace not found!");
+    }
+
+    public static int RunTask(ManilaEngine engine, ExtensionManager extensionManager, DefaultCommandSettings settings, string task) {
         try {
-            using (new ProfileScope("Running Engine")) {
-                await engine.Run();
-            }
-
-            if (engine.Workspace == null) throw new Exception("Workspace not found");
-
             engine.ExecuteBuildLogic(task[1..]);
         } catch (ScriptingException e) {
             //  scripting errors are common user-facing issues.
