@@ -13,10 +13,11 @@ First, let's create a simple directory structure for our project.
 
 ```
 /my-awesome-project
-|--/src
-|  |--/main
-|     |--/Client
-|        |-- Main.cpp
+|--/client
+|  |--/src
+|     |--/main
+|        |--/Client
+|           |-- Main.cpp
 |-- Manila.js
 ```
 
