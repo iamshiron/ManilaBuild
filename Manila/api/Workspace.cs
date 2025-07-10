@@ -20,13 +20,11 @@ public class Workspace : Component {
     /// <param name="key"></param>
     /// <returns></returns>
     public Task GetTask(string key) {
-        Logger.Debug($"GetTask({key})");
         var parts = key.Split(":");
         if (parts.Length > 1) return GetTask(Projects[parts[0]], parts[1]);
         return GetTask(this, key);
     }
     public Task GetTask(Component component, string task) {
-        Logger.Debug($"GetTask({component}, {task})");
         return component.Tasks.FirstOrDefault(t => t.Name == task) ?? throw new TaskNotFoundException(task);
     }
 
@@ -36,7 +34,6 @@ public class Workspace : Component {
         return HasTask(this, key);
     }
     public bool HasTask(Component component, string key) {
-        Logger.Debug($"HasTask({component.GetType().FullName}, {key})");
         return component.Tasks.FirstOrDefault(t => t.Name == key) != null;
     }
 
