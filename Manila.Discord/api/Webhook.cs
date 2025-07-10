@@ -32,8 +32,6 @@ public class Webhook {
     }
 
     public Impl create(string url) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            return new Impl(url);
-        }
+        return new Impl(url);
     }
 }
