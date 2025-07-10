@@ -1,5 +1,5 @@
 # ManilaBuild
-![alt.png](./assets/banner.png)
+![banner](./assets/banner.png)
 
 ManilaBuild is a powerful and flexible build automation tool designed to streamline your development workflow. Inspired by modern build systems, it uses simple JavaScript files for configuration, allowing for easy and intuitive project setup. Whether you're working on a simple C++ application or a complex multi-project solution, ManilaBuild provides the tools you need to manage dependencies, define build tasks, and automate your entire process.
 
@@ -93,12 +93,15 @@ manila run :client:run
 
 You should see the output: `Hello World!`
 
+### 6\. Dive Deeper
+In the meanwhile where the buildsystem is still evolvong rather quickly, you can checkout examples inside the `run/` directory.
+I will also test new features inside this directory.
+
 -----
 
 ## Key Concepts
 
 ManilaBuild is built around a few core concepts:
-
   * **Workspaces and Projects**: A workspace contains one or more projects, each with its own build configuration. This allows you to manage complex, multi-project solutions with ease.
   * **Tasks**: Tasks are the fundamental building blocks of your build process. You can define tasks for compiling, running, testing, or any other action you need to perform. Tasks can also have dependencies on other tasks.
   * **Plugins**: ManilaBuild is highly extensible through plugins. The C++ plugin, for example, provides components for building static libraries and console applications. You can even create your own plugins to add new functionality.
