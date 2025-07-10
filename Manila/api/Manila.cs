@@ -209,7 +209,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
             ["/c", .. command.Split(" ")]
         ));
     }
-    public ITaskAction run(string command) {
+    public ITaskAction execute(string command) {
         return new TaskShellAction(new(
             command.Split(" ")[0],
             command.Split(" ")[1..]
