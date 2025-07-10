@@ -74,7 +74,6 @@ public class ProjectFilterName : ProjectFilter {
     }
 
     public override bool Predicate(Project p) {
-        Console.WriteLine($"{p.GetIdentifier()} == {_name}");
         return p.GetIdentifier() == _name;
     }
 }

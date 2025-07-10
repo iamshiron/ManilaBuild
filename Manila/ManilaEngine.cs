@@ -187,8 +187,10 @@ public sealed class ManilaEngine {
     /// </summary>
     /// <param name="taskID">The ID of the task to execute.</param>
     public void ExecuteBuildLogic(string taskID) {
-        // Add all existing tasks to the graph, hopefully I'll find a better solution for this in the future
+        var task = Workspace.GetTask(taskID);
+        Logger.Debug($"Found task: {task}");
 
+        // Add all existing tasks to the graph, hopefully I'll find a better solution for this in the future
         ExecutionGraph.ExecutionLayer[] layers = [];
         using (new ProfileScope("Building Dependency Tree")) {
             foreach (var t in Workspace.Tasks) {

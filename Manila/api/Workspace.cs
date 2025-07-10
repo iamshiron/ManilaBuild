@@ -20,21 +20,23 @@ public class Workspace : Component {
     /// <param name="key"></param>
     /// <returns></returns>
     public Task GetTask(string key) {
-        if (key.StartsWith(":")) return GetTask(this, key[1..]);
+        Logger.Debug($"GetTask({key})");
         var parts = key.Split(":");
-        return GetTask(Projects[parts[0]], parts[1]);
+        if (parts.Length > 1) return GetTask(Projects[parts[0]], parts[1]);
+        return GetTask(this, key);
     }
     public Task GetTask(Component component, string task) {
+        Logger.Debug($"GetTask({component}, {task})");
         return component.Tasks.FirstOrDefault(t => t.Name == task) ?? throw new TaskNotFoundException(task);
     }
 
     public bool HasTask(string key) {
-        if (key.StartsWith(":")) return HasTask(this, key[1..]);
         var parts = key.Split(":");
-        return HasTask(Projects[parts[0]], parts[1]);
+        if (parts.Length > 1) return HasTask(Projects[parts[0]], parts[1]);
+        return HasTask(this, key);
     }
     public bool HasTask(Component component, string key) {
-        Console.WriteLine($"{component.GetType().FullName}, {key}");
+        Logger.Debug($"HasTask({component.GetType().FullName}, {key})");
         return component.Tasks.FirstOrDefault(t => t.Name == key) != null;
     }
 

@@ -25,3 +25,8 @@ Manila.task('run')
 	.execute(() => {
 		print('Running...')
 	})
+
+Manila.task('shell').after('build').execute(Manila.shell('echo From Shell!'))
+Manila.task('chained')
+	.after('build')
+	.execute([Manila.shell('echo One'), Manila.shell('echo Two'), Manila.shell('echo Three')])

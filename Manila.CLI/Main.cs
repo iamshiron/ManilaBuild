@@ -36,7 +36,7 @@ public static class ManilaCLI {
 
     public static int RunTask(ManilaEngine engine, ExtensionManager extensionManager, DefaultCommandSettings settings, string task) {
         try {
-            engine.ExecuteBuildLogic(task[1..]);
+            engine.ExecuteBuildLogic(task);
         } catch (ScriptingException e) {
             //  scripting errors are common user-facing issues.
             AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Script Error:[/] [white]{Markup.Escape(e.Message)}[/]");

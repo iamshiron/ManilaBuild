@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Shiron.Manila.Exceptions;
 
 namespace Shiron.Manila.Utils;
 
@@ -235,7 +236,7 @@ public class ExecutionGraph {
     public ExecutionNode? GetByTask(string taskID) {
         foreach (var o in _nodes.Keys) {
             if (o is API.Task task) {
-                if (task.GetIdentifier().Equals(taskID)) return _nodes[o];
+                if (task.GetIdentifier() == taskID) return _nodes[o];
             }
         }
         return null;
@@ -252,7 +253,7 @@ public class ExecutionGraph {
     /// <exception cref="InvalidOperationException">Thrown if a cycle is detected in the dependency graph for the task.</exception>
     public ExecutionLayer[] GetExecutionLayers(string task) {
         var targetNode = GetByTask(task);
-        if (targetNode == null) throw new Exception($"Task '{task}' not inside graph!");
+        if (targetNode == null) throw new ManilaException($"Task '{task}' not inside graph!");
 
         var subgraphNodes = new HashSet<ExecutionNode> {
             targetNode

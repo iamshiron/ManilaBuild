@@ -22,8 +22,9 @@ public sealed class RunCommand : Command<RunCommand.Settings> {
         var extensionManager = ExtensionManager.GetInstance();
 
         ManilaCLI.StartEngine(engine).Wait();
-        if (!engine.HasTask(settings.Task[1..])) throw new TaskNotFoundException(settings.Task);
+        if (!engine.HasTask(settings.Task)) throw new TaskNotFoundException(settings.Task);
 
         return ManilaCLI.RunTask(engine, extensionManager, settings, settings.Task);
+
     }
 }

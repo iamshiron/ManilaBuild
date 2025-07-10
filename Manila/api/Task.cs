@@ -6,13 +6,41 @@ using Spectre.Console;
 
 namespace Shiron.Manila.API;
 
+public interface ITaskAction {
+    void Execute();
+}
+
+public class TaskScriptAction(dynamic action) : ITaskAction {
+    private readonly Action _action = () => action();
+
+    public void Execute() {
+        _action.Invoke();
+    }
+}
+public class TaskShellAction(ShellUtils.CommandInfo info) : ITaskAction {
+    private readonly ShellUtils.CommandInfo _commandInfo = info;
+
+    public void Execute() {
+        ShellUtils.Run(_commandInfo);
+    }
+}
+public class PrintAction(string message, string scriptPath, Guid scriptContextID) : ITaskAction {
+    private readonly string _message = message;
+    private readonly string _scriptPath = scriptPath;
+    private readonly Guid _scriptContextID = scriptContextID;
+
+    public void Execute() {
+        Logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextID));
+    }
+}
+
 /// <summary>
 /// Represents a task in the build script.
 /// </summary>
 public class Task : ExecutableObject {
     public readonly string Name;
     public readonly List<string> Dependencies = [];
-    public Action? Action { get; private set; }
+    public ITaskAction[] Actions { get; private set; } = [];
     private readonly ScriptContext _context;
     public Component Component { get; init; }
     public string ScriptPath { get; init; }
@@ -50,8 +78,10 @@ public class Task : ExecutableObject {
     public Task after(string task) {
         if (task.StartsWith(":")) {
             Dependencies.Add(task[1..]);
+            Logger.Debug($"{this}, added {task[1..]}");
         } else {
-            Dependencies.Add($"{Component.GetIdentifier()}:{task}");
+            var prefix = Component is Workspace ? "" : $"{Component.GetIdentifier()}:";
+            Dependencies.Add($"{prefix}{task}");
         }
 
         return this;
@@ -61,14 +91,19 @@ public class Task : ExecutableObject {
     /// </summary>
     /// <param name="action">The action</param>
     /// <returns>Task instance for chaining calls</returns>
-    public Task execute(dynamic action) {
-        this.Action = () => {
-            try {
-                action();
-            } catch (Exception e) {
-                throw new TaskFailedException(this, e);
-            }
-        };
+    public Task execute(object o) {
+        Logger.Debug($"Action: {o.GetType().FullName}, Task: {GetIdentifier()}");
+
+        if (o is ITaskAction action) {
+            Logger.Debug($"Found task action of type {action.GetType().FullName}");
+            Actions = [action];
+        } else
+        if (o is IList<object> list) {
+            Logger.Debug($"Found {list.Count} chained actions!");
+            Actions = list.Cast<ITaskAction>().ToArray();
+        } else {
+            Actions = [new TaskScriptAction((dynamic) o)];
+        }
 
         return this;
     }
@@ -123,7 +158,7 @@ public class Task : ExecutableObject {
         Logger.Log(new TaskExecutionStartedLogEntry(this, ExecutableID));
         using (LogContext.PushContext(ExecutableID)) {
             try {
-                Action?.Invoke();
+                foreach (var a in Actions) a.Execute();
             } catch (Exception e) {
                 Logger.Log(new TaskExecutionFailedLogEntry(this, ExecutableID, e));
                 throw;

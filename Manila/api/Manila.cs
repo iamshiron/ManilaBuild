@@ -149,7 +149,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         var task = getWorkspace().GetTask(key);
         if (task == null) throw new Exception("Task not found: " + key);
 
-        task.Action?.Invoke();
+        task.Execute();
     }
 
     /// <summary>
@@ -200,5 +200,19 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
 
             return t;
         }
+    }
+
+    // Task Actions
+    public ITaskAction shell(string command) {
+        return new TaskShellAction(new(
+            "cmd.exe",
+            ["/c", .. command.Split(" ")]
+        ));
+    }
+    public ITaskAction run(string command) {
+        return new TaskShellAction(new(
+            command.Split(" ")[0],
+            command.Split(" ")[1..]
+        ));
     }
 }

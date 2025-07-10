@@ -43,7 +43,7 @@ public class DependencyProject : Dependency {
         var task = dependency.Workspace.GetTask(dependency, BuildTask);
         if (task == null) throw new Exception("Task not found: " + BuildTask);
 
-        task.Action?.Invoke();
+        task.Execute(); // Still need to find a better way
 
         var depComp = dependency.GetComponent<CppComponent>();
         var comp = dependent.GetComponent<CppComponent>();
