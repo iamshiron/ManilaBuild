@@ -239,7 +239,7 @@ public class ToolchainClang : Toolchain {
     /// <param name="file">The file</param>
     /// <returns>The SHA256 hash</returns>
     public static string GetFileHash(string file) {
-        return HashUtils.SHA256(file);
+        return HashUtils.HashFile(file);
     }
 
     /// <summary>

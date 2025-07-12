@@ -7,6 +7,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.CLI.Exceptions;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.CLI;
 
