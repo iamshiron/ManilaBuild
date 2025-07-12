@@ -14,8 +14,12 @@ sourceSets({
 	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
 })
 
-Manila.task('build')
-	.description('Build the Core')
-	.execute(() => {
-		Manila.build(workspace, project, config)
-	})
+artifacts({
+	main: Manila.artifact(() => {
+		Manila.task('build')
+			.description('Build the Core')
+			.execute(() => {
+				Manila.build(workspace, project, config)
+			})
+	}).description('Core Main Artifact')
+})
