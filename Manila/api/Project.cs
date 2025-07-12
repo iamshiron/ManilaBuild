@@ -18,7 +18,10 @@ public class Project : Component {
     [ScriptProperty]
     public string? Description { get; set; }
 
+    public List<Artifact> Artifacts { get; } = [];
+
     public Dictionary<string, SourceSet> _sourceSets = [];
+    public Dictionary<string, Artifact> _artifacs = [];
     public List<Dependency> _dependencies = [];
 
     public Workspace Workspace { get; private set; }
@@ -43,6 +46,14 @@ public class Project : Component {
         }
     }
 
+    [ScriptFunction]
+    public void artifacts(object obj) {
+        foreach (var pair in (IDictionary<string, object>) obj) {
+            if (_artifacs.ContainsKey(pair.Key)) throw new Exception($"Artifact '{pair.Key}' already exists.");
+            _artifacs.Add(pair.Key, ((ArtifactBuilder) pair.Value).Build());
+        }
+    }
+
     public Project(string name, string location, Workspace workspace) : base(location) {
         this.Name = name;
         this.Workspace = workspace;
@@ -50,5 +61,11 @@ public class Project : Component {
 
     public override string ToString() {
         return $"Project({GetIdentifier()})";
+    }
+
+    public override void Finalize(Manila manilaAPI) {
+        base.Finalize(manilaAPI);
+
+        Artifacts.AddRange(manilaAPI.ArtifactBuilders.Select(b => b.Build()));
     }
 }

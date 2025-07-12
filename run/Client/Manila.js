@@ -18,6 +18,16 @@ sourceSets({
 
 dependencies([Manila.project('core', 'build')])
 
+artifacts({
+	app: Manila.artifact(() => {
+		Manila.task('build-app')
+			.description('Build app artifact')
+			.execute(() => {
+				Manila.build(workspace, project, config)
+			})
+	})
+})
+
 Manila.task('clean')
 	.description('Clean the client')
 	.execute(() => {

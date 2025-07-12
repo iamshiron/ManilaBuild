@@ -19,6 +19,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     private readonly BuildConfig BuildConfig = new();
 
     public List<TaskBuilder> TaskBuilders { get; } = [];
+    public List<ArtifactBuilder> ArtifactBuilders { get; } = [];
 
     /// <summary>
     /// Gets the current project in the Manila engine.
@@ -61,7 +62,16 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <param name="origin">The origin of the source set.</param>
     /// <returns>A new source set with the specified origin.</returns>
     public SourceSet sourceSet(string origin) {
-        return new SourceSet(origin);
+        return new(origin);
+    }
+    /// <summary>
+    /// Creates a new artifact
+    /// </summary>
+    /// <returns>A builder to create the artifact</returns>
+    public ArtifactBuilder artifact(dynamic lambda) {
+        var builder = new ArtifactBuilder(() => lambda());
+        ArtifactBuilders.Add(builder);
+        return builder;
     }
 
     public async void sleep(int milliseconds) {
