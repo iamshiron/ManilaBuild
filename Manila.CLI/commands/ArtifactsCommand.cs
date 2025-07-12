@@ -18,18 +18,29 @@ internal sealed class ArtifactsCommand : Command<ArtifactsCommand.Settings> {
         AnsiConsole.Write(new Rule("[bold yellow]Available Artifacts[/]").RuleStyle("grey").DoubleBorder());
 
         var table = new Table().Border(TableBorder.Rounded);
-        table.AddColumn(new TableColumn("[cyan]Artifact[/]"));
-        table.AddColumn(new TableColumn("[blue]Project[/]"));
+        table.AddColumn(new TableColumn("[blue]Artifact[/]"));
+        table.AddColumn(new TableColumn("[cyan]Project[/]"));
         table.AddColumn(new TableColumn("[green]Description[/]"));
+        table.AddColumn(new TableColumn("[blue]Tasks[/]"));
 
         foreach (var p in engine.Workspace.Projects) {
             var project = p.Value;
 
             foreach (var (name, artifact) in project._artifacs) {
+                var artifactsTable = new Table();
+                artifactsTable.AddColumn(new TableColumn("[cyan]Task[/]"));
+                artifactsTable.AddColumn(new TableColumn("[green]Description[/]"));
+
+                foreach (var task in artifact.Tasks) {
+                    artifactsTable.AddRow($"[cyan bold]{task.Name}[/]", task.Description);
+                }
+
                 table.AddRow(
-                    $"[bold cyan]{name}[/]",
-                    $"[bold blue]{project.Name}[/]",
-                    artifact.Description ?? "");
+                    new Markup($"[bold cyan]{project.Name}[/]"),
+                    new Markup($"[bold blue]{name}[/]"),
+                    new Markup(artifact.Description ?? ""),
+                    artifactsTable
+                );
             }
         }
 

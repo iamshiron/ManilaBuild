@@ -3,13 +3,16 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
-public sealed class ArtifactBuilder(Action lambda) : IBuildable<Artifact> {
+public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI) : IBuildable<Artifact> {
     public string Description = string.Empty;
-    public readonly List<Task> Tasks = [];
+    public readonly List<TaskBuilder> TaskBuilders = [];
     public readonly Action Lambda = lambda;
+    public readonly Manila ManilaAPI = manilaAPI;
 
     public Artifact Build() {
+        ManilaAPI.CurrentArtifactBuilder = this;
         Lambda.Invoke();
+        ManilaAPI.CurrentArtifactBuilder = null;
         return new(this);
     }
 
@@ -24,4 +27,5 @@ public sealed class ArtifactBuilder(Action lambda) : IBuildable<Artifact> {
 
 public class Artifact(ArtifactBuilder builder) {
     public readonly string Description = builder.Description;
+    public readonly Task[] Tasks = [.. builder.TaskBuilders.Select(b => b.Build())];
 }

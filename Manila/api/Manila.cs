@@ -21,6 +21,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     public List<TaskBuilder> TaskBuilders { get; } = [];
     public List<ArtifactBuilder> ArtifactBuilders { get; } = [];
 
+    public ArtifactBuilder? CurrentArtifactBuilder { get; set; } = null;
+
     /// <summary>
     /// Gets the current project in the Manila engine.
     /// </summary>
@@ -69,7 +71,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <returns>A builder to create the artifact</returns>
     public ArtifactBuilder artifact(dynamic lambda) {
-        var builder = new ArtifactBuilder(() => lambda());
+        var builder = new ArtifactBuilder(() => lambda(), this);
         ArtifactBuilders.Add(builder);
         return builder;
     }
@@ -84,6 +86,12 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <param name="name">The name of the task to create.</param>
     /// <returns>A new task with the specified name, associated with the current project and script context.</returns>
     public TaskBuilder task(string name) {
+        if (CurrentArtifactBuilder != null) {
+            var taskBuilder = new TaskBuilder(name, Context, getProject());
+            CurrentArtifactBuilder.TaskBuilders.Add(taskBuilder);
+            return taskBuilder;
+        }
+
         try {
             var builder = new TaskBuilder(name, Context, getProject());
             TaskBuilders.Add(builder);
