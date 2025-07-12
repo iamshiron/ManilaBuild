@@ -111,6 +111,7 @@ public static class ManilaCLI {
             c.AddCommand<PluginsCommand>("plugins");
             c.AddCommand<TasksCommand>("tasks");
             c.AddCommand<RunCommand>("run");
+            c.AddCommand<ArtifactsCommand>("artifacts");
         });
 
         var exitCode = CommandApp.Run(args);

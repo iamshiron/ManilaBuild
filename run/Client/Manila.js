@@ -25,7 +25,7 @@ artifacts({
 			.execute(() => {
 				Manila.build(workspace, project, config)
 			})
-	})
+	}).description('Main Artifact')
 })
 
 Manila.task('clean')
