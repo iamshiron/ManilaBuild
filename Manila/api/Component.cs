@@ -233,4 +233,8 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         }
         throw new Exception("No language component found.");
     }
+
+    public void Finalize(Manila manilaAPI) {
+        Tasks.AddRange(manilaAPI.TaskBuilders.Select(b => b.Build()));
+    }
 }

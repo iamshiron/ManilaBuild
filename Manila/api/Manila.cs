@@ -18,6 +18,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     private readonly ScriptContext Context = context;
     private readonly BuildConfig BuildConfig = new();
 
+    public List<TaskBuilder> TaskBuilders { get; } = [];
+
     /// <summary>
     /// Gets the current project in the Manila engine.
     /// </summary>
@@ -71,12 +73,16 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <param name="name">The name of the task to create.</param>
     /// <returns>A new task with the specified name, associated with the current project and script context.</returns>
-    public Task task(string name) {
+    public TaskBuilder task(string name) {
         try {
-            return new Task(name, getProject(), Context, Context.ScriptPath);
+            var builder = new TaskBuilder(name, Context, getProject());
+            TaskBuilders.Add(builder);
+            return builder;
         } catch (ContextException e) {
             if (e.Is != Exceptions.Context.WORKSPACE) throw;
-            return new Task(name, getWorkspace(), Context, Context.ScriptPath);
+            var builder = new TaskBuilder(name, Context, getWorkspace());
+            TaskBuilders.Add(builder);
+            return builder;
         }
     }
 

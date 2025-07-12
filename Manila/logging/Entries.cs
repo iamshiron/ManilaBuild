@@ -26,7 +26,7 @@ public sealed class PluginInfo(ManilaPlugin plugin) {
 public sealed class TaskInfo(API.Task task) {
     public string Name { get; init; } = task.Name;
     public string ID { get; init; } = task.GetIdentifier();
-    public string ScriptPath { get; init; } = task.ScriptPath;
+    public string ScriptPath { get; init; } = task.Context.ScriptPath;
     public string Description { get; init; } = task.Description;
     public ComponentInfo Component { get; init; } = new(task.Component);
 }

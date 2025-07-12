@@ -37,7 +37,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     private Dictionary<string, string> EnvironmentVariables { get; } = new();
 
-    public API.Manila? ManilaAPI { get; private set; } = null;
+    public Manila? ManilaAPI { get; private set; } = null;
 
     public List<Type> EnumComponents { get; } = new();
 
@@ -138,6 +138,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     public async System.Threading.Tasks.Task ExecuteAsync() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            if (ManilaAPI == null) throw new ManilaException("ScriptEngine needs to be initialized before running a script!");
+
             var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             Logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
             try {
@@ -183,6 +185,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
 
                 // Wait for the script to either complete or throw an exception
                 await taskCompletion.Task;
+
+                Component.Finalize(ManilaAPI);
             } catch (Exception e) {
                 var ex = new ScriptingException($"An error occurred while executing script: '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}'", e);
                 Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));

@@ -34,48 +34,22 @@ public class PrintAction(string message, string scriptPath, Guid scriptContextID
     }
 }
 
-/// <summary>
-/// Represents a task in the build script.
-/// </summary>
-public class Task : ExecutableObject {
-    public readonly string Name;
+public sealed class TaskBuilder(string name, ScriptContext context, Component component) : IBuildable<Task> {
+    public readonly string Name = name;
+    public string Description { get; private set; } = "A generic task";
+    public bool Blocking { get; private set; } = true;
+
     public readonly List<string> Dependencies = [];
     public ITaskAction[] Actions { get; private set; } = [];
-    private readonly ScriptContext _context;
-    public Component Component { get; init; }
-    public string ScriptPath { get; init; }
-    public string Description { get; set; } = "A generic task";
-    public bool Blocking { get; set; } = true;
-    public string TaskID { get; } = Guid.NewGuid().ToString();
-
-    /// <summary>
-    /// Get the identifier of the task.
-    /// </summary>
-    /// <returns>The unique identifier of the task</returns>
-    public string GetIdentifier() {
-        if (Component is Project) return $"{Component.GetIdentifier()}:{Name}";
-        return Name;
-
-    }
-
-    public Task(string name, Component component, ScriptContext context, string scriptPath) {
-        if (name.Contains(":")) throw new Exception("Task name cannot contain a colon (:) character.");
-
-        this.Name = name;
-        this.Component = component;
-        this._context = context;
-        this.Component.Tasks.Add(this);
-        this.ScriptPath = scriptPath;
-
-        Logger.Log(new TaskDiscoveredLogEntry(this, Component));
-    }
+    public readonly ScriptContext ScriptContext = context;
+    public readonly Component Component = component;
 
     /// <summary>
     /// Add a dependency to the task.
     /// </summary>
     /// <param name="task">The dependents task ID</param>
     /// <returns>Task instance for chaining calls</returns>
-    public Task after(string task) {
+    public TaskBuilder after(string task) {
         if (task.StartsWith(":")) {
             Dependencies.Add(task[1..]);
             Logger.Debug($"{this}, added {task[1..]}");
@@ -91,9 +65,7 @@ public class Task : ExecutableObject {
     /// </summary>
     /// <param name="action">The action</param>
     /// <returns>Task instance for chaining calls</returns>
-    public Task execute(object o) {
-        Logger.Debug($"Action: {o.GetType().FullName}, Task: {GetIdentifier()}");
-
+    public TaskBuilder execute(object o) {
         if (o is ITaskAction action) {
             Logger.Debug($"Found task action of type {action.GetType().FullName}");
             Actions = [action];
@@ -112,7 +84,7 @@ public class Task : ExecutableObject {
     /// </summary>
     /// <param name="description">The description</param>
     /// <returns>Task instance for chaining calls</returns>
-    public Task description(string description) {
+    public TaskBuilder description(string description) {
         this.Description = description;
         return this;
     }
@@ -121,10 +93,39 @@ public class Task : ExecutableObject {
     /// </summary>
     /// <param name="background">True: Non Blocking, False: Blocking</param>
     /// <returns></returns>
-    public Task background(bool background = true) {
+    public TaskBuilder background(bool background = true) {
         this.Blocking = !background;
         return this;
     }
+
+    public Task Build() {
+        return new(this);
+    }
+}
+
+/// <summary>
+/// Represents a task in the build script.
+/// </summary>
+public class Task(TaskBuilder builder) : ExecutableObject {
+    public readonly string Name = builder.Name;
+    public readonly List<string> Dependencies = builder.Dependencies;
+    public readonly ITaskAction[] Actions = builder.Actions;
+    public readonly ScriptContext Context = builder.ScriptContext;
+    public readonly Component Component = builder.Component;
+    public readonly string Description = builder.Description;
+    public readonly bool Blocking = builder.Blocking;
+    public readonly string TaskID = Guid.NewGuid().ToString();
+
+    /// <summary>
+    /// Get the identifier of the task.
+    /// </summary>
+    /// <returns>The unique identifier of the task</returns>
+    public string GetIdentifier() {
+        if (Component is Project) return $"{Component.GetIdentifier()}:{Name}";
+        return Name;
+
+    }
+
 
     /// <summary>
     /// Gets the execution order of the task and its dependencies.
