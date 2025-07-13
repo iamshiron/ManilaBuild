@@ -63,7 +63,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <param name="origin">The origin of the source set.</param>
     /// <returns>A new source set with the specified origin.</returns>
-    public SourceSet sourceSet(string origin) {
+    public SourceSetBuilder sourceSet(string origin) {
         return new(origin);
     }
     /// <summary>

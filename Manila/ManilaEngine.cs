@@ -286,27 +286,12 @@ public sealed class ManilaEngine {
     }
     public bool TryGetTask(string uri, out API.Task? task) {
         try {
-            var info = RegexUtils.MatchTasks(uri);
-
-            if (info.Project == null) {
-                var temp = Workspace.Tasks.Find(m => m.Name == info.Task);
-                task = temp;
-                return task != null;
-            }
-
-            var project = Workspace.Projects[info.Project];
-            if (info.Artifact == null) {
-                var temp = project.Tasks.Find(m => m.Name == info.Task);
-                task = temp;
-                return task != null;
-            }
-
-            var t = project.Artifacts[info.Artifact].Tasks.First(t => t.Name == info.Task);
+            var t = GetTask(uri);
             task = t;
-            return task != null;
-        } catch (Exception e) {
-            var ex = new ManilaException($"Exception while finding task '{uri}'", e);
-            throw ex;
+            return t != null;
+        } catch {
+            task = null;
+            return false;
         }
     }
 }

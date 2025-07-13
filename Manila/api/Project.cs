@@ -20,9 +20,11 @@ public class Project : Component {
     public string? Description { get; set; }
 
     public Dictionary<string, Artifact> Artifacts { get; } = [];
+    public Dictionary<string, SourceSet> SourceSets = [];
 
-    public Dictionary<string, SourceSet> _sourceSets = [];
     private readonly Dictionary<string, ArtifactBuilder> _artifactBuilders = [];
+    private readonly Dictionary<string, SourceSetBuilder> _sourceSetBuilders = [];
+
     public List<Dependency> _dependencies = [];
 
     public Workspace Workspace { get; private set; }
@@ -30,8 +32,8 @@ public class Project : Component {
     [ScriptFunction]
     public void sourceSets(object obj) {
         foreach (var pair in (IDictionary<string, object>) obj) {
-            if (_sourceSets.ContainsKey(pair.Key)) throw new Exception($"SourceSet '{pair.Key}' already exists.");
-            _sourceSets.Add(pair.Key, (SourceSet) pair.Value);
+            if (SourceSets.ContainsKey(pair.Key)) throw new Exception($"SourceSet '{pair.Key}' already exists.");
+            _sourceSetBuilders.Add(pair.Key, (SourceSetBuilder) pair.Value);
         }
     }
 
@@ -71,6 +73,9 @@ public class Project : Component {
 
         foreach (var (name, builder) in _artifactBuilders) {
             Artifacts[name] = builder.Build();
+        }
+        foreach (var (name, builder) in _sourceSetBuilders) {
+            SourceSets[name] = builder.Build();
         }
     }
 }

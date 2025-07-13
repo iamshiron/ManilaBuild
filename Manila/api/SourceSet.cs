@@ -1,18 +1,17 @@
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
-/// <summary>
-/// Represents a set of files mostly used for source sets.
-/// </summary>
-public class SourceSet {
-    public string Root { get; private set; }
-    public List<string> Includes { get; private set; } = new();
-    public List<string> Excludes { get; private set; } = new();
+public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
+    public readonly string Root = root;
+    public List<string> Includes { get; private set; } = [];
+    public List<string> Excludes { get; private set; } = [];
 
-    public SourceSet(string root) {
-        this.Root = root;
+    public SourceSetBuilder(string root, List<string> includes, List<string> excludes) : this(root) {
+        Includes = includes;
+        Excludes = excludes;
     }
 
     /// <summary>
@@ -20,7 +19,7 @@ public class SourceSet {
     /// </summary>
     /// <param name="globs">The pattern for the file matcher</param>
     /// <returns>SourceSet instance for chaining calls</returns>
-    public SourceSet include(params string[] globs) {
+    public SourceSetBuilder include(params string[] globs) {
         Includes.AddRange(globs);
         return this;
     }
@@ -29,7 +28,7 @@ public class SourceSet {
     /// </summary>
     /// <param name="globs">The pattern for the file matcher</param>
     /// <returns>SourceSet instance for chaining calls</returns>
-    public SourceSet exclude(params string[] globs) {
+    public SourceSetBuilder exclude(params string[] globs) {
         Excludes.AddRange(globs);
         return this;
     }
@@ -50,4 +49,18 @@ public class SourceSet {
         var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(Root)));
         return result.Files.Select(f => new FileHandle(Root, f.Path)).ToArray();
     }
+
+    public SourceSet Build() {
+        return new(this);
+    }
+}
+
+/// <summary>
+/// Represents a set of files mostly used for source sets.
+/// </summary>
+public class SourceSet(SourceSetBuilder builder) {
+    public readonly string Root = builder.Root;
+    public readonly string[] Includes = [.. builder.Includes];
+    public readonly string[] Excluded = [.. builder.Excludes];
+    public readonly FileHandle[] Files = [.. builder.files()];
 }
