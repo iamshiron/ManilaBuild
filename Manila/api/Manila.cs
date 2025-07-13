@@ -87,18 +87,18 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <returns>A new task with the specified name, associated with the current project and script context.</returns>
     public TaskBuilder task(string name) {
         if (CurrentArtifactBuilder != null) {
-            var taskBuilder = new TaskBuilder(name, Context, getProject());
+            var taskBuilder = new TaskBuilder(name, Context, getProject(), CurrentArtifactBuilder);
             CurrentArtifactBuilder.TaskBuilders.Add(taskBuilder);
             return taskBuilder;
         }
 
         try {
-            var builder = new TaskBuilder(name, Context, getProject());
+            var builder = new TaskBuilder(name, Context, getProject(), null);
             TaskBuilders.Add(builder);
             return builder;
         } catch (ContextException e) {
             if (e.Is != Exceptions.Context.WORKSPACE) throw;
-            var builder = new TaskBuilder(name, Context, getWorkspace());
+            var builder = new TaskBuilder(name, Context, getWorkspace(), null);
             TaskBuilders.Add(builder);
             return builder;
         }
@@ -170,7 +170,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <param name="key">The key</param>
     /// <exception cref="Exception">Thrown if task was not found</exception>
     public void runTask(string key) {
-        var task = getWorkspace().GetTask(key);
+        var task = ManilaEngine.GetInstance().GetTask(key);
         if (task == null) throw new Exception("Task not found: " + key);
 
         task.Execute();

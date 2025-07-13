@@ -34,8 +34,9 @@ public class PrintAction(string message, string scriptPath, Guid scriptContextID
     }
 }
 
-public sealed class TaskBuilder(string name, ScriptContext context, Component component) : IBuildable<Task> {
+public sealed class TaskBuilder(string name, ScriptContext context, Component component, ArtifactBuilder? artifactBuilder) : IBuildable<Task> {
     public readonly string Name = name;
+    public readonly ArtifactBuilder? ArtifactBuilder = artifactBuilder;
     public string Description { get; private set; } = "A generic task";
     public bool Blocking { get; private set; } = true;
 
@@ -50,13 +51,15 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// <param name="task">The dependents task ID</param>
     /// <returns>Task instance for chaining calls</returns>
     public TaskBuilder after(string task) {
-        if (task.StartsWith(":")) {
-            Dependencies.Add(task[1..]);
-            Logger.Debug($"{this}, added {task[1..]}");
-        } else {
-            var prefix = Component is Workspace ? "" : $"{Component.GetIdentifier()}:";
-            Dependencies.Add($"{prefix}{task}");
+        if (task.Contains(":") || task.Contains("/")) {
+            if (!RegexUtils.IsValidTaskRegex(task)) throw new ManilaException($"Invalid task regex {task}!");
+            Dependencies.Add(task);
+            return this;
         }
+
+        var match = new RegexUtils.TaskMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtifactBuilder == null ? null : ArtifactBuilder.Name, task);
+        Dependencies.Add(RegexUtils.FromTaskMatch(match));
+
 
         return this;
     }
@@ -114,6 +117,7 @@ public class Task(TaskBuilder builder) : ExecutableObject {
     public readonly Component Component = builder.Component;
     public readonly string Description = builder.Description;
     public readonly bool Blocking = builder.Blocking;
+    public readonly string? ArtiafactName = builder.ArtifactBuilder?.Name;
     public readonly string TaskID = Guid.NewGuid().ToString();
 
     /// <summary>
@@ -121,9 +125,7 @@ public class Task(TaskBuilder builder) : ExecutableObject {
     /// </summary>
     /// <returns>The unique identifier of the task</returns>
     public string GetIdentifier() {
-        if (Component is Project) return $"{Component.GetIdentifier()}:{Name}";
-        return Name;
-
+        return RegexUtils.FromTaskMatch(new(Component is Workspace ? null : Component.GetIdentifier(), ArtiafactName, Name));
     }
 
 
@@ -134,7 +136,7 @@ public class Task(TaskBuilder builder) : ExecutableObject {
     public List<string> GetExecutionOrder() {
         List<string> result = [];
         foreach (string dependency in Dependencies) {
-            Task? dependentTask = ManilaEngine.GetInstance().Workspace.GetTask(dependency);
+            Task? dependentTask = ManilaEngine.GetInstance().GetTask(dependency);
             if (dependentTask == null) { Logger.Warning("Task not found: " + dependency); continue; }
             List<string> dependencyOrder = dependentTask.GetExecutionOrder();
             foreach (string depTask in dependencyOrder) {

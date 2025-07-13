@@ -26,7 +26,7 @@ internal sealed class ArtifactsCommand : Command<ArtifactsCommand.Settings> {
         foreach (var p in engine.Workspace.Projects) {
             var project = p.Value;
 
-            foreach (var (name, artifact) in project._artifacs) {
+            foreach (var (name, artifact) in project.Artifacts) {
                 var artifactsTable = new Table();
                 artifactsTable.AddColumn(new TableColumn("[cyan]Task[/]"));
                 artifactsTable.AddColumn(new TableColumn("[green]Description[/]"));

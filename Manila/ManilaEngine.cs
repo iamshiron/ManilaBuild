@@ -187,16 +187,16 @@ public sealed class ManilaEngine {
     /// </summary>
     /// <param name="taskID">The ID of the task to execute.</param>
     public void ExecuteBuildLogic(string taskID) {
-        var task = Workspace.GetTask(taskID);
+        var task = GetTask(taskID);
         Logger.Debug($"Found task: {task}");
 
         // Add all existing tasks to the graph, hopefully I'll find a better solution for this in the future
         ExecutionGraph.ExecutionLayer[] layers = [];
         using (new ProfileScope("Building Dependency Tree")) {
-            foreach (var t in Workspace.Tasks) {
+            /*foreach (var t in Workspace.Tasks) {
                 List<ExecutableObject> dependencies = [];
                 foreach (var d in t.Dependencies) {
-                    dependencies.Add(Workspace.GetTask(d));
+                    dependencies.Add(GetTask(d));
                 }
                 ExecutionGraph.Attach(t, dependencies);
             }
@@ -204,10 +204,25 @@ public sealed class ManilaEngine {
                 foreach (var t in p.Tasks) {
                     List<ExecutableObject> dependencies = [];
                     foreach (var d in t.Dependencies) {
-                        dependencies.Add(Workspace.GetTask(d));
+                        dependencies.Add(GetTask(d));
                     }
                     ExecutionGraph.Attach(t, dependencies);
                 }
+            }*/
+            List<API.Task> Tasks = [.. Workspace.Tasks];
+            foreach (var p in Workspace.Projects.Values) {
+                Tasks.AddRange([.. p.Tasks]);
+                foreach (var a in p.Artifacts.Values) {
+                    Tasks.AddRange([.. a.Tasks]);
+                }
+            }
+
+            foreach (var t in Tasks) {
+                List<ExecutableObject> dependencies = [];
+                foreach (var d in t.Dependencies) {
+                    dependencies.Add(GetTask(d));
+                }
+                ExecutionGraph.Attach(t, dependencies);
             }
 
             layers = ExecutionGraph.GetExecutionLayers(taskID);
@@ -248,7 +263,50 @@ public sealed class ManilaEngine {
         }
     }
 
-    public bool HasTask(string task) {
-        return Workspace.HasTask(task);
+    public bool HasTask(string uri) {
+        return GetTask(uri) != null;
+    }
+
+    public API.Task GetTask(string uri) {
+        var info = RegexUtils.MatchTasks(uri);
+
+        if (info.Project == null) {
+            var temp = Workspace.Tasks.Find(m => m.Name == info.Task) ?? throw new ManilaException($"Task {uri} not found!");
+            return temp;
+        }
+
+        var project = Workspace.Projects[info.Project];
+        if (info.Artifact == null) {
+            var temp = project.Tasks.Find(m => m.Name == info.Task) ?? throw new ManilaException($"Task {uri} not found!");
+            return temp;
+        }
+
+        var t = project.Artifacts[info.Artifact].Tasks.First(t => t.Name == info.Task) ?? throw new ManilaException($"Task {uri} not found!");
+        return t;
+    }
+    public bool TryGetTask(string uri, out API.Task? task) {
+        try {
+            var info = RegexUtils.MatchTasks(uri);
+
+            if (info.Project == null) {
+                var temp = Workspace.Tasks.Find(m => m.Name == info.Task);
+                task = temp;
+                return task != null;
+            }
+
+            var project = Workspace.Projects[info.Project];
+            if (info.Artifact == null) {
+                var temp = project.Tasks.Find(m => m.Name == info.Task);
+                task = temp;
+                return task != null;
+            }
+
+            var t = project.Artifacts[info.Artifact].Tasks.First(t => t.Name == info.Task);
+            task = t;
+            return task != null;
+        } catch (Exception e) {
+            var ex = new ManilaException($"Exception while finding task '{uri}'", e);
+            throw ex;
+        }
     }
 }

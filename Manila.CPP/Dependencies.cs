@@ -35,19 +35,6 @@ public class DependencyProject : Dependency {
     }
 
     public override void Resolve(Project dependent) {
-        ManilaCPP.Instance.Info(string.Join(", ", ManilaEngine.GetInstance().Workspace.Projects.Keys));
-
-        var dependency = this.Project.Resolve();
-        ManilaCPP.Instance.Info("Resolving Dependency Project '" + dependency.GetIdentifier() + "'...");
-
-        var task = dependency.Workspace.GetTask(dependency, BuildTask);
-        if (task == null) throw new Exception("Task not found: " + BuildTask);
-
-        task.Execute(); // Still need to find a better way
-
-        var depComp = dependency.GetComponent<CppComponent>();
-        var comp = dependent.GetComponent<CppComponent>();
-        comp.IncludeDirs.Add(Path.Join(dependency._sourceSets["main"].Root));
-        comp.Links.AddRange([.. depComp.Links, Utils.GetBinFile(dependency, depComp)]);
+        throw new NotImplementedException();
     }
 }

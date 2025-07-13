@@ -1,4 +1,5 @@
 using Microsoft.ClearScript;
+using NuGet.Packaging;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
@@ -18,10 +19,10 @@ public class Project : Component {
     [ScriptProperty]
     public string? Description { get; set; }
 
-    public List<Artifact> Artifacts { get; } = [];
+    public Dictionary<string, Artifact> Artifacts { get; } = [];
 
     public Dictionary<string, SourceSet> _sourceSets = [];
-    public Dictionary<string, Artifact> _artifacs = [];
+    private readonly Dictionary<string, ArtifactBuilder> _artifactBuilders = [];
     public List<Dependency> _dependencies = [];
 
     public Workspace Workspace { get; private set; }
@@ -49,8 +50,10 @@ public class Project : Component {
     [ScriptFunction]
     public void artifacts(object obj) {
         foreach (var pair in (IDictionary<string, object>) obj) {
-            if (_artifacs.ContainsKey(pair.Key)) throw new Exception($"Artifact '{pair.Key}' already exists.");
-            _artifacs.Add(pair.Key, ((ArtifactBuilder) pair.Value).Build());
+            if (_artifactBuilders.ContainsKey(pair.Key)) throw new Exception($"Artifact '{pair.Key}' already exists.");
+            var builder = (ArtifactBuilder) pair.Value;
+            builder.Name = pair.Key;
+            _artifactBuilders[pair.Key] = builder;
         }
     }
 
@@ -66,6 +69,8 @@ public class Project : Component {
     public override void Finalize(Manila manilaAPI) {
         base.Finalize(manilaAPI);
 
-        Artifacts.AddRange(manilaAPI.ArtifactBuilders.Select(b => b.Build()));
+        foreach (var (name, builder) in _artifactBuilders) {
+            Artifacts[name] = builder.Build();
+        }
     }
 }

@@ -26,6 +26,16 @@ public static partial class RegexUtils {
         );
     }
 
+    public static bool IsValidTaskRegex(string s) {
+        return TaskRegex.IsMatch(s);
+    }
+
+    public static string FromTaskMatch(TaskMatch match) {
+        if (match.Project == null) return match.Task;
+        if (match.Artifact == null) return $"{match.Project}:{match.Task}";
+        return $"{match.Project}/{match.Artifact}:{match.Task}";
+    }
+
     [GeneratedRegex(@"(?:(?<project>\w+)(?:\/(?<artifact>\w+))?:)?(?<task>\w+)", RegexOptions.Compiled)]
     private static partial Regex TaskRegexGenerator();
 }

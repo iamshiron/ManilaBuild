@@ -1,4 +1,5 @@
 
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
@@ -8,6 +9,7 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI) : IBuildabl
     public readonly List<TaskBuilder> TaskBuilders = [];
     public readonly Action Lambda = lambda;
     public readonly Manila ManilaAPI = manilaAPI;
+    public string? Name = null;
 
     public Artifact Build() {
         ManilaAPI.CurrentArtifactBuilder = this;
@@ -28,4 +30,5 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI) : IBuildabl
 public class Artifact(ArtifactBuilder builder) {
     public readonly string Description = builder.Description;
     public readonly Task[] Tasks = [.. builder.TaskBuilders.Select(b => b.Build())];
+    public readonly string Name = builder.Name ?? throw new ManilaException($"Artifact must have a name! {builder.Description}");
 }

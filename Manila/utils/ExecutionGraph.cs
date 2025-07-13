@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Shiron.Manila.Exceptions;
+using Shiron.Manila.Logging;
 
 namespace Shiron.Manila.Utils;
 
@@ -138,6 +139,8 @@ public class ExecutionGraph {
     /// <param name="main">The main object to be added or updated in the graph.</param>
     /// <param name="dependencies">A list of objects that the main object directly depends on.</param>
     public void Attach(ExecutableObject main, List<ExecutableObject> dependencies) {
+        Logger.Debug($"Attaching {((API.Task) main).GetIdentifier()}");
+
         var mainNode = GetOrCreateNode(main);
 
         var allDescendants = new HashSet<ExecutionNode>();

@@ -16,8 +16,6 @@ sourceSets({
 	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
 })
 
-dependencies([Manila.project('core', 'build')])
-
 artifacts({
 	main: Manila.artifact(() => {
 		Manila.task('clean')
@@ -27,14 +25,14 @@ artifacts({
 			})
 
 		Manila.task('build').execute(() => {
-			Manila.build(workspace, project, config)
+			print('Building client...')
 		})
 
 		Manila.task('run')
 			.description('Run the Client')
 			.after('build')
 			.execute(() => {
-				Manila.run(project)
+				print('Running client...')
 			})
 	}).description('Client Main Artifact')
 })

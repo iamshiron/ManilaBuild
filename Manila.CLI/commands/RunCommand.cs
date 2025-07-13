@@ -18,13 +18,18 @@ public sealed class RunCommand : Command<RunCommand.Settings> {
         ManilaCLI.SetupInitialComponents(settings);
         ManilaCLI.InitExtensions();
 
-        var engine = ManilaEngine.GetInstance();
-        var extensionManager = ExtensionManager.GetInstance();
+        try {
 
-        ManilaCLI.StartEngine(engine).Wait();
-        if (!engine.HasTask(settings.Task)) throw new TaskNotFoundException(settings.Task);
+            var engine = ManilaEngine.GetInstance();
+            var extensionManager = ExtensionManager.GetInstance();
 
-        return ManilaCLI.RunTask(engine, extensionManager, settings, settings.Task);
+            ManilaCLI.StartEngine(engine).Wait();
+            if (engine.GetTask(settings.Task) == null) throw new TaskNotFoundException(settings.Task);
 
+            return ManilaCLI.RunTask(engine, extensionManager, settings, settings.Task);
+        } catch (Exception e) {
+            Console.WriteLine(e);
+            throw;
+        }
     }
 }

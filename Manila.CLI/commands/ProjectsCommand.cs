@@ -28,7 +28,7 @@ internal sealed class ProjectsCommand : Command<ProjectsCommand.Settings> {
             artifactsTable.AddColumn(new TableColumn("[cyan]Artifact[/]"));
             artifactsTable.AddColumn(new TableColumn("[green]Description[/]"));
 
-            foreach (var (name, artifact) in project._artifacs) {
+            foreach (var (name, artifact) in project.Artifacts) {
                 artifactsTable.AddRow($"[bold cyan]{name}[/]", artifact.Description);
             }
 
