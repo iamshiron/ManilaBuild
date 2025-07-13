@@ -27,19 +27,6 @@ public class ManilaCPP : ManilaPlugin {
 
     [ScriptFunction]
     public static void Build(Workspace workspace, Project project, BuildConfig config) {
-        if (project.HasComponent<StaticLibComponent>()) {
-            Instance!.Debug("Building static library: " + project.Name);
-            var comp = project.GetComponent<StaticLibComponent>();
-            Instance.Debug("Building to: " + comp.BinDir!);
-            return;
-        }
-
-        if (project.HasComponent<ConsoleComponent>()) {
-            Instance!.Debug("Building console application: " + project.Name);
-            var comp = project.GetComponent<ConsoleComponent>();
-            Instance.Debug("Building to: " + comp.BinDir!);
-
-            return;
-        }
+        throw new NotImplementedException();
     }
 }

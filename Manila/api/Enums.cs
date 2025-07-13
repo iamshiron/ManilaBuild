@@ -9,8 +9,8 @@ namespace Shiron.Manila.API;
 [ScriptEnum]
 public class EPlatform(string name) {
     public readonly string name = name;
-    public static readonly EPlatform Windows = new EPlatform("windows");
-    public static readonly EPlatform Linux = new EPlatform("linux");
+    public static readonly EPlatform Windows = new("windows");
+    public static readonly EPlatform Linux = new("linux");
 
     public static implicit operator string(EPlatform p) {
         return p.name;
@@ -35,8 +35,9 @@ public class EPlatform(string name) {
 [ScriptEnum]
 public class EArchitecture(string name) {
     public readonly string name = name;
-    public static readonly EArchitecture X86 = new EArchitecture("x86");
-    public static readonly EArchitecture X64 = new EArchitecture("x64");
+    public static readonly EArchitecture X86 = new("x86");
+    public static readonly EArchitecture X64 = new("x64");
+    public static readonly EArchitecture Any = new("any");
 
     public static implicit operator string(EArchitecture a) {
         return a.name;

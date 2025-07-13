@@ -3,7 +3,10 @@ using Shiron.Manila.API;
 namespace Shiron.Manila.Ext;
 
 public abstract class LanguageComponent : PluginComponent {
-    public LanguageComponent(string name) : base(name) {
+    public readonly Type BuildConfigType;
+
+    public LanguageComponent(string name, Type buildConfigType) : base(name) {
+        BuildConfigType = buildConfigType;
     }
     public override string ToString() {
         return $"LanguageComponent({Name})";

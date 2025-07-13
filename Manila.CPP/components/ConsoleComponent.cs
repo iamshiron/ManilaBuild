@@ -16,6 +16,6 @@ public class ConsoleComponent : CppComponent {
     public DirHandle? RunDir { get; set; }
 
     public override void Run(Project project) {
-        ShellUtils.Run(project.GetComponent<ConsoleComponent>().BinDir + "/" + project.Name + ".exe");
+        throw new NotImplementedException();
     }
 }

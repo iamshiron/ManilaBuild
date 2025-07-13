@@ -12,6 +12,7 @@ public static class HashUtils {
         var hash = sha256.ComputeHash(stream);
         return Convert.ToHexStringLower(hash);
     }
+
     public static string CreateFingerprint(IEnumerable<string> filePaths) {
         var sortedFiles = filePaths.OrderBy(p => p).ToList();
         var individualHashes = sortedFiles.Select(HashFile).ToList();

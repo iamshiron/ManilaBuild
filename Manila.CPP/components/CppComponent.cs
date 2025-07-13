@@ -10,13 +10,9 @@ using Shiron.Manila.CPP.Toolchain;
 /// Represents a C++ project.
 /// </summary>
 public class CppComponent : LanguageComponent {
-    public CppComponent(string name) : base(name) {
+    public CppComponent(string name) : base(name, typeof(CPPBuildConfig)) {
     }
 
-    [ScriptProperty]
-    public DirHandle? BinDir { get; set; }
-    [ScriptProperty]
-    public DirHandle? ObjDir { get; set; }
     [ScriptProperty]
     public EToolChain? ToolChain { get; set; }
     public List<string> IncludeDirs { get; set; } = [];

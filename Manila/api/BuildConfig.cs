@@ -1,27 +1,18 @@
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
+using Shiron.Manila.Attributes;
+using Shiron.Manila.Exceptions;
+
 namespace Shiron.Manila.API;
 
-/// <summary>
-/// A storage class for build configurations. Used to be exposed to the scripting environment.
-/// </summary>
-public class BuildConfig {
-    public BuildConfig() {
-        config = "Debug";
-        platform = EPlatform.Windows;
-        architecture = EArchitecture.X64;
-    }
-
-    public string config { get; set; }
-    public EPlatform platform { get; set; }
-    public EArchitecture architecture { get; set; }
-
-    // Functions that are mostly used by scripts\
-    public string getConfig() {
-        return config;
-    }
-    public string getPlatform() {
-        return platform;
-    }
-    public string getArchitecture() {
-        return architecture;
+public abstract class BuildConfig {
+    public string GetArtifactKey() {
+        return string.Join(
+            "-",
+            GetType().GetProperties()
+                .Where(prop => prop.IsDefined(typeof(ArtifactKey), false))
+                .Select(v => v.GetValue(this))
+        );
     }
 }

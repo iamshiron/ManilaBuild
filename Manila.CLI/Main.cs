@@ -8,6 +8,8 @@ using Spectre.Console.Cli;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.CLI.Exceptions;
 using Shiron.Manila.Utils;
+using Shiron.Manila.API;
+using Shiron.Manila.Artifacts;
 
 namespace Shiron.Manila.CLI;
 
@@ -30,7 +32,7 @@ public static class ManilaCLI {
         }
     }
 
-    public static async Task StartEngine(ManilaEngine engine) {
+    public static async System.Threading.Tasks.Task StartEngine(ManilaEngine engine) {
         await engine.Run();
         if (engine.Workspace == null) throw new Exception("Workspace not found!");
     }

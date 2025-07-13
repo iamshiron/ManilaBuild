@@ -16,7 +16,7 @@ namespace Shiron.Manila.API;
 /// </summary>
 public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     private readonly ScriptContext Context = context;
-    private readonly BuildConfig BuildConfig = new();
+    public BuildConfig? BuildConfig { get; private set; } = null;
 
     public List<TaskBuilder> TaskBuilders { get; } = [];
     public List<ArtifactBuilder> ArtifactBuilders { get; } = [];
@@ -55,7 +55,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <returns>The build configuration for this Manila instance.</returns>
     public BuildConfig getConfig() {
-        return BuildConfig;
+        return BuildConfig ?? throw new ScriptingException("Cannot retreive build config before applying a language component!");
     }
 
     /// <summary>
@@ -149,6 +149,10 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             Logger.Debug("Applying: " + component);
             getProject().ApplyComponent(component);
+            if (component is LanguageComponent lc) {
+                var config = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
+                BuildConfig = (BuildConfig) config;
+            }
         }
     }
 

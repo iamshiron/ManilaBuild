@@ -32,7 +32,7 @@ internal sealed class ProjectsCommand : Command<ProjectsCommand.Settings> {
                 artifactsTable.AddRow($"[bold cyan]{name}[/]", artifact.Description);
             }
 
-            table.AddRow(new Markup($"[cyan bold]{project.Name}[/]"), new Markup(project.Description), new Markup(project.Version), artifactsTable);
+            table.AddRow(new Markup($"[cyan bold]{project.Name}[/]"), new Markup(project.Description ?? "[grey](none)[/]"), new Markup(project.Version ?? "[grey](none)[/]"), artifactsTable);
         }
 
         AnsiConsole.Write(table);

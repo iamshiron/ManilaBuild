@@ -9,9 +9,9 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Represents a project in the build script.
 /// </summary>
-public class Project : Component {
+public class Project(string name, string location, Workspace workspace) : Component(location) {
     [ScriptProperty(true)]
-    public string Name { get; private set; }
+    public string Name { get; private set; } = name;
 
     [ScriptProperty]
     public string? Version { get; set; }
@@ -28,7 +28,7 @@ public class Project : Component {
 
     public List<Dependency> _dependencies = [];
 
-    public Workspace Workspace { get; private set; }
+    public Workspace Workspace { get; private set; } = workspace;
 
     [ScriptFunction]
     public void sourceSets(object obj) {
@@ -58,11 +58,6 @@ public class Project : Component {
             builder.Name = pair.Key;
             _artifactBuilders[pair.Key] = builder;
         }
-    }
-
-    public Project(string name, string location, Workspace workspace) : base(location) {
-        this.Name = name;
-        this.Workspace = workspace;
     }
 
     public override string ToString() {
