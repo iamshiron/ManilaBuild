@@ -62,5 +62,17 @@ public class SourceSet(SourceSetBuilder builder) {
     public readonly string Root = builder.Root;
     public readonly string[] Includes = [.. builder.Includes];
     public readonly string[] Excluded = [.. builder.Excludes];
-    public readonly FileHandle[] Files = [.. builder.files()];
+    public readonly FileHandle[] FileHandles = [.. builder.files()];
+    public readonly string[] Files = [.. builder.files().Select(f => f.Handle)];
+
+    public long LastModified() {
+        long lastModified = 0;
+        foreach (var f in FileHandles) {
+            lastModified = Math.Max(new DateTimeOffset(File.GetLastWriteTimeUtc(f)).ToUnixTimeMilliseconds(), lastModified);
+        }
+        return lastModified;
+    }
+    public string Fingerprint() {
+        return HashUtils.CreateFingerprint(Files);
+    }
 }

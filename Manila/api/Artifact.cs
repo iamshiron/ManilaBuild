@@ -4,7 +4,9 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
-public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI) : IBuildable<Artifact> {
+public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig buildConfig, string projectName) : IBuildable<Artifact> {
+    public readonly BuildConfig BuildConfig = buildConfig;
+    public readonly string ProjectName = projectName;
     public string Description = string.Empty;
     public readonly List<TaskBuilder> TaskBuilders = [];
     public readonly Action Lambda = lambda;
@@ -31,4 +33,6 @@ public class Artifact(ArtifactBuilder builder) {
     public readonly string Description = builder.Description;
     public readonly Task[] Tasks = [.. builder.TaskBuilders.Select(b => b.Build())];
     public readonly string Name = builder.Name ?? throw new ManilaException($"Artifact must have a name! {builder.Description}");
+    public readonly string Root = ManilaEngine.GetInstance().ArtifactManager.GetArtifactRoot(builder.BuildConfig, builder.ProjectName, builder.Name);
+    public readonly UnresolvedProject Project = new(builder.ProjectName);
 }

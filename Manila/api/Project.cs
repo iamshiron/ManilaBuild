@@ -1,6 +1,7 @@
 using Microsoft.ClearScript;
 using NuGet.Packaging;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
@@ -76,6 +77,7 @@ public class Project : Component {
         }
         foreach (var (name, builder) in _sourceSetBuilders) {
             SourceSets[name] = builder.Build();
+            Logger.Debug($"{Name} - {name} - SHA256: {SourceSets[name].Fingerprint()}");
         }
     }
 }

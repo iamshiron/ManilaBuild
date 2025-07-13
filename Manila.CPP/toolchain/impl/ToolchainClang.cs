@@ -217,7 +217,7 @@ public class ToolchainClang : Toolchain {
         var binDir = cppComponent.BinDir!;
 
         var sourceSet = project.SourceSets["main"];
-        foreach (var file in sourceSet.Files) {
+        foreach (var file in sourceSet.FileHandles) {
             objectFiles.Add(CompileFile(sourceSet.Root, file.Handle, Path.Join(objDir, Path.GetRelativePath(project.Path.Handle, sourceSet.Root))));
         }
 

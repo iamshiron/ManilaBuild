@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Threading.Tasks;
 using Shiron.Manila.API;
+using Shiron.Manila.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
@@ -66,6 +67,8 @@ public sealed class ManilaEngine {
     /// </summary>
     public ExecutionGraph ExecutionGraph { get; } = new();
 
+    public ArtifactManager ArtifactManager { get; }
+
     /// <summary>
     /// Gets the NuGet package manager.
     /// </summary>
@@ -84,6 +87,7 @@ public sealed class ManilaEngine {
         WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(RootDir, "Manila.js"));
         DataDir = Path.Join(RootDir, ".manila");
         NuGetManager = new(Path.Join(DataDir, "nuget"));
+        ArtifactManager = new(Path.Join(DataDir, "artifacts"));
     }
 
     /// <summary>
