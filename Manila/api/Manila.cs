@@ -71,6 +71,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     /// <returns>A builder to create the artifact</returns>
     public ArtifactBuilder artifact(dynamic lambda) {
+        if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
         var builder = new ArtifactBuilder(() => lambda(), this, BuildConfig, getProject().Name);
         ArtifactBuilders.Add(builder);
         return builder;
