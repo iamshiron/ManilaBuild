@@ -74,6 +74,7 @@ public static class ManilaCLI {
             c.AddCommand<RunCommand>("run");
             c.AddCommand<ArtifactsCommand>("artifacts");
             c.AddCommand<ProjectsCommand>("projects");
+            c.AddCommand<ApiCommand>("api");
         });
 
         var exitCode = CommandApp.Run(args);
