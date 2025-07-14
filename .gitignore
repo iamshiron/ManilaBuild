@@ -11,3 +11,5 @@ run/bin
 run/bin-int
 
 log.txt
+
+Manila.Tests/TestResults
