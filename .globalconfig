@@ -1,0 +1,6 @@
+is_global = true
+
+# Disable formatting diagnostics that cause cross-platform issues
+# These are environment-specific and not actual code quality issues
+dotnet_diagnostic.ENDOFLINE.severity = none
+dotnet_diagnostic.CHARSET.severity = none

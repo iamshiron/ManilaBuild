@@ -33,7 +33,6 @@ public class DependencyProject : Dependency {
         this.Project = new UnresolvedProject((string) args[0]);
         this.BuildTask = (string) args[1];
     }
-
     public override void Resolve(Project dependent) {
         throw new NotImplementedException();
     }

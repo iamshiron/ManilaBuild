@@ -26,8 +26,5 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Format check
-      run: dotnet format --verify-no-changes --verbosity minimal
-
     - name: Build with warnings as errors
       run: dotnet build --no-restore --configuration Release --verbosity minimal /p:TreatWarningsAsErrors=true

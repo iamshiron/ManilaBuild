@@ -30,11 +30,17 @@ jobs:
 
     - name: Security scan
       run: |
-        echo "Scanning for vulnerable packages..."
+        echo "🔍 Scanning for vulnerable packages..."
         dotnet list package --vulnerable --include-transitive > security-scan.log 2>&1
         if grep -q "has the following vulnerable packages" security-scan.log; then
-          echo "::error::Vulnerable packages found!"
+          echo "::error::🚨 Vulnerable packages found!"
+          echo "::group::Security Scan Results"
           cat security-scan.log
+          echo "::endgroup::"
+          echo ""
+          echo "💡 To fix vulnerabilities:"
+          echo "1. Add direct package references with updated versions to Directory.Packages.props"
+          echo "2. Or update the packages causing the transitive dependencies"
           exit 1
         else
           echo "✅ No vulnerable packages found."

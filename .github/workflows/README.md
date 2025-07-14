@@ -20,7 +20,6 @@ This directory contains optimized GitHub Actions workflows for the Manila projec
 
 ### Code Quality (`code-quality.yml`) - Essential Quality Gates
 **Triggers**: Push and PR to `main` and `develop` branches
-- **Format checking**: Ensures consistent code style
 - **Build validation**: Treats warnings as errors
 - **Optimized**: Runs on Ubuntu only with minimal verbosity
 
