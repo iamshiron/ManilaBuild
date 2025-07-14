@@ -197,22 +197,6 @@ public sealed class ManilaEngine {
         // Add all existing tasks to the graph, hopefully I'll find a better solution for this in the future
         ExecutionGraph.ExecutionLayer[] layers = [];
         using (new ProfileScope("Building Dependency Tree")) {
-            /*foreach (var t in Workspace.Tasks) {
-                List<ExecutableObject> dependencies = [];
-                foreach (var d in t.Dependencies) {
-                    dependencies.Add(GetTask(d));
-                }
-                ExecutionGraph.Attach(t, dependencies);
-            }
-            foreach (var p in Workspace.Projects.Values) {
-                foreach (var t in p.Tasks) {
-                    List<ExecutableObject> dependencies = [];
-                    foreach (var d in t.Dependencies) {
-                        dependencies.Add(GetTask(d));
-                    }
-                    ExecutionGraph.Attach(t, dependencies);
-                }
-            }*/
             List<API.Task> Tasks = [.. Workspace.Tasks];
             foreach (var p in Workspace.Projects.Values) {
                 Tasks.AddRange([.. p.Tasks]);

@@ -1,9 +1,8 @@
 
 using Shiron.Manila.Artifacts;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
-namespace Shiron.Manila.API;
+namespace Shiron.Manila.API.Builders;
 
 public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig buildConfig, string projectName) : IBuildable<Artifact> {
     public readonly BuildConfig BuildConfig = buildConfig;
