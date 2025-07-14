@@ -9,38 +9,69 @@ using Shiron.Manila.Logging;
 namespace Shiron.Manila.API;
 
 /// <summary>
-/// Represents a component in the build script. Components are used to group tasks and plugins. Can either be a workspace or a project.
+/// Represents a component in the build script that groups tasks and plugins.
 /// </summary>
 public class Component(string path) : DynamicObject, IScriptableObject {
+    /// <summary>
+    /// The directory path of this component.
+    /// </summary>
     [ScriptProperty(true)]
     public DirHandle Path { get; private set; } = new DirHandle(path);
 
+    /// <summary>
+    /// Collection of plugin components applied to this component.
+    /// </summary>
     public Dictionary<Type, PluginComponent> PluginComponents { get; } = [];
+
+    /// <summary>
+    /// List of plugin types applied to this component.
+    /// </summary>
     public List<Type> plugins { get; } = [];
+
+    /// <summary>
+    /// Dynamic methods available for script invocation.
+    /// </summary>
     public Dictionary<string, List<Delegate>> DynamicMethods { get; } = [];
+
+    /// <summary>
+    /// Collection of tasks belonging to this component.
+    /// </summary>
     public List<Task> Tasks { get; } = [];
+
+    /// <summary>
+    /// Types of dependencies used by this component.
+    /// </summary>
     public List<Type> DependencyTypes { get; } = [];
 
     /// <summary>
-    /// The GetIdentifier method returns a string that uniquely identifies the component.
+    /// Returns a unique identifier for this component.
     /// </summary>
-    /// <returns>The identifier</returns>
+    /// <returns>The component identifier.</returns>
     public virtual string GetIdentifier() {
         string relativeDir = System.IO.Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, Path.Handle);
         return relativeDir.Replace(System.IO.Path.DirectorySeparatorChar, ':').ToLower();
     }
 
+    /// <summary>
+    /// Called when the component is exposed to script code.
+    /// </summary>
+    /// <param name="engine">The script engine.</param>
     public void OnExposedToScriptCode(ScriptEngine engine) {
     }
+
+    /// <summary>
+    /// Gets the names of all dynamic members available for invocation.
+    /// </summary>
+    /// <returns>Collection of dynamic member names.</returns>
     public override IEnumerable<string> GetDynamicMemberNames() {
         return DynamicMethods.Keys;
     }
     /// <summary>
-    /// Add a property that gets exposed to the script context.
+    /// Adds a property that gets exposed to the script context.
     /// </summary>
-    /// <param name="prop">The property</param>
-    /// <param name="obj">The instance of the class</param>
-    /// <exception cref="Exception">If property wasn't attributed with <see cref="ScriptProperty"/></exception>
+    /// <param name="prop">The property to add.</param>
+    /// <param name="obj">The instance of the class.</param>
+    /// <exception cref="Exception">Thrown when property lacks ScriptProperty attribute.</exception>
     public void AddScriptProperty(PropertyInfo prop, object? obj = null) {
         if (obj == null) obj = this;
 
@@ -68,6 +99,14 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         DynamicMethods[scriptPropertySetterName] = setterMethods;
         DynamicMethods[scriptPropertyGetterName] = getterMethods;
     }
+
+    /// <summary>
+    /// Adds a script function to the component's dynamic methods.
+    /// </summary>
+    /// <param name="prop">The method to add.</param>
+    /// <param name="engine">The script engine.</param>
+    /// <param name="obj">The instance of the class.</param>
+    /// <exception cref="Exception">Thrown when method lacks ScriptFunction attribute.</exception>
     public void AddScriptFunction(MethodInfo prop, ScriptEngine engine, object? obj = null) {
         if (obj == null) obj = this;
 
@@ -84,6 +123,13 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         Logger.Debug($"Added function '{prop.Name}' to script context.");
     }
 
+    /// <summary>
+    /// Attempts to invoke a dynamic member method with the given arguments.
+    /// </summary>
+    /// <param name="binder">The invoke member binder.</param>
+    /// <param name="args">The method arguments.</param>
+    /// <param name="result">The result of the method invocation.</param>
+    /// <returns>True if the method was found and invoked successfully.</returns>
     public override bool TryInvokeMember(InvokeMemberBinder binder, object?[]? args, out object? result) {
         args ??= [];
         result = null;
@@ -119,9 +165,9 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     }
 
     /// <summary>
-    /// Applies a plugin component to the current context.
+    /// Applies a plugin component to this component.
     /// </summary>
-    /// <param name="component">The instance of the component</param>
+    /// <param name="component">The plugin component to apply.</param>
     public void ApplyComponent(PluginComponent component) {
         Logger.Debug($"Applying component '{component}'.");
 
@@ -151,9 +197,9 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     }
 
     /// <summary>
-    /// Applies a plugin to the current context.
+    /// Applies a plugin to this component.
     /// </summary>
-    /// <param name="plugin">The instance of the plugin</param>
+    /// <param name="plugin">The plugin to apply.</param>
     public void ApplyPlugin(ManilaPlugin plugin) {
         var engineInstance = ManilaEngine.GetInstance();
         var currentContext = engineInstance.CurrentContext;
@@ -202,19 +248,19 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     }
 
     /// <summary>
-    /// Check if the component is applied to the current context.
+    /// Checks if a component type is applied to this component.
     /// </summary>
-    /// <typeparam name="T">The component type</typeparam>
-    /// <returns>True if the component is applied, otherwise false.</returns>
+    /// <typeparam name="T">The component type to check.</typeparam>
+    /// <returns>True if the component is applied.</returns>
     public bool HasComponent<T>() where T : PluginComponent {
         return PluginComponents.ContainsKey(typeof(T));
     }
     /// <summary>
-    /// Get the component values from the current context.
+    /// Gets a component instance of the specified type.
     /// </summary>
-    /// <typeparam name="T">The component type</typeparam>
-    /// <returns>The values of the component for the current context</returns>
-    /// <exception cref="Exception">The component was not found on the context</exception>
+    /// <typeparam name="T">The component type to retrieve.</typeparam>
+    /// <returns>The component instance.</returns>
+    /// <exception cref="Exception">Thrown when the component is not found.</exception>
     public T GetComponent<T>() where T : PluginComponent {
         if (PluginComponents.TryGetValue(typeof(T), out var component))
             return (T) component;
@@ -227,6 +273,11 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         throw new Exception($"Component of type {typeof(T).Name} not found in this context.");
     }
 
+    /// <summary>
+    /// Gets the language component applied to this component.
+    /// </summary>
+    /// <returns>The language component instance.</returns>
+    /// <exception cref="Exception">Thrown when no language component is found.</exception>
     public LanguageComponent GetLanguageComponent() {
         foreach (var component in PluginComponents.Values) {
             if (component is LanguageComponent languageComponent) return languageComponent;
@@ -234,6 +285,10 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         throw new Exception("No language component found.");
     }
 
+    /// <summary>
+    /// Finalizes the component by building all tasks.
+    /// </summary>
+    /// <param name="manilaAPI">The Manila API instance.</param>
     public virtual void Finalize(Manila manilaAPI) {
         Tasks.AddRange(manilaAPI.TaskBuilders.Select(b => b.Build()));
     }

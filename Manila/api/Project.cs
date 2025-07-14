@@ -12,26 +12,64 @@ namespace Shiron.Manila.API;
 /// Represents a project in the build script.
 /// </summary>
 public class Project(string name, string location, Workspace workspace) : Component(location) {
+    /// <summary>
+    /// The unique name of the project.
+    /// </summary>
     [ScriptProperty(true)]
     public string Name { get; private set; } = name;
 
+    /// <summary>
+    /// The project version identifier.
+    /// </summary>
     [ScriptProperty]
     public string? Version { get; set; }
+
+    /// <summary>
+    /// The project group identifier for organization.
+    /// </summary>
     [ScriptProperty]
     public string? Group { get; set; }
+
+    /// <summary>
+    /// A brief description of the project.
+    /// </summary>
     [ScriptProperty]
     public string? Description { get; set; }
 
+    /// <summary>
+    /// Collection of built artifacts produced by this project.
+    /// </summary>
     public Dictionary<string, Artifact> Artifacts { get; } = [];
+
+    /// <summary>
+    /// Collection of source sets containing project source files.
+    /// </summary>
     public Dictionary<string, SourceSet> SourceSets = [];
 
+    /// <summary>
+    /// Internal builders for creating artifacts during finalization.
+    /// </summary>
     private readonly Dictionary<string, ArtifactBuilder> _artifactBuilders = [];
+
+    /// <summary>
+    /// Internal builders for creating source sets during finalization.
+    /// </summary>
     private readonly Dictionary<string, SourceSetBuilder> _sourceSetBuilders = [];
 
+    /// <summary>
+    /// List of project dependencies.
+    /// </summary>
     public List<Dependency> _dependencies = [];
 
+    /// <summary>
+    /// The workspace containing this project.
+    /// </summary>
     public Workspace Workspace { get; private set; } = workspace;
 
+    /// <summary>
+    /// Configures source sets for the project from a collection of builders.
+    /// </summary>
+    /// <param name="obj">Dictionary containing source set names and their builders.</param>
     [ScriptFunction]
     public void sourceSets(object obj) {
         foreach (var pair in (IDictionary<string, object>) obj) {
@@ -40,6 +78,10 @@ public class Project(string name, string location, Workspace workspace) : Compon
         }
     }
 
+    /// <summary>
+    /// Adds dependencies to the project from a script object.
+    /// </summary>
+    /// <param name="obj">Script object containing dependency definitions.</param>
     [ScriptFunction]
     public void dependencies(object obj) {
         ScriptObject sobj = (ScriptObject) obj;
@@ -52,6 +94,10 @@ public class Project(string name, string location, Workspace workspace) : Compon
         }
     }
 
+    /// <summary>
+    /// Configures artifacts for the project from a collection of builders.
+    /// </summary>
+    /// <param name="obj">Dictionary containing artifact names and their builders.</param>
     [ScriptFunction]
     public void artifacts(object obj) {
         foreach (var pair in (IDictionary<string, object>) obj) {
@@ -62,10 +108,17 @@ public class Project(string name, string location, Workspace workspace) : Compon
         }
     }
 
+    /// <summary>
+    /// Returns a string representation of the project.
+    /// </summary>
     public override string ToString() {
         return $"Project({GetIdentifier()})";
     }
 
+    /// <summary>
+    /// Finalizes the project by building all artifacts and source sets.
+    /// </summary>
+    /// <param name="manilaAPI">The Manila API instance for finalization.</param>
     public override void Finalize(Manila manilaAPI) {
         base.Finalize(manilaAPI);
 

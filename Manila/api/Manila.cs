@@ -13,64 +13,69 @@ namespace Shiron.Manila.API;
 #pragma warning disable IDE1006
 
 /// <summary>
-/// The main Manila API class. Used for global functions.
+/// Primary API class exposing global Manila functions.
 /// </summary>
 public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     private readonly ScriptContext Context = context;
+
+    /// <summary>
+    /// The current build configuration for this Manila instance.
+    /// </summary>
     public BuildConfig? BuildConfig { get; private set; } = null;
 
+    /// <summary>
+    /// The list of task builders in this Manila instance.
+    /// </summary>
     public List<TaskBuilder> TaskBuilders { get; } = [];
+
+    /// <summary>
+    /// The list of artifact builders in this Manila instance.
+    /// </summary>
     public List<ArtifactBuilder> ArtifactBuilders { get; } = [];
 
+    /// <summary>
+    /// The active artifact builder context.
+    /// </summary>
     public ArtifactBuilder? CurrentArtifactBuilder { get; set; } = null;
 
     /// <summary>
-    /// Gets the current project in the Manila engine.
+    /// Gets the current Manila project or throws if none exists.
     /// </summary>
-    /// <returns>The current project.</returns>
-    /// <exception cref="Exception">Thrown when not in a project context.</exception>
     public Project getProject() {
         if (ManilaEngine.GetInstance().CurrentProject == null) throw new ContextException(Exceptions.Context.WORKSPACE, Exceptions.Context.PROJECT);
         return ManilaEngine.GetInstance().CurrentProject!;
     }
 
     /// <summary>
-    /// Gets an unresolved project with the specified name.
+    /// Creates an unresolved project reference by name.
     /// </summary>
-    /// <param name="name">The name of the project to get.</param>
-    /// <returns>An unresolved project with the specified name.</returns>
     public UnresolvedProject getProject(string name) {
         return new UnresolvedProject(name);
     }
 
     /// <summary>
-    /// Gets the workspace in the Manila engine.
+    /// Gets the current Manila workspace.
     /// </summary>
-    /// <returns>The workspace in the Manila engine.</returns>
     public Workspace getWorkspace() {
         return ManilaEngine.GetInstance().Workspace;
     }
 
     /// <summary>
-    /// Gets the build configuration for this Manila instance.
+    /// Gets the build configuration or throws if not set.
     /// </summary>
-    /// <returns>The build configuration for this Manila instance.</returns>
     public BuildConfig getConfig() {
         return BuildConfig ?? throw new ScriptingException("Cannot retreive build config before applying a language component!");
     }
 
     /// <summary>
-    /// Creates a new source set with the specified origin.
+    /// Creates a source set with the given origin.
     /// </summary>
-    /// <param name="origin">The origin of the source set.</param>
-    /// <returns>A new source set with the specified origin.</returns>
     public SourceSetBuilder sourceSet(string origin) {
         return new(origin);
     }
     /// <summary>
-    /// Creates a new artifact
+    /// Creates an artifact using the provided configuration lambda.
     /// </summary>
-    /// <returns>A builder to create the artifact</returns>
     public ArtifactBuilder artifact(dynamic lambda) {
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
         var builder = new ArtifactBuilder(() => lambda(), this, BuildConfig, getProject().Name);
@@ -78,15 +83,16 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         return builder;
     }
 
+    /// <summary>
+    /// Pauses execution for the specified milliseconds.
+    /// </summary>
     public async void sleep(int milliseconds) {
         await System.Threading.Tasks.Task.Delay(milliseconds);
     }
 
     /// <summary>
-    /// Creates a new task with the specified name.
+    /// Creates a task with the given name.
     /// </summary>
-    /// <param name="name">The name of the task to create.</param>
-    /// <returns>A new task with the specified name, associated with the current project and script context.</returns>
     public TaskBuilder task(string name) {
         if (CurrentArtifactBuilder != null) {
             var taskBuilder = new TaskBuilder(name, Context, getProject(), CurrentArtifactBuilder);
@@ -107,36 +113,30 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     /// <summary>
-    /// Creates a new directory reference with the specified path.
+    /// Creates a directory handle for the given path.
     /// </summary>
-    /// <param name="path">The path of the directory.</param>
-    /// <returns>A new directory reference with the specified path.</returns>
     public DirHandle dir(string path) {
         return new DirHandle(path);
     }
 
     /// <summary>
-    /// Creates a new file reference with the specified path.
+    /// Creates a file handle for the given path.
     /// </summary>
-    /// <param name="path">The path of the file.</param>
-    /// <returns>A new file reference with the specified path.</returns>
     public FileHandle file(string path) {
         return new FileHandle(path);
     }
 
     /// <summary>
-    /// Applies the plugin component with the specified key to the current project.
+    /// Applies the plugin component identified by the given key.
     /// </summary>
-    /// <param name="pluginComponentKey">The key of the plugin component to apply.</param>
     public void apply(string pluginComponentKey) {
         var component = ExtensionManager.GetInstance().GetPluginComponent(pluginComponentKey);
         apply(component);
     }
 
     /// <summary>
-    /// Applies the plugin component specified by the script object to the current project.
+    /// Applies the plugin component defined in the script object.
     /// </summary>
-    /// <param name="obj">A script object containing the group, name, component, and optional version of the plugin component to apply.</param>
     public void apply(ScriptObject obj) {
         var version = obj.GetProperty("version");
         var component = ExtensionManager.GetInstance().GetPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
@@ -144,9 +144,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     /// <summary>
-    /// Applies the specified plugin component to the current project.
+    /// Applies the provided plugin component to the current project.
     /// </summary>
-    /// <param name="component">The plugin component to apply to the current project.</param>
     public void apply(PluginComponent component) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             Logger.Debug("Applying: " + component);
@@ -159,10 +158,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     /// <summary>
-    /// Used for filtering projects and running actions on them.
+    /// Registers an action to run on projects matching the given filter.
     /// </summary>
-    /// <param name="o">The type of filter, a subclass of <see cref="ProjectFilter"/></param>
-    /// <param name="a">The action to run</param>
     public void onProject(object o, dynamic a) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             var filter = ProjectFilter.From(o);
@@ -171,10 +168,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     /// <summary>
-    /// Runs a task with the specified key.
+    /// Executes the task identified by the given key.
     /// </summary>
-    /// <param name="key">The key</param>
-    /// <exception cref="Exception">Thrown if task was not found</exception>
     public void runTask(string key) {
         var task = ManilaEngine.GetInstance().GetTask(key);
         if (task == null) throw new Exception("Task not found: " + key);
@@ -183,43 +178,67 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     /// <summary>
-    /// Calls the underlying compiler to build the project
+    /// Builds the project using its language component.
     /// </summary>
-    /// <param name="workspace">The workspace</param>
-    /// <param name="project">The project</param>
-    /// <param name="config">The config</param>
     public void build(Workspace workspace, Project project, BuildConfig config) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             project.GetLanguageComponent().Build(workspace, project, config);
         }
     }
+
+    /// <summary>
+    /// Resolves and runs the specified unresolved project.
+    /// </summary>
     public void run(UnresolvedProject project) {
         run(project.Resolve());
     }
+
+    /// <summary>
+    /// Runs the specified project using its language component.
+    /// </summary>
     public void run(Project project) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             project.GetLanguageComponent().Run(project);
         }
     }
+
+    /// <summary>
+    /// Retrieves the value of the specified environment variable.
+    /// </summary>
     public string getEnv(string key) {
         return Context.GetEnvironmentVariable(key);
     }
+
+    /// <summary>
+    /// Retrieves the specified environment variable as a double or zero if unset.
+    /// </summary>
     public double getEnvNumber(string key) {
         var value = Context.GetEnvironmentVariable(key);
         if (string.IsNullOrEmpty(value)) return 0;
         if (double.TryParse(value, out var result)) return result;
         throw new Exception($"Environment variable {key} is not a number: {value}");
     }
+
+    /// <summary>
+    /// Retrieves the specified environment variable as a boolean or false if unset.
+    /// </summary>
     public bool getEnvBool(string key) {
         var value = Context.GetEnvironmentVariable(key);
         if (string.IsNullOrEmpty(value)) return false;
         if (bool.TryParse(value, out var result)) return result;
         throw new Exception($"Environment variable {key} is not a boolean: {value}");
     }
+
+    /// <summary>
+    /// Sets the specified environment variable to the given value.
+    /// </summary>
     public void setEnv(string key, string value) {
         Context.SetEnvironmentVariable(key, value);
     }
 
+    /// <summary>
+    /// Imports an API type instance for the given key.
+    /// </summary>
     public object import(string key) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             var t = Activator.CreateInstance(ExtensionManager.GetInstance().GetAPIType(key));
@@ -233,12 +252,19 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     // Task Actions
+    /// <summary>
+    /// Creates a shell-based task action with cmd.exe.
+    /// </summary>
     public ITaskAction shell(string command) {
         return new TaskShellAction(new(
             "cmd.exe",
             ["/c", .. command.Split(" ")]
         ));
     }
+
+    /// <summary>
+    /// Creates a task action to execute the given command.
+    /// </summary>
     public ITaskAction execute(string command) {
         return new TaskShellAction(new(
             command.Split(" ")[0],

@@ -1,19 +1,51 @@
-
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API.Builders;
 
+/// <summary>
+/// Builder for creating tasks within a Manila build configuration.
+/// </summary>
 public sealed class TaskBuilder(string name, ScriptContext context, Component component, ArtifactBuilder? artifactBuilder) : IBuildable<Task> {
+    /// <summary>
+    /// The name of the task.
+    /// </summary>
     public readonly string Name = name;
+
+    /// <summary>
+    /// The artifact builder this task belongs to, if any.
+    /// </summary>
     public readonly ArtifactBuilder? ArtifactBuilder = artifactBuilder;
+
+    /// <summary>
+    /// Description of what the task does.
+    /// </summary>
     public string Description { get; private set; } = "A generic task";
+
+    /// <summary>
+    /// Whether the task blocks execution flow until completion.
+    /// </summary>
     public bool Blocking { get; private set; } = true;
 
+    /// <summary>
+    /// List of task dependencies that must execute before this task.
+    /// </summary>
     public readonly List<string> Dependencies = [];
+
+    /// <summary>
+    /// Array of actions to be executed by this task.
+    /// </summary>
     public ITaskAction[] Actions { get; private set; } = [];
+
+    /// <summary>
+    /// The script context for this task.
+    /// </summary>
     public readonly ScriptContext ScriptContext = context;
+
+    /// <summary>
+    /// The component this task belongs to.
+    /// </summary>
     public readonly Component Component = component;
 
     /// <summary>
@@ -80,6 +112,10 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
         return this;
     }
 
+    /// <summary>
+    /// Builds the task using the configured properties and actions.
+    /// </summary>
+    /// <returns>The built task instance.</returns>
     public Task Build() {
         return new(this);
     }
