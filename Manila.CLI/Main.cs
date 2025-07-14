@@ -38,52 +38,11 @@ public static class ManilaCLI {
     }
 
     public static int RunTask(ManilaEngine engine, ExtensionManager extensionManager, DefaultCommandSettings settings, string task) {
-        try {
+        return ErrorHandler.SafeExecute(() => {
             engine.ExecuteBuildLogic(task);
-        } catch (ScriptingException e) {
-            //  scripting errors are common user-facing issues.
-            AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Script Error:[/] [white]{Markup.Escape(e.Message)}[/]");
-            AnsiConsole.MarkupLine("[grey]This error occurred while executing a script. Check the script for syntax errors or logic issues.[/]");
-            AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
-            if (settings.StackTrace) Utils.TryWriteException(e.InnerException ?? e);
-
-            return ExitCodes.SCRIPTING_ERROR;
-        } catch (BuildException e) {
-            // build errors indicate a failure in the compilation or packaging process.
-            AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Build Error:[/] [white]{e.Message}[/]");
-            AnsiConsole.MarkupLine("[grey]The project failed to build. Review the build configuration and source files for errors.[/]");
-            AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
-            if (settings.StackTrace) Utils.TryWriteException(e.InnerException ?? e);
-
-            return ExitCodes.BUILD_ERROR;
-        } catch (ConfigurationException e) {
-            // configuration errors are often due to invalid settings.
-            AnsiConsole.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Configuration Error:[/] [white]{e.Message}[/]");
-            AnsiConsole.MarkupLine("[grey]There is a problem with a configuration file or setting. Please verify it is correct.[/]");
-            AnsiConsole.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
-            if (settings.StackTrace) Utils.TryWriteException(e.InnerException ?? e);
-
-            return ExitCodes.CONFIGURATION_ERROR;
-        } catch (ManilaException e) {
-            // this is a known, handled application error.
-            AnsiConsole.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Application Error:[/] [white]{e.Message}[/]");
-            AnsiConsole.MarkupLine($"[grey]A known issue ('{e.GetType().Name}') occurred. This is a handled error condition.[/]");
-            AnsiConsole.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
-            if (settings.StackTrace) Utils.TryWriteException(e);
-
-            return ExitCodes.KNOWN_ERROR;
-        } catch (Exception e) {
-            // this is a critical, unexpected error that likely indicates a bug.
-            AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.Collision} Unexpected System Exception:[/] [white]{e.GetType().Name}[/]");
-            AnsiConsole.MarkupLine("[red]This may indicate a bug in the application. Please report this issue.[/]");
-            AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed error log.[/]");
-            if (settings.StackTrace) Utils.TryWriteException(e);
-
-            return ExitCodes.UNKNOWN_ERROR;
-        }
-
-        extensionManager.ReleasePlugins();
-        return ExitCodes.SUCCESS;
+            extensionManager.ReleasePlugins();
+            return ExitCodes.SUCCESS;
+        }, settings);
     }
 
     public static int Main(string[] args) {

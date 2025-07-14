@@ -3,8 +3,8 @@ using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
-public sealed class DefaultCommand : Command<DefaultCommandSettings> {
-    public override int Execute(CommandContext context, DefaultCommandSettings settings) {
+public sealed class DefaultCommand : BaseManilaCommand<DefaultCommandSettings> {
+    protected override int ExecuteCommand(CommandContext context, DefaultCommandSettings settings) {
         return ManilaCLI.CommandApp.Run(["--help"]);
     }
 }

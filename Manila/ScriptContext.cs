@@ -156,15 +156,48 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 }));
 
                 ScriptEngine.AddHostObject("__Manila_handleError", new Action<object>(e => {
+                    Exception exceptionToThrow;
+
                     if (e == null) {
-                        taskCompletion.TrySetException(new Exception("Script error: null exception"));
-                        return;
+                        exceptionToThrow = new ScriptingException("Script error: null exception occurred");
+                    } else if (e is Exception directException) {
+                        // If it's already a .NET exception, wrap it in ScriptingException for consistency
+                        exceptionToThrow = new ScriptingException($"Script execution failed: {directException.Message}", directException);
+                    } else {
+                        // Handle JavaScript errors and other objects
+                        string errorMessage = "Unknown script error";
+
+                        try {
+                            // Try to extract meaningful error information from the JavaScript error object
+                            if (e is ScriptObject scriptObj) {
+                                var message = scriptObj.GetProperty("message");
+                                var name = scriptObj.GetProperty("name");
+                                var stack = scriptObj.GetProperty("stack");
+
+                                if (message != null && message != Undefined.Value) {
+                                    errorMessage = message.ToString() ?? "Unknown error";
+                                }
+
+                                if (name != null && name != Undefined.Value) {
+                                    errorMessage = $"{name}: {errorMessage}";
+                                }
+
+                                // Include stack trace if available
+                                if (stack != null && stack != Undefined.Value && !string.IsNullOrEmpty(stack.ToString())) {
+                                    errorMessage += $"\n\nJavaScript Stack Trace:\n{stack}";
+                                }
+                            } else {
+                                errorMessage = e.ToString() ?? "Unknown script error";
+                            }
+                        } catch {
+                            // If we can't extract error info, use the toString representation
+                            errorMessage = e.ToString() ?? "Unknown script error occurred";
+                        }
+
+                        exceptionToThrow = new ScriptingException($"JavaScript error: {errorMessage}");
                     }
-                    if (e is not Exception) {
-                        taskCompletion.TrySetException(new Exception("Script error: " + e.ToString()));
-                        return;
-                    }
-                    taskCompletion.TrySetException((e as Exception)!);
+
+                    taskCompletion.TrySetException(exceptionToThrow);
                 }));
 
                 ScriptEngine.AllowReflection = true;
@@ -187,6 +220,15 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 await taskCompletion.Task;
 
                 Component.Finalize(ManilaAPI);
+            } catch (ScriptEngineException see) {
+                // Handle V8 script engine exceptions specifically
+                var errorMessage = see.ErrorDetails ?? see.Message;
+                var ex = new ScriptingException($"Script execution failed in '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}': {errorMessage}", see);
+                Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
+                throw ex;
+            } catch (ScriptingException) {
+                // Re-throw ScriptingExceptions as-is (they're already properly formatted)
+                throw;
             } catch (Exception e) {
                 var ex = new ScriptingException($"An error occurred while executing script: '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}'", e);
                 Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
@@ -204,10 +246,13 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             LoadEnvironmentVariables();
 
             ScriptEngine.Execute(File.ReadAllText("Manila.js"));
-        } catch (ScriptEngineException e) {
-            Logger.Error("Error in workspace script!");
-            Logger.Info(e.Message);
-            throw;
+        } catch (ScriptEngineException see) {
+            var errorMessage = see.ErrorDetails ?? see.Message;
+            Logger.Error($"Error in workspace script: {errorMessage}");
+            throw new ScriptingException($"Workspace script execution failed: {errorMessage}", see);
+        } catch (Exception e) {
+            Logger.Error($"Error in workspace script: {e.Message}");
+            throw new ScriptingException("Workspace script execution failed", e);
         }
     }
 

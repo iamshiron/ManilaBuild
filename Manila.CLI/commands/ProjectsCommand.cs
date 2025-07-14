@@ -4,14 +4,14 @@ using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
-internal sealed class ProjectsCommand : Command<ProjectsCommand.Settings> {
+internal sealed class ProjectsCommand : BaseAsyncManilaCommand<ProjectsCommand.Settings> {
     public sealed class Settings : DefaultCommandSettings { }
 
-    public override int Execute(CommandContext context, Settings settings) {
+    protected override async System.Threading.Tasks.Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         var engine = ManilaEngine.GetInstance();
 
         ManilaCLI.InitExtensions();
-        engine.Run().Wait();
+        await engine.Run();
         if (engine.Workspace == null) throw new ManilaException("Not inside a workspace");
 
         AnsiConsole.Write(new Rule("[bold yellow]Available Projects[/]").RuleStyle("grey").DoubleBorder());
@@ -37,6 +37,6 @@ internal sealed class ProjectsCommand : Command<ProjectsCommand.Settings> {
 
         AnsiConsole.Write(table);
 
-        return 0;
+        return ExitCodes.SUCCESS;
     }
 }

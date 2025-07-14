@@ -6,7 +6,7 @@ using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
-public sealed class RunCommand : Command<RunCommand.Settings> {
+public sealed class RunCommand : BaseAsyncManilaCommand<RunCommand.Settings> {
     public class Settings : DefaultCommandSettings {
         [CommandArgument(0, "<task>")]
         [Description("The task to run")]
@@ -14,22 +14,18 @@ public sealed class RunCommand : Command<RunCommand.Settings> {
         public string Task { get; set; } = "";
     }
 
-    public override int Execute(CommandContext context, Settings settings) {
+    protected override async System.Threading.Tasks.Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         ManilaCLI.SetupInitialComponents(settings);
         ManilaCLI.InitExtensions();
 
-        try {
+        var engine = ManilaEngine.GetInstance();
+        var extensionManager = ExtensionManager.GetInstance();
 
-            var engine = ManilaEngine.GetInstance();
-            var extensionManager = ExtensionManager.GetInstance();
-
-            ManilaCLI.StartEngine(engine).Wait();
-            if (engine.GetTask(settings.Task) == null) throw new TaskNotFoundException(settings.Task);
-
-            return ManilaCLI.RunTask(engine, extensionManager, settings, settings.Task);
-        } catch (Exception e) {
-            Console.WriteLine(e);
-            throw;
+        await ManilaCLI.StartEngine(engine);
+        if (engine.GetTask(settings.Task) == null) {
+            throw new TaskNotFoundException(settings.Task);
         }
+
+        return ManilaCLI.RunTask(engine, extensionManager, settings, settings.Task);
     }
 }

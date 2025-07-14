@@ -4,10 +4,10 @@ using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
-internal sealed class PluginsCommand : Command<PluginsCommand.Settings> {
+internal sealed class PluginsCommand : BaseManilaCommand<PluginsCommand.Settings> {
     public class Settings : DefaultCommandSettings { }
 
-    public override int Execute(CommandContext context, Settings settings) {
+    protected override int ExecuteCommand(CommandContext context, Settings settings) {
         var extensionManager = ExtensionManager.GetInstance();
         ManilaCLI.InitExtensions();
 
@@ -31,6 +31,6 @@ internal sealed class PluginsCommand : Command<PluginsCommand.Settings> {
 
         extensionManager.ReleasePlugins();
 
-        return 0;
+        return ExitCodes.SUCCESS;
     }
 }
