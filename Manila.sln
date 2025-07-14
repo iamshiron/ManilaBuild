@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manila.Logging", "Manila.Lo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manila.Profiling", "Manila.Profiling\Manila.Profiling.csproj", "{9219361C-D24C-4132-89A2-B638EC340817}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manila.Tests", "Manila.Tests\Manila.Tests.csproj", "{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{9219361C-D24C-4132-89A2-B638EC340817}.Release|x64.Build.0 = Release|Any CPU
 		{9219361C-D24C-4132-89A2-B638EC340817}.Release|x86.ActiveCfg = Release|Any CPU
 		{9219361C-D24C-4132-89A2-B638EC340817}.Release|x86.Build.0 = Release|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Debug|x64.Build.0 = Debug|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Debug|x86.Build.0 = Debug|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Release|x64.ActiveCfg = Release|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Release|x64.Build.0 = Release|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Release|x86.ActiveCfg = Release|Any CPU
+		{9DDC7D67-BC3C-4DC9-9A20-DFF4D6983D13}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

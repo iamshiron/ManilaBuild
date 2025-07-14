@@ -27,7 +27,7 @@ public static class FunctionUtils {
                     2 => typeof(Action<,>).MakeGenericType(paramTypes),
                     3 => typeof(Action<,,>).MakeGenericType(paramTypes),
                     4 => typeof(Action<,,,>).MakeGenericType(paramTypes),
-                    _ => throw new NotSupportedException($"Methods with {paramTypes.Length} parameters are not supported")
+                    _ => throw new ArgumentException($"Methods with {paramTypes.Length} parameters are not supported")
                 };
                 return Delegate.CreateDelegate(delegateType, o, method, throwOnBindFailure: false)
                        ?? CreateDelegateWithExpression(o, method, delegateType);
@@ -40,7 +40,7 @@ public static class FunctionUtils {
                     2 => typeof(Func<,,>).MakeGenericType(typeArgs),
                     3 => typeof(Func<,,,>).MakeGenericType(typeArgs),
                     4 => typeof(Func<,,,,>).MakeGenericType(typeArgs),
-                    _ => throw new NotSupportedException($"Methods with {paramTypes.Length} parameters are not supported")
+                    _ => throw new ArgumentException($"Methods with {paramTypes.Length} parameters are not supported")
                 };
                 return Delegate.CreateDelegate(delegateType, o, method, throwOnBindFailure: false)
                        ?? CreateDelegateWithExpression(o, method, delegateType);

@@ -36,6 +36,6 @@ public static partial class RegexUtils {
         return $"{match.Project}/{match.Artifact}:{match.Task}";
     }
 
-    [GeneratedRegex(@"(?:(?<project>\w+)(?:\/(?<artifact>\w+))?:)?(?<task>\w+)", RegexOptions.Compiled)]
+    [GeneratedRegex(@"^(?:(?<project>\w+)(?:\/(?<artifact>\w+))?:)?(?<task>\w+)$", RegexOptions.Compiled)]
     private static partial Regex TaskRegexGenerator();
 }

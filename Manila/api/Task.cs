@@ -1,4 +1,5 @@
 
+using Microsoft.VisualBasic;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
@@ -60,7 +61,15 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
         var match = new RegexUtils.TaskMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtifactBuilder == null ? null : ArtifactBuilder.Name, task);
         Dependencies.Add(RegexUtils.FromTaskMatch(match));
 
-
+        return this;
+    }
+    /// <summary>
+    /// Add a dependency to the task.
+    /// </summary>
+    /// <param name="task">The dependents task ID</param>
+    /// <returns>Task instance for chaining calls</returns>
+    public TaskBuilder after(string[] task) {
+        foreach (var t in task) after(t);
         return this;
     }
     /// <summary>
