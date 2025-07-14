@@ -9,7 +9,6 @@ This directory contains optimized GitHub Actions workflows for the Manila projec
 - **Primary Ubuntu job**: Fast execution on every trigger
 - **Cross-platform testing**: Only runs on main branch pushes (saves ~70% of minutes)
 - **Features**:
-  - .NET package caching for faster restores
   - Minimal verbosity to reduce log overhead
   - Optimized environment variables to skip telemetry
 
@@ -34,7 +33,6 @@ This directory contains optimized GitHub Actions workflows for the Manila projec
 ## 🚀 Optimization Features
 
 ### Execution Time Optimizations
-- **Caching**: .NET packages cached across runs
 - **Minimal verbosity**: Reduced log output
 - **Single platform primary**: Ubuntu for main testing (3x faster than Windows/macOS)
 - **Smart triggers**: Cross-platform only on important branches
@@ -65,6 +63,5 @@ Recommended branch protection rules for `main`:
 - Include administrators in restrictions
 
 ## Performance Tips
-- Enable .NET caching in setup-dotnet action
 - Set environment variables to skip telemetry and first-time experiences
 - Use minimal verbosity to reduce log processing time
