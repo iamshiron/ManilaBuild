@@ -1,0 +1,50 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 0'
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        cache: true
+
+    - name: Restore dependencies
+      run: dotnet restore --locked-mode
+
+    - name: Security scan
+      run: |
+        echo "Scanning for vulnerable packages..."
+        dotnet list package --vulnerable --include-transitive > security-scan.log 2>&1
+        if grep -q "has the following vulnerable packages" security-scan.log; then
+          echo "::error::Vulnerable packages found!"
+          cat security-scan.log
+          exit 1
+        else
+          echo "✅ No vulnerable packages found."
+        fi
+
+    - name: Upload security scan results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-results
+        path: security-scan.log
+        retention-days: 7
