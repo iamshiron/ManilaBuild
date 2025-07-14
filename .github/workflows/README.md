@@ -11,7 +11,6 @@ This directory contains optimized GitHub Actions workflows for the Manila projec
 - **Features**:
   - .NET package caching for faster restores
   - Minimal verbosity to reduce log overhead
-  - Locked-mode restore for consistency
   - Optimized environment variables to skip telemetry
 
 ### Fast PR Check (`pr-check.yml`) - Ultra-Fast PR Validation
@@ -37,7 +36,6 @@ This directory contains optimized GitHub Actions workflows for the Manila projec
 ### Execution Time Optimizations
 - **Caching**: .NET packages cached across runs
 - **Minimal verbosity**: Reduced log output
-- **Locked-mode restore**: Faster dependency resolution
 - **Single platform primary**: Ubuntu for main testing (3x faster than Windows/macOS)
 - **Smart triggers**: Cross-platform only on important branches
 
@@ -67,7 +65,6 @@ Recommended branch protection rules for `main`:
 - Include administrators in restrictions
 
 ## Performance Tips
-- Use `--locked-mode` for consistent, faster restores
 - Enable .NET caching in setup-dotnet action
 - Set environment variables to skip telemetry and first-time experiences
 - Use minimal verbosity to reduce log processing time

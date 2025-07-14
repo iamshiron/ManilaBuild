@@ -27,7 +27,7 @@ jobs:
         cache: true
 
     - name: Restore dependencies
-      run: dotnet restore --locked-mode
+      run: dotnet restore
 
     - name: Security scan
       run: |
