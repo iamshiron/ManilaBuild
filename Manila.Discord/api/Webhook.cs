@@ -21,7 +21,7 @@ public class Webhook {
                 var response = await _httpClient.PostAsync(_url, content);
                 response.EnsureSuccessStatusCode();
             } catch (HttpRequestException e) {
-                ManilaDiscord.Instance.Error($"Error sending webhook: {e.Message}");
+                ManilaDiscord.Instance?.Error($"Error sending webhook: {e.Message}");
                 throw;
             }
         }

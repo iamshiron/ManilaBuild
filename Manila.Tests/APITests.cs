@@ -34,8 +34,9 @@ public class ProjectFilterTests {
     public void ProjectFilterRegex_Predicate_MatchesCorrectly() {
         var regex = new Regex("^core-.*");
         var filter = new ProjectFilterRegex(regex);
-        var project1 = new Project("core-lib", ".", null);
-        var project2 = new Project("client-app", ".", null);
+        var workspace = new Workspace(".");
+        var project1 = new Project("core-lib", ".", workspace);
+        var project2 = new Project("client-app", ".", workspace);
 
         Assert.That(filter.Predicate(project1), Is.True);
         Assert.That(filter.Predicate(project2), Is.False);

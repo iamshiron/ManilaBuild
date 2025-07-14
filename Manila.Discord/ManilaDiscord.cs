@@ -9,7 +9,7 @@ public class ManilaDiscord : ManilaPlugin {
     }
 
     [PluginInstance]
-    public static ManilaDiscord Instance { get; set; }
+    public static ManilaDiscord? Instance { get; set; }
 
     public override void Init() {
         RegisterAPIType<API.Webhook>("webhook");
