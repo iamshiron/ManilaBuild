@@ -1,5 +1,6 @@
 using Microsoft.ClearScript;
 using NuGet.Packaging;
+using Shiron.Manila.Artifacts;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Security.Cryptography;
 using System.Text;
 using Shiron.Manila.API;
+using Shiron.Manila.Artifacts;
 
 namespace Shiron.Manila.Utils;
 
