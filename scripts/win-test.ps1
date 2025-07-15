@@ -1,5 +1,5 @@
 # Build the solution, treating warnings as errors
-dotnet build E:/dev/Manila/manila/Manila.slnx -warnaserror
+dotnet build E:/dev/Manila/manila/Manila.slnx --no-restore --configuration Release --verbosity minimal /p:TreatWarningsAsErrors=true
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!"
     exit $LASTEXITCODE

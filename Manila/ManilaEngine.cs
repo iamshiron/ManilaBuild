@@ -256,7 +256,7 @@ public sealed class ManilaEngine {
     }
 
     public API.Task GetTask(string uri) {
-        var info = RegexUtils.MatchTasks(uri);
+        var info = RegexUtils.MatchTasks(uri) ?? throw new ManilaException($"Invalid task URI: {uri}");
 
         if (info.Project == null) {
             var temp = Workspace.Tasks.Find(m => m.Name == info.Task) ?? throw new ManilaException($"Task {uri} not found!");

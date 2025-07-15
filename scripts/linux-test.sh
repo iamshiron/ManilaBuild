@@ -5,7 +5,7 @@ set -e
 
 # Build the solution, treating warnings as errors
 echo "Building solution..."
-dotnet build E:/dev/Manila/manila/Manila.slnx -warnaserror
+dotnet build E:/dev/Manila/manila/Manila.slnx --no-restore --configuration Release --verbosity minimal /p:TreatWarningsAsErrors=true
 
 # Run the tests
 echo "Build successful, running tests..."
