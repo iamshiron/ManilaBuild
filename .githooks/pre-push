@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Determine the operating system
+if [ -n "$OS" ] && [ "$OS" = "Windows_NT" ]; then
+  # Windows
+  echo "Running Windows pre-push hook..."
+  pwsh -File ./scripts/win-test.ps1
+  exit $?
+else
+  # Linux/macOS
+  echo "Running Linux/macOS pre-push hook..."
+  ./scripts/linux-test.sh
+  exit $?
+fi
