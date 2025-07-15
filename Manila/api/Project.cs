@@ -72,9 +72,9 @@ public class Project(string name, string location, Workspace workspace) : Compon
     /// <param name="obj">Dictionary containing source set names and their builders.</param>
     [ScriptFunction]
     public void sourceSets(object obj) {
-        foreach (var pair in (IDictionary<string, object>) obj) {
+        foreach (var pair in (IDictionary<string, object>)obj) {
             if (SourceSets.ContainsKey(pair.Key)) throw new Exception($"SourceSet '{pair.Key}' already exists.");
-            _sourceSetBuilders.Add(pair.Key, (SourceSetBuilder) pair.Value);
+            _sourceSetBuilders.Add(pair.Key, (SourceSetBuilder)pair.Value);
         }
     }
 
@@ -84,7 +84,7 @@ public class Project(string name, string location, Workspace workspace) : Compon
     /// <param name="obj">Script object containing dependency definitions.</param>
     [ScriptFunction]
     public void dependencies(object obj) {
-        ScriptObject sobj = (ScriptObject) obj;
+        ScriptObject sobj = (ScriptObject)obj;
         foreach (var n in sobj.PropertyIndices) {
             if (sobj[n] is Dependency dep) {
                 _dependencies.Add(dep);
@@ -100,9 +100,9 @@ public class Project(string name, string location, Workspace workspace) : Compon
     /// <param name="obj">Dictionary containing artifact names and their builders.</param>
     [ScriptFunction]
     public void artifacts(object obj) {
-        foreach (var pair in (IDictionary<string, object>) obj) {
+        foreach (var pair in (IDictionary<string, object>)obj) {
             if (_artifactBuilders.ContainsKey(pair.Key)) throw new Exception($"Artifact '{pair.Key}' already exists.");
-            var builder = (ArtifactBuilder) pair.Value;
+            var builder = (ArtifactBuilder)pair.Value;
             builder.Name = pair.Key;
             _artifactBuilders[pair.Key] = builder;
         }

@@ -1,7 +1,7 @@
-using Shiron.Manila.Exceptions;
-using Shiron.Manila.CLI.Commands;
-using Spectre.Console;
 using System;
+using Shiron.Manila.CLI.Commands;
+using Shiron.Manila.Exceptions;
+using Spectre.Console;
 
 namespace Shiron.Manila.CLI;
 

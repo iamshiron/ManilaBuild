@@ -10,7 +10,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public readonly string Name = name;
     public readonly string Version = version;
     public readonly List<string> Authors = authors;
-    public readonly List<string> NugetDependencies = nugetDependencies == null ? [] : nugetDependencies;
+    public readonly List<string> NugetDependencies = nugetDependencies ?? [];
 
     public readonly Dictionary<string, PluginComponent> Components = [];
     public readonly List<Type> Enums = [];

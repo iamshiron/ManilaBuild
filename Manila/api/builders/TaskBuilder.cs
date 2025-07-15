@@ -60,7 +60,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
             return this;
         }
 
-        var match = new RegexUtils.TaskMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtifactBuilder == null ? null : ArtifactBuilder.Name, task);
+        var match = new RegexUtils.TaskMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtifactBuilder?.Name, task);
         Dependencies.Add(match.Format());
 
         return this;
@@ -88,7 +88,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
             Logger.Debug($"Found {list.Count} chained actions!");
             Actions = list.Cast<ITaskAction>().ToArray();
         } else {
-            Actions = [new TaskScriptAction((dynamic) o)];
+            Actions = [new TaskScriptAction((dynamic)o)];
         }
 
         return this;

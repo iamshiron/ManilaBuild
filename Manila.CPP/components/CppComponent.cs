@@ -1,11 +1,11 @@
-namespace Shiron.Manila.CPP.Components;
 
 using Shiron.Manila.API;
-using Shiron.Manila.Ext;
 using Shiron.Manila.Attributes;
-using Shiron.Manila.CPP.Toolchain.Impl;
 using Shiron.Manila.CPP.Toolchain;
+using Shiron.Manila.CPP.Toolchain.Impl;
+using Shiron.Manila.Ext;
 
+namespace Shiron.Manila.CPP.Components;
 /// <summary>
 /// Represents a C++ project.
 /// </summary>
@@ -23,7 +23,7 @@ public class CppComponent : LanguageComponent {
             dep.Resolve(project);
         }
 
-        Toolchain toolchain =
+        Toolchain.Toolchain toolchain =
             ToolChain == EToolChain.Clang ? new ToolchainClang(workspace, project, config) :
             ToolChain == EToolChain.MSVC ? new ToolchainMSVC(workspace, project, config) :
             throw new Exception($"Toolchain '{ToolChain}' is not supported.");

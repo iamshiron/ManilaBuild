@@ -1,9 +1,9 @@
+using System.Collections.Concurrent;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Shiron.Manila.Logging;
 using Spectre.Console;
-using System.Collections.Concurrent;
 
 namespace Shiron.Manila.CLI;
 

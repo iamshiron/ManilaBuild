@@ -1,10 +1,10 @@
-﻿namespace Shiron.Manila.CPP;
 
 using Shiron.Manila.API;
+using Shiron.Manila.Attributes;
 using Shiron.Manila.CPP.Components;
 using Shiron.Manila.Ext;
-using Shiron.Manila.Attributes;
 
+namespace Shiron.Manila.CPP;
 public class ManilaCPP : ManilaPlugin {
     public ManilaCPP() : base("shiron.manila", "cpp", "1.0.0", ["Shiron"], []) {
     }

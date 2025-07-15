@@ -1,7 +1,7 @@
-namespace Shiron.Manila.CPP;
 
 using Shiron.Manila.Attributes;
 
+namespace Shiron.Manila.CPP;
 [ScriptEnum]
 public class EToolChain {
     public readonly string name;

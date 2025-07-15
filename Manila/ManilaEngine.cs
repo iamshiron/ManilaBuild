@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Threading.Tasks;
 using Shiron.Manila.API;
 using Shiron.Manila.Artifacts;

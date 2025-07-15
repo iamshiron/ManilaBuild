@@ -1,15 +1,15 @@
-using System.Reflection;
 using System.IO.Compression;
+using System.Reflection;
+using System.Runtime.Loader;
 using System.Runtime.Versioning;
+using System.Text.Json;
 using NuGet.Common;
 using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
-using System.Runtime.Loader;
 using Shiron.Manila.Logging;
-using System.Text.Json;
 using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.Utils;

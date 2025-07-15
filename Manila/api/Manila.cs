@@ -1,11 +1,11 @@
+using System.Reflection;
 using Microsoft.ClearScript;
-using Shiron.Manila.Ext;
+using Shiron.Manila.API.Builders;
 using Shiron.Manila.Exceptions;
-using Shiron.Manila.Utils;
+using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
-using System.Reflection;
-using Shiron.Manila.API.Builders;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
@@ -139,7 +139,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     public void apply(ScriptObject obj) {
         var version = obj.GetProperty("version");
-        var component = ExtensionManager.GetInstance().GetPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
+        var component = ExtensionManager.GetInstance().GetPluginComponent((string)obj["group"], (string)obj["name"], (string)obj["component"], version == Undefined.Value ? null : (string)version);
         apply(component);
     }
 
@@ -152,7 +152,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
             getProject().ApplyComponent(component);
             if (component is LanguageComponent lc) {
                 var config = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
-                BuildConfig = (BuildConfig) config;
+                BuildConfig = (BuildConfig)config;
             }
         }
     }
@@ -171,9 +171,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// Executes the task identified by the given key.
     /// </summary>
     public void runTask(string key) {
-        var task = ManilaEngine.GetInstance().GetTask(key);
-        if (task == null) throw new Exception("Task not found: " + key);
-
+        var task = ManilaEngine.GetInstance().GetTask(key) ?? throw new Exception("Task not found: " + key);
         task.Execute();
     }
 

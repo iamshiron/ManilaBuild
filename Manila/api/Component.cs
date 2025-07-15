@@ -1,10 +1,10 @@
-using Microsoft.ClearScript;
 using System.Dynamic;
 using System.Reflection;
-using Shiron.Manila.Ext;
-using Shiron.Manila.Utils;
+using Microsoft.ClearScript;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
@@ -80,9 +80,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         var scriptPropertyGetterName = "get" + propertyName;
         var scriptPropertySetterName = "set" + propertyName;
 
-        var scriptPropertyInfo = prop.GetCustomAttribute<ScriptProperty>();
-        if (scriptPropertyInfo == null) throw new Exception($"Property '{prop.Name}' is not a script property.");
-
+        var scriptPropertyInfo = prop.GetCustomAttribute<ScriptProperty>() ?? throw new Exception($"Property '{prop.Name}' is not a script property.");
         var setMethod = prop.GetSetMethod();
 
         if (setMethod != null && !scriptPropertyInfo.Immutable) {
@@ -111,9 +109,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         if (obj == null) obj = this;
 
         Logger.Debug($"Adding function '{prop.Name}' to script context.");
-        var scriptFunctionInfo = prop.GetCustomAttribute<ScriptFunction>();
-        if (scriptFunctionInfo == null) throw new Exception($"Method '{prop.Name}' is not a script function.");
-
+        var scriptFunctionInfo = prop.GetCustomAttribute<ScriptFunction>() ?? throw new Exception($"Method '{prop.Name}' is not a script function.");
         var methods = DynamicMethods.ContainsKey(prop.Name) ? DynamicMethods[prop.Name] : new List<Delegate>();
         methods.Add(FunctionUtils.ToDelegate(obj, prop));
         DynamicMethods[prop.Name] = methods;
@@ -232,7 +228,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
                             Logger.Warning($"Could not create instance of dependency type '{t}'.");
                             return null;
                         }
-                        dep.Create((object[]) args);
+                        dep.Create((object[])args);
                         return dep;
                     }
                 );
@@ -263,11 +259,11 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     /// <exception cref="Exception">Thrown when the component is not found.</exception>
     public T GetComponent<T>() where T : PluginComponent {
         if (PluginComponents.TryGetValue(typeof(T), out var component))
-            return (T) component;
+            return (T)component;
 
         foreach (var p in PluginComponents) {
             if (typeof(T).IsAssignableFrom(p.Key))
-                return (T) p.Value;
+                return (T)p.Value;
         }
 
         throw new Exception($"Component of type {typeof(T).Name} not found in this context.");

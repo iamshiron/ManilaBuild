@@ -1,4 +1,3 @@
-namespace Shiron.Manila;
 
 using System.Reflection;
 using System.Threading.Tasks;
@@ -9,6 +8,8 @@ using Shiron.Manila.Attributes;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
+
+namespace Shiron.Manila;
 
 public sealed class ScriptContext(ManilaEngine engine, API.Component component, string scriptPath) {
     /// <summary>
@@ -37,7 +38,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     private Dictionary<string, string> EnvironmentVariables { get; } = new();
 
-    public Manila? ManilaAPI { get; private set; } = null;
+    public API.Manila? ManilaAPI { get; private set; } = null;
 
     public List<Type> EnumComponents { get; } = new();
 

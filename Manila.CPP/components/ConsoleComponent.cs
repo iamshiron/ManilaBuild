@@ -1,10 +1,10 @@
-namespace Shiron.Manila.CPP.Components;
 
 using System.Diagnostics;
 using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Utils;
 
+namespace Shiron.Manila.CPP.Components;
 /// <summary>
 /// Represents a C++ console application project.
 /// </summary>

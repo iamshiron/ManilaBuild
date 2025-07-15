@@ -1,5 +1,5 @@
-using Spectre.Console;
 using System;
+using Spectre.Console;
 
 namespace Shiron.Manila.CLI;
 

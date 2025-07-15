@@ -1,4 +1,4 @@
-﻿namespace Shiron.Manila.Logging;
+namespace Shiron.Manila.Logging;
 
 /// <summary>
 /// Provides a way to manage a stack of logging contexts for an execution flow.

@@ -1,11 +1,11 @@
+using System.ComponentModel;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Shiron.Manila.Exceptions;
-using Spectre.Console.Cli;
-using System.Linq;
-using System.ComponentModel;
 using Shiron.Manila.Ext;
+using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
@@ -73,8 +73,8 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                 description = task.Description,
                 dependencies = task.Dependencies,
                 type = "workspace",
-                project = (string?) null,
-                artifact = (string?) null,
+                project = (string?)null,
+                artifact = (string?)null,
                 blocking = task.Blocking
             };
 
@@ -110,7 +110,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                     dependencies = task.Dependencies,
                     type = "project",
                     project = projectName,
-                    artifact = (string?) null,
+                    artifact = (string?)null,
                     blocking = task.Blocking
                 };
 

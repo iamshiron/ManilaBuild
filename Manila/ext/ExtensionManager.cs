@@ -1,12 +1,12 @@
-namespace Shiron.Manila.Ext;
 
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Shiron.Manila.Logging;
 using Shiron.Manila.Attributes;
-using Shiron.Manila.Utils;
+using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling; // Assuming ProfileScope is in this namespace
+using Shiron.Manila.Utils;
 
+namespace Shiron.Manila.Ext;
 /// <summary>
 /// Manages the loading, retrieval, and lifecycle of plugins. This is a global singleton.
 /// </summary>
@@ -81,9 +81,7 @@ public class ExtensionManager {
                     foreach (var type in assembly.GetTypes()) {
                         if (!type.IsSubclassOf(typeof(ManilaPlugin)) || type.IsAbstract) continue;
 
-                        var plugin = (ManilaPlugin?) Activator.CreateInstance(type);
-                        if (plugin == null) throw new Exception($"Failed to create instance of plugin {type} from {file}.");
-
+                        var plugin = (ManilaPlugin?)Activator.CreateInstance(type) ?? throw new Exception($"Failed to create instance of plugin {type} from {file}.");
                         plugin.File = file;
                         Plugins.Add(plugin);
                         Logger.Log(new LoadingPluginLogEntry(plugin, Guid.NewGuid()));
@@ -163,7 +161,7 @@ public class ExtensionManager {
     /// <exception cref="Exception">Thrown if the plugin is not found.</exception>
     public T GetPlugin<T>() where T : ManilaPlugin {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            return (T) GetPlugin(typeof(T));
+            return (T)GetPlugin(typeof(T));
         }
     }
 
