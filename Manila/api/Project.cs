@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.ClearScript;
 using NuGet.Packaging;
 using Shiron.Manila.API.Builders;
@@ -59,7 +60,7 @@ public class Project(string name, string location, Workspace workspace) : Compon
     /// <summary>
     /// List of project dependencies.
     /// </summary>
-    public List<Dependency> _dependencies = [];
+    public readonly List<Dependency> Dependencies = [];
 
     /// <summary>
     /// The workspace containing this project.
@@ -71,10 +72,11 @@ public class Project(string name, string location, Workspace workspace) : Compon
     /// </summary>
     /// <param name="obj">Dictionary containing source set names and their builders.</param>
     [ScriptFunction]
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void sourceSets(object obj) {
-        foreach (var pair in (IDictionary<string, object>)obj) {
+        foreach (var pair in (IDictionary<string, object>) obj) {
             if (SourceSets.ContainsKey(pair.Key)) throw new Exception($"SourceSet '{pair.Key}' already exists.");
-            _sourceSetBuilders.Add(pair.Key, (SourceSetBuilder)pair.Value);
+            _sourceSetBuilders.Add(pair.Key, (SourceSetBuilder) pair.Value);
         }
     }
 
@@ -83,11 +85,12 @@ public class Project(string name, string location, Workspace workspace) : Compon
     /// </summary>
     /// <param name="obj">Script object containing dependency definitions.</param>
     [ScriptFunction]
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void dependencies(object obj) {
-        ScriptObject sobj = (ScriptObject)obj;
+        ScriptObject sobj = (ScriptObject) obj;
         foreach (var n in sobj.PropertyIndices) {
             if (sobj[n] is Dependency dep) {
-                _dependencies.Add(dep);
+                Dependencies.Add(dep);
             } else {
                 throw new InvalidCastException($"Property '{n}' is not a Dependency.");
             }
@@ -99,10 +102,11 @@ public class Project(string name, string location, Workspace workspace) : Compon
     /// </summary>
     /// <param name="obj">Dictionary containing artifact names and their builders.</param>
     [ScriptFunction]
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void artifacts(object obj) {
-        foreach (var pair in (IDictionary<string, object>)obj) {
+        foreach (var pair in (IDictionary<string, object>) obj) {
             if (_artifactBuilders.ContainsKey(pair.Key)) throw new Exception($"Artifact '{pair.Key}' already exists.");
-            var builder = (ArtifactBuilder)pair.Value;
+            var builder = (ArtifactBuilder) pair.Value;
             builder.Name = pair.Key;
             _artifactBuilders[pair.Key] = builder;
         }

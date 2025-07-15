@@ -55,7 +55,7 @@ public sealed class ManilaEngine {
     public string DataDir { get; }
 
     // This is reverted to a public field to maintain API compatibility.
-    public bool verboseLogger = false;
+    public bool VerboseLogger = false;
 
     /// <summary>
     /// Gets the timestamp (in Unix milliseconds) when the engine was created.
@@ -119,7 +119,7 @@ public sealed class ManilaEngine {
             foreach (var f in Workspace!.ProjectFilters) {
                 foreach (var p in Workspace.Projects.Values) {
                     if (f.Item1.Predicate(p)) {
-                        foreach (var type in p.plugins) {
+                        foreach (var type in p.Plugins) {
                             var plugin = ExtensionManager.GetInstance().GetPlugin(type);
                             foreach (var e in plugin.Enums) {
                                 WorkspaceContext.ApplyEnum(e);

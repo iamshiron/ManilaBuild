@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Shiron.Manila.Attributes;
 
 namespace Shiron.Manila.API;
@@ -8,7 +9,9 @@ namespace Shiron.Manila.API;
 /// <param name="name">The stringified name of the platform</param>
 [ScriptEnum]
 public class EPlatform(string name) {
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public readonly string name = name;
+
     public static readonly EPlatform Windows = new("windows");
     public static readonly EPlatform Linux = new("linux");
 
@@ -34,6 +37,7 @@ public class EPlatform(string name) {
 /// <param name="name">The stringified name of the architecture</param>
 [ScriptEnum]
 public class EArchitecture(string name) {
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public readonly string name = name;
     public static readonly EArchitecture X86 = new("x86");
     public static readonly EArchitecture X64 = new("x64");

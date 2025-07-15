@@ -26,7 +26,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     /// <summary>
     /// List of plugin types applied to this component.
     /// </summary>
-    public List<Type> plugins { get; } = [];
+    public List<Type> Plugins { get; } = [];
 
     /// <summary>
     /// Dynamic methods available for script invocation.
@@ -173,8 +173,8 @@ public class Component(string path) : DynamicObject, IScriptableObject {
         }
         PluginComponents.Add(component.GetType(), component);
 
-        if (component.plugin != null) {
-            foreach (var e in component.plugin.Enums) {
+        if (component._plugin != null) {
+            foreach (var e in component._plugin.Enums) {
                 var currentContext = ManilaEngine.GetInstance().CurrentContext;
                 if (currentContext != null) {
                     currentContext.ApplyEnum(e);
@@ -183,7 +183,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
                 }
             }
 
-            ApplyPlugin(component.plugin);
+            ApplyPlugin(component._plugin);
         }
 
         foreach (var prop in component.GetType().GetProperties()) {
@@ -228,19 +228,19 @@ public class Component(string path) : DynamicObject, IScriptableObject {
                             Logger.Warning($"Could not create instance of dependency type '{t}'.");
                             return null;
                         }
-                        dep.Create((object[])args);
+                        dep.Create((object[]) args);
                         return dep;
                     }
                 );
             }
         }
 
-        if (plugins.Contains(plugin.GetType())) {
+        if (Plugins.Contains(plugin.GetType())) {
             Logger.Warning($"Plugin '{plugin}' already applied.");
             return;
         }
 
-        plugins.Add(plugin.GetType());
+        Plugins.Add(plugin.GetType());
     }
 
     /// <summary>
@@ -259,11 +259,11 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     /// <exception cref="Exception">Thrown when the component is not found.</exception>
     public T GetComponent<T>() where T : PluginComponent {
         if (PluginComponents.TryGetValue(typeof(T), out var component))
-            return (T)component;
+            return (T) component;
 
         foreach (var p in PluginComponents) {
             if (typeof(T).IsAssignableFrom(p.Key))
-                return (T)p.Value;
+                return (T) p.Value;
         }
 
         throw new Exception($"Component of type {typeof(T).Name} not found in this context.");

@@ -1,7 +1,6 @@
-namespace Shiron.Manila.API;
+using System.Diagnostics.CodeAnalysis;
 
-// As class is exposed to the scripting environment, use JavaScript naming conventions
-#pragma warning disable IDE1006
+namespace Shiron.Manila.API;
 
 /// <summary>
 /// Represents a file handle for scripting operations.
@@ -33,6 +32,7 @@ public class FileHandle {
     /// Gets the directory containing this file.
     /// </summary>
     /// <returns>A directory handle for the parent directory.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public DirHandle getDir() {
         var dirName = Path.GetDirectoryName(this.Handle) ?? string.Empty;
         return new DirHandle(dirName);
@@ -42,6 +42,7 @@ public class FileHandle {
     /// Checks if the file path is absolute.
     /// </summary>
     /// <returns>True if the path is absolute, false otherwise.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public bool isAbsolute() {
         return Path.IsPathRooted(this.Handle);
     }
@@ -50,6 +51,7 @@ public class FileHandle {
     /// Checks if the file exists on disk.
     /// </summary>
     /// <returns>True if the file exists, false otherwise.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public bool exists() {
         return System.IO.File.Exists(this.Handle);
     }
@@ -57,6 +59,7 @@ public class FileHandle {
     /// <summary>
     /// Creates the file on disk.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void create() {
         System.IO.File.Create(this.Handle);
     }
@@ -65,6 +68,7 @@ public class FileHandle {
     /// Gets the file path as a string.
     /// </summary>
     /// <returns>The file path.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public string get() {
         return this.Handle;
     }

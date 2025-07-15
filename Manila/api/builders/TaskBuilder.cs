@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
@@ -53,6 +54,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// </summary>
     /// <param name="task">The dependents task ID</param>
     /// <returns>Task instance for chaining calls</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public TaskBuilder after(string task) {
         if (task.Contains(":") || task.Contains("/")) {
             if (!RegexUtils.IsValidTask(task)) throw new ManilaException($"Invalid task regex {task}!");
@@ -70,6 +72,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// </summary>
     /// <param name="task">The dependents task ID</param>
     /// <returns>Task instance for chaining calls</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public TaskBuilder after(string[] task) {
         foreach (var t in task) after(t);
         return this;
@@ -79,6 +82,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// </summary>
     /// <param name="action">The action</param>
     /// <returns>Task instance for chaining calls</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public TaskBuilder execute(object o) {
         if (o is ITaskAction action) {
             Logger.Debug($"Found task action of type {action.GetType().FullName}");
@@ -88,7 +92,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
             Logger.Debug($"Found {list.Count} chained actions!");
             Actions = list.Cast<ITaskAction>().ToArray();
         } else {
-            Actions = [new TaskScriptAction((dynamic)o)];
+            Actions = [new TaskScriptAction((dynamic) o)];
         }
 
         return this;
@@ -98,6 +102,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// </summary>
     /// <param name="description">The description</param>
     /// <returns>Task instance for chaining calls</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public TaskBuilder description(string description) {
         this.Description = description;
         return this;
@@ -107,6 +112,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// </summary>
     /// <param name="background">True: Non Blocking, False: Blocking</param>
     /// <returns></returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public TaskBuilder background(bool background = true) {
         this.Blocking = !background;
         return this;

@@ -1,7 +1,6 @@
-namespace Shiron.Manila.API;
+using System.Diagnostics.CodeAnalysis;
 
-// As class is exposed to the scripting environment, use JavaScript naming conventions
-#pragma warning disable IDE1006
+namespace Shiron.Manila.API;
 
 /// <summary>
 /// Represents a directory in the scripting context for syntax sugar and convenience operations.
@@ -25,6 +24,7 @@ public class DirHandle {
     /// Gets all files in this directory as FileHandle objects.
     /// </summary>
     /// <returns>Array of file handles for all files in the directory.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public FileHandle[] files() {
         string[] files = Directory.GetFiles(this.Handle);
         FileHandle[] result = new FileHandle[files.Length];
@@ -39,6 +39,7 @@ public class DirHandle {
     /// </summary>
     /// <param name="name">The name of the file.</param>
     /// <returns>A file handle for the specified file.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public FileHandle file(string name) {
         return new FileHandle(System.IO.Path.Combine(this.Handle, name));
     }
@@ -48,6 +49,7 @@ public class DirHandle {
     /// </summary>
     /// <param name="path">Path segments to join.</param>
     /// <returns>A new directory handle with the combined path.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public DirHandle join(params object[] path) {
         var newPath = this.Handle;
         foreach (var p in path) {
@@ -64,6 +66,7 @@ public class DirHandle {
     /// </summary>
     /// <param name="dir">The directory handle to join with.</param>
     /// <returns>A new directory handle with the combined path.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public DirHandle join(DirHandle dir) {
         return new DirHandle(System.IO.Path.Combine(this.Handle, dir.Handle));
     }
@@ -72,6 +75,7 @@ public class DirHandle {
     /// Checks if this directory path is absolute.
     /// </summary>
     /// <returns>True if the path is absolute, false otherwise.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public bool isAbsolute() {
         return System.IO.Path.IsPathRooted(this.Handle);
     }
@@ -79,12 +83,14 @@ public class DirHandle {
     /// Checks if this directory exists on the file system.
     /// </summary>
     /// <returns>True if the directory exists, false otherwise.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public bool exists() {
         return Directory.Exists(this.Handle);
     }
     /// <summary>
     /// Creates this directory on the file system.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void create() {
         Directory.CreateDirectory(this.Handle);
     }
@@ -93,6 +99,7 @@ public class DirHandle {
     /// Gets the directory path as a string.
     /// </summary>
     /// <returns>The directory path.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public string get() {
         return this.Handle;
     }

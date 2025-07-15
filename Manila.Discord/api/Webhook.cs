@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -9,9 +10,10 @@ namespace Shiron.Manila.Discord.API;
 
 public class Webhook {
     public class Impl(string url) {
-        public readonly string _url = url;
+        private readonly string _url = url;
         private static readonly HttpClient _httpClient = new();
 
+        [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
         public async Task send(string message) {
             var payload = new { content = message };
             var jsonPayload = JsonSerializer.Serialize(payload);
@@ -25,13 +27,10 @@ public class Webhook {
                 throw;
             }
         }
-
-        public void sendSync(string message) {
-            send(message).GetAwaiter().GetResult();
-        }
     }
 
-    public Impl create(string url) {
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
+    public static Impl create(string url) {
         return new Impl(url);
     }
 }

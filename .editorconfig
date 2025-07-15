@@ -84,8 +84,11 @@ csharp_indent_case_contents = true
 csharp_indent_switch_labels = true
 csharp_indent_labels = one_less_than_current
 
-# Brace preferences (Adjusted for single-line statements)
+# Brace preferences
 csharp_prefer_braces = when_multiline:suggestion
+
+# Spacing preferences
+csharp_space_after_cast = true
 
 # Unused code
 csharp_style_unused_value_assignment_preference = discard_variable:suggestion

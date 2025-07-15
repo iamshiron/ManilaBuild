@@ -10,13 +10,14 @@ using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI;
 
 public static class ManilaCLI {
-    public static string PluginDir => Path.Combine(Directory.GetCurrentDirectory(), ".manila", "plugins");
-    public static string NugetDir => Path.Combine(Directory.GetCurrentDirectory(), ".manila", "nuget");
-    public static string ProfilingDir => Path.Combine(Directory.GetCurrentDirectory(), ".manila", "profiles");
+    public static string PluginDir => Path.Combine(Directory.GetCurrentDirectory(), Directories.Plugins);
+    public static string NugetDir => Path.Combine(Directory.GetCurrentDirectory(), Directories.Nuget);
+    public static string ProfilingDir => Path.Combine(Directory.GetCurrentDirectory(), Directories.Profiles);
     public static CommandApp<DefaultCommand> CommandApp = new CommandApp<DefaultCommand>();
 
     public static void SetupInitialComponents(DefaultCommandSettings settings) {
@@ -26,7 +27,7 @@ public static class ManilaCLI {
     public static void InitExtensions() {
         using (new ProfileScope("Initializing Plugins")) {
             var extensionManager = ExtensionManager.GetInstance();
-            extensionManager.Init("./.manila/plugins");
+            extensionManager.Init($"./{Directories.Plugins}");
             extensionManager.LoadPlugins();
             extensionManager.InitPlugins();
         }
@@ -52,18 +53,17 @@ public static class ManilaCLI {
 #endif
 
         var logOptions = new {
-            Structured = args.Contains("--structured") || args.Contains("--json"),
-            Verbose = args.Contains("--verbose"),
-            Quiet = args.Contains("--quiet"),
-            StackTrace = args.Contains("--stack-trace")
+            Structured = args.Contains(CommandOptions.Structured) || args.Contains(CommandOptions.Json),
+            Verbose = args.Contains(CommandOptions.Verbose),
+            Quiet = args.Contains(CommandOptions.Quiet),
+            StackTrace = args.Contains(CommandOptions.StackTrace)
         };
 
-        if (!(args.Contains("--quiet") || args.Contains("-q"))) {
-            AnsiConsole.MarkupLine(@"[blue] __  __             _ _[/]");
-            AnsiConsole.MarkupLine(@"[blue]|  \/  | __ _ _ __ (_| | __ _[/]");
-            AnsiConsole.MarkupLine(@"[blue]| |\/| |/ _` | '_ \| | |/ _` |[/]");
-            AnsiConsole.MarkupLine(@"[blue]| |  | | (_| | | | | | | (_| |[/]");
-            AnsiConsole.MarkupLine($"[blue]|_|  |_|\\__,_|_| |_|_|_|\\__,_|[/] [magenta]v{ManilaEngine.VERSION}[/]\n");
+        if (!(args.Contains(CommandOptions.Quiet) || args.Contains(CommandOptions.QuietShort))) {
+            foreach (string line in Banner.Lines.Take(Banner.Lines.Length - 1)) {
+                AnsiConsole.MarkupLine(line);
+            }
+            AnsiConsole.MarkupLine(string.Format(Banner.Lines.Last(), ManilaEngine.VERSION) + "\n");
         }
 
         CommandApp.Configure(c => {

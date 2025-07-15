@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Microsoft.ClearScript;
 using Shiron.Manila.API.Builders;
@@ -9,14 +10,11 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
-// As class is exposed to the scripting environment, use JavaScript naming conventions
-#pragma warning disable IDE1006
-
 /// <summary>
 /// Primary API class exposing global Manila functions.
 /// </summary>
 public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
-    private readonly ScriptContext Context = context;
+    private readonly ScriptContext _context = context;
 
     /// <summary>
     /// The current build configuration for this Manila instance.
@@ -41,6 +39,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Gets the current Manila project or throws if none exists.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public Project getProject() {
         if (ManilaEngine.GetInstance().CurrentProject == null) throw new ContextException(Exceptions.Context.WORKSPACE, Exceptions.Context.PROJECT);
         return ManilaEngine.GetInstance().CurrentProject!;
@@ -49,6 +48,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Creates an unresolved project reference by name.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public UnresolvedProject getProject(string name) {
         return new UnresolvedProject(name);
     }
@@ -56,6 +56,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Gets the current Manila workspace.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public Workspace getWorkspace() {
         return ManilaEngine.GetInstance().Workspace;
     }
@@ -63,6 +64,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Gets the build configuration or throws if not set.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public BuildConfig getConfig() {
         return BuildConfig ?? throw new ScriptingException("Cannot retreive build config before applying a language component!");
     }
@@ -70,12 +72,14 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Creates a source set with the given origin.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public SourceSetBuilder sourceSet(string origin) {
         return new(origin);
     }
     /// <summary>
     /// Creates an artifact using the provided configuration lambda.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ArtifactBuilder artifact(dynamic lambda) {
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
         var builder = new ArtifactBuilder(() => lambda(), this, BuildConfig, getProject().Name);
@@ -86,6 +90,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Pauses execution for the specified milliseconds.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public async void sleep(int milliseconds) {
         await System.Threading.Tasks.Task.Delay(milliseconds);
     }
@@ -93,20 +98,21 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Creates a task with the given name.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public TaskBuilder task(string name) {
         if (CurrentArtifactBuilder != null) {
-            var taskBuilder = new TaskBuilder(name, Context, getProject(), CurrentArtifactBuilder);
+            var taskBuilder = new TaskBuilder(name, _context, getProject(), CurrentArtifactBuilder);
             CurrentArtifactBuilder.TaskBuilders.Add(taskBuilder);
             return taskBuilder;
         }
 
         try {
-            var builder = new TaskBuilder(name, Context, getProject(), null);
+            var builder = new TaskBuilder(name, _context, getProject(), null);
             TaskBuilders.Add(builder);
             return builder;
         } catch (ContextException e) {
             if (e.Is != Exceptions.Context.WORKSPACE) throw;
-            var builder = new TaskBuilder(name, Context, getWorkspace(), null);
+            var builder = new TaskBuilder(name, _context, getWorkspace(), null);
             TaskBuilders.Add(builder);
             return builder;
         }
@@ -115,6 +121,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Creates a directory handle for the given path.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public DirHandle dir(string path) {
         return new DirHandle(path);
     }
@@ -122,6 +129,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Creates a file handle for the given path.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public FileHandle file(string path) {
         return new FileHandle(path);
     }
@@ -129,6 +137,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Applies the plugin component identified by the given key.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(string pluginComponentKey) {
         var component = ExtensionManager.GetInstance().GetPluginComponent(pluginComponentKey);
         apply(component);
@@ -137,22 +146,24 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Applies the plugin component defined in the script object.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(ScriptObject obj) {
         var version = obj.GetProperty("version");
-        var component = ExtensionManager.GetInstance().GetPluginComponent((string)obj["group"], (string)obj["name"], (string)obj["component"], version == Undefined.Value ? null : (string)version);
+        var component = ExtensionManager.GetInstance().GetPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
         apply(component);
     }
 
     /// <summary>
     /// Applies the provided plugin component to the current project.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(PluginComponent component) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             Logger.Debug("Applying: " + component);
             getProject().ApplyComponent(component);
             if (component is LanguageComponent lc) {
                 var config = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
-                BuildConfig = (BuildConfig)config;
+                BuildConfig = (BuildConfig) config;
             }
         }
     }
@@ -160,6 +171,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Registers an action to run on projects matching the given filter.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void onProject(object o, dynamic a) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             var filter = ProjectFilter.From(o);
@@ -170,6 +182,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Executes the task identified by the given key.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void runTask(string key) {
         var task = ManilaEngine.GetInstance().GetTask(key) ?? throw new Exception("Task not found: " + key);
         task.Execute();
@@ -178,6 +191,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Builds the project using its language component.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void build(Workspace workspace, Project project, BuildConfig config) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             project.GetLanguageComponent().Build(workspace, project, config);
@@ -187,6 +201,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Resolves and runs the specified unresolved project.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void run(UnresolvedProject project) {
         run(project.Resolve());
     }
@@ -194,6 +209,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Runs the specified project using its language component.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void run(Project project) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             project.GetLanguageComponent().Run(project);
@@ -203,15 +219,17 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Retrieves the value of the specified environment variable.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public string getEnv(string key) {
-        return Context.GetEnvironmentVariable(key);
+        return _context.GetEnvironmentVariable(key);
     }
 
     /// <summary>
     /// Retrieves the specified environment variable as a double or zero if unset.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public double getEnvNumber(string key) {
-        var value = Context.GetEnvironmentVariable(key);
+        var value = _context.GetEnvironmentVariable(key);
         if (string.IsNullOrEmpty(value)) return 0;
         if (double.TryParse(value, out var result)) return result;
         throw new Exception($"Environment variable {key} is not a number: {value}");
@@ -220,8 +238,9 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Retrieves the specified environment variable as a boolean or false if unset.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public bool getEnvBool(string key) {
-        var value = Context.GetEnvironmentVariable(key);
+        var value = _context.GetEnvironmentVariable(key);
         if (string.IsNullOrEmpty(value)) return false;
         if (bool.TryParse(value, out var result)) return result;
         throw new Exception($"Environment variable {key} is not a boolean: {value}");
@@ -230,13 +249,15 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Sets the specified environment variable to the given value.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void setEnv(string key, string value) {
-        Context.SetEnvironmentVariable(key, value);
+        _context.SetEnvironmentVariable(key, value);
     }
 
     /// <summary>
     /// Imports an API type instance for the given key.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public object import(string key) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             var t = Activator.CreateInstance(ExtensionManager.GetInstance().GetAPIType(key));
@@ -253,6 +274,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Creates a shell-based task action with cmd.exe.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ITaskAction shell(string command) {
         return new TaskShellAction(new(
             "cmd.exe",
@@ -263,6 +285,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// Creates a task action to execute the given command.
     /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ITaskAction execute(string command) {
         return new TaskShellAction(new(
             command.Split(" ")[0],

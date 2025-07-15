@@ -19,7 +19,7 @@ public class CppComponent : LanguageComponent {
     public List<string> Links { get; set; } = [];
 
     public override void Build(Workspace workspace, Project project, BuildConfig config) {
-        foreach (var dep in project._dependencies) {
+        foreach (var dep in project.dependencies) {
             dep.Resolve(project);
         }
 

@@ -6,6 +6,7 @@ using Newtonsoft.Json.Serialization;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Spectre.Console.Cli;
+using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
@@ -21,12 +22,12 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         public string? Project { get; set; }
 
         [Description("Include detailed information")]
-        [CommandOption("--detailed")]
+        [CommandOption("--detailed")] // Can't use constant in attribute
         [DefaultValue(false)]
         public bool Detailed { get; set; }
     }
 
-    private static readonly JsonSerializerSettings JsonSettings = new() {
+    private static readonly JsonSerializerSettings _jsonSettings = new() {
         ContractResolver = new CamelCasePropertyNamesContractResolver(),
         Formatting = Formatting.Indented,
         Converters = { new StringEnumConverter() },
@@ -39,22 +40,21 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
 
         ManilaCLI.InitExtensions();
         await engine.Run();
-        if (engine.Workspace == null) throw new ManilaException("Not inside a workspace");
+        if (engine.Workspace == null) throw new ManilaException(Messages.NoWorkspace);
 
-        var valid = new[] { "tasks", "artifacts", "projects", "workspace", "plugins" };
         var cmd = settings.Subcommand?.ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(cmd) || !valid.Contains(cmd))
-            throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Valid subcommands: {string.Join(", ", valid)}");
+        if (string.IsNullOrWhiteSpace(cmd) || !ApiSubcommands.All.Contains(cmd))
+            throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Valid subcommands: {string.Join(", ", ApiSubcommands.All)}");
         var result = cmd switch {
             "tasks" => GetTasksData(engine, settings),
             "artifacts" => GetArtifactsData(engine, settings),
             "projects" => GetProjectsData(engine, settings),
             "workspace" => GetWorkspaceData(engine, settings),
             "plugins" => GetPluginsData(engine, settings),
-            _ => throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Available: tasks, artifacts, projects, workspace, plugins")
+            _ => throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Available: {string.Join(", ", ApiSubcommands.All)}")
         };
 
-        var json = JsonConvert.SerializeObject(result, JsonSettings);
+        var json = JsonConvert.SerializeObject(result, _jsonSettings);
         Console.WriteLine(json);
 
         return ExitCodes.SUCCESS;
@@ -72,9 +72,9 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                 identifier = task.GetIdentifier(),
                 description = task.Description,
                 dependencies = task.Dependencies,
-                type = "workspace",
-                project = (string?)null,
-                artifact = (string?)null,
+                type = ProjectTypes.Workspace,
+                project = (string?) null,
+                artifact = (string?) null,
                 blocking = task.Blocking
             };
 
@@ -108,9 +108,9 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                     identifier = task.GetIdentifier(),
                     description = task.Description,
                     dependencies = task.Dependencies,
-                    type = "project",
+                    type = ProjectTypes.Project,
                     project = projectName,
-                    artifact = (string?)null,
+                    artifact = (string?) null,
                     blocking = task.Blocking
                 };
 
@@ -141,7 +141,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                         identifier = task.GetIdentifier(),
                         description = task.Description,
                         dependencies = task.Dependencies,
-                        type = "artifact",
+                        type = ProjectTypes.Artifact,
                         project = projectName,
                         artifact = artifactName,
                         blocking = task.Blocking

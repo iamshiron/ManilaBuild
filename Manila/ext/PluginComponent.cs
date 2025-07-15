@@ -11,7 +11,7 @@ public abstract class PluginComponent(string name) {
     /// <summary>
     /// The plugin this component is registered to. Only set after registration.
     /// </summary>
-    internal ManilaPlugin? plugin;
+    internal ManilaPlugin? _plugin;
 
     public override string ToString() {
         return $"PluginComponent({Name})";

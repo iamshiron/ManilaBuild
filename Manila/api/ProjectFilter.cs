@@ -26,7 +26,7 @@ public abstract class ProjectFilter {
         Logger.Debug("From " + o.GetType());
 
         if (o is string) {
-            var s = (string)o;
+            var s = (string) o;
             if (s == "*") return new ProjectFilterAll();
             return new ProjectFilterName(s);
         }

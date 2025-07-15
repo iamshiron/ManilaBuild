@@ -61,7 +61,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public void RegisterComponent(PluginComponent component) {
         if (Components.ContainsKey(component.Name)) throw new Exception("Component with name " + component.Name + " already registered");
         Components.Add(component.Name, component);
-        component.plugin = this;
+        component._plugin = this;
     }
     /// <summary>
     /// Registers an enum to the plugin. The class requires the <see cref="ScriptEnum"/> attribute.

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
@@ -53,6 +54,7 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
     /// </summary>
     /// <param name="description">The description text.</param>
     /// <returns>This builder instance for method chaining.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ArtifactBuilder description(string description) {
         Description = description;
         return this;
@@ -63,6 +65,7 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
     /// </summary>
     /// <param name="plugin">The plugin to apply.</param>
     /// <returns>This builder instance for method chaining.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ArtifactBuilder from(string key) {
         var temp = RegexUtils.MatchPluginComponent(key) ?? throw new ArgumentException($"Invalid plugin component format: {key}");
         PluginComponent = temp;
@@ -74,6 +77,7 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
     /// Configures dependencies for this artifact.
     /// </summary>
     /// <returns>This builder instance for method chaining.</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ArtifactBuilder dependencies() {
         return this;
     }

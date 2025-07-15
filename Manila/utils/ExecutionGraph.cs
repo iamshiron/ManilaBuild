@@ -139,7 +139,7 @@ public class ExecutionGraph {
     /// <param name="main">The main object to be added or updated in the graph.</param>
     /// <param name="dependencies">A list of objects that the main object directly depends on.</param>
     public void Attach(ExecutableObject main, List<ExecutableObject> dependencies) {
-        Logger.Debug($"Attaching {((API.Task)main).GetIdentifier()}");
+        Logger.Debug($"Attaching {((API.Task) main).GetIdentifier()}");
 
         var mainNode = GetOrCreateNode(main);
 

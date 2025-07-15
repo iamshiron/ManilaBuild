@@ -23,22 +23,22 @@ public class ExtensionManager {
     /// <summary>
     /// Matches plugin keys in the format: "group:name@version". Version is optional.
     /// </summary>
-    public static readonly Regex pluginPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?", RegexOptions.Compiled);
+    public static readonly Regex PluginPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?", RegexOptions.Compiled);
 
     /// <summary>
     /// Matches component keys in the format: "group:name@version:component". Version is optional.
     /// </summary>
-    public static readonly Regex componentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)", RegexOptions.Compiled);
+    public static readonly Regex ComponentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)", RegexOptions.Compiled);
 
     /// <summary>
     /// Matches API class keys in the format: "group:name@version/class". Version is optional.
     /// </summary>
-    public static readonly Regex apiClassPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?/(?<class>[\w.\d]+)", RegexOptions.Compiled);
+    public static readonly Regex APIClassPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?/(?<class>[\w.\d]+)", RegexOptions.Compiled);
 
     /// <summary>
     /// Matches NuGet dependencies in the format: "Package.Name@1.2.3".
     /// </summary>
-    public static readonly Regex nugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d-]+)", RegexOptions.Compiled);
+    public static readonly Regex NugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d-]+)", RegexOptions.Compiled);
 
     public static ExtensionManager GetInstance() {
         // This is a simple getter for a static readonly instance, profiling overhead is not beneficial here.
@@ -81,7 +81,7 @@ public class ExtensionManager {
                     foreach (var type in assembly.GetTypes()) {
                         if (!type.IsSubclassOf(typeof(ManilaPlugin)) || type.IsAbstract) continue;
 
-                        var plugin = (ManilaPlugin?)Activator.CreateInstance(type) ?? throw new Exception($"Failed to create instance of plugin {type} from {file}.");
+                        var plugin = (ManilaPlugin?) Activator.CreateInstance(type) ?? throw new Exception($"Failed to create instance of plugin {type} from {file}.");
                         plugin.File = file;
                         Plugins.Add(plugin);
                         Logger.Log(new LoadingPluginLogEntry(plugin, Guid.NewGuid()));
@@ -89,7 +89,7 @@ public class ExtensionManager {
                         // Handle NuGet dependencies
                         foreach (var dep in plugin.NugetDependencies) {
                             using (new ProfileScope($"ResolveNugetDependency: {dep} for {plugin.Name}")) { // Profile NuGet dependency resolution
-                                var match = nugetDependencyPattern.Match(dep);
+                                var match = NugetDependencyPattern.Match(dep);
                                 if (!match.Success) throw new Exception($"Invalid NuGet dependency format: '{dep}' in plugin {plugin.Name}.");
 
                                 var package = match.Groups["package"].Value;
@@ -161,7 +161,7 @@ public class ExtensionManager {
     /// <exception cref="Exception">Thrown if the plugin is not found.</exception>
     public T GetPlugin<T>() where T : ManilaPlugin {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            return (T)GetPlugin(typeof(T));
+            return (T) GetPlugin(typeof(T));
         }
     }
 
@@ -197,12 +197,12 @@ public class ExtensionManager {
     /// <summary>
     /// Gets a plugin by its string key.
     /// </summary>
-    /// <param name="key">The key, compliant to the format specified in <see cref="pluginPattern"/>.</param>
+    /// <param name="key">The key, compliant to the format specified in <see cref="PluginPattern"/>.</param>
     /// <returns>The plugin instance.</returns>
     /// <exception cref="Exception">Thrown if the key is invalid or plugin is not found.</exception>
     public ManilaPlugin GetPlugin(string key) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            var match = pluginPattern.Match(key);
+            var match = PluginPattern.Match(key);
             if (!match.Success) throw new Exception("Invalid plugin key: " + key);
             // This calls another GetPlugin overload, which is already profiled.
             return GetPlugin(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["version"].Value);
@@ -212,12 +212,12 @@ public class ExtensionManager {
     /// <summary>
     /// Gets a plugin component by its string key.
     /// </summary>
-    /// <param name="key">The key, compliant to the format specified in <see cref="componentPattern"/>.</param>
+    /// <param name="key">The key, compliant to the format specified in <see cref="ComponentPattern"/>.</param>
     /// <returns>The component instance.</returns>
     /// <exception cref="Exception">Thrown if the key is invalid or component is not found.</exception>
     public PluginComponent GetPluginComponent(string key) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            var match = componentPattern.Match(key);
+            var match = ComponentPattern.Match(key);
             if (!match.Success) throw new Exception("Invalid component key: " + key);
             // This calls GetPluginComponent, which is already profiled.
             return GetPluginComponent(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["component"].Value, match.Groups["version"].Value);
@@ -227,12 +227,12 @@ public class ExtensionManager {
     /// <summary>
     /// Gets a plugin's exported API type by its string key.
     /// </summary>
-    /// <param name="key">The key, compliant to the format specified in <see cref="apiClassPattern"/>.</param>
+    /// <param name="key">The key, compliant to the format specified in <see cref="APIClassPattern"/>.</param>
     /// <returns>The API type.</returns>
     /// <exception cref="Exception">Thrown if the key is invalid or the class is not found.</exception>
     public Type GetAPIType(string key) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            var match = apiClassPattern.Match(key);
+            var match = APIClassPattern.Match(key);
             if (!match.Success) throw new Exception("Invalid API class key: " + key);
             // This calls GetPlugin, which is already profiled.
             return GetPlugin(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["version"].Value).GetAPIClass(match.Groups["class"].Value);

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 using Shiron.Manila.Utils;
@@ -19,6 +20,7 @@ public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
     /// </summary>
     /// <param name="globs">The pattern for the file matcher</param>
     /// <returns>SourceSet instance for chaining calls</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public SourceSetBuilder include(params string[] globs) {
         Includes.AddRange(globs);
         return this;
@@ -28,6 +30,7 @@ public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
     /// </summary>
     /// <param name="globs">The pattern for the file matcher</param>
     /// <returns>SourceSet instance for chaining calls</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public SourceSetBuilder exclude(params string[] globs) {
         Excludes.AddRange(globs);
         return this;
@@ -37,6 +40,7 @@ public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
     /// Return a list of files in the source set.
     /// </summary>
     /// <returns>List of files complying to the includes and excludes</returns>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public FileHandle[] files() {
         var matcher = new Matcher();
         foreach (var include in Includes) {
