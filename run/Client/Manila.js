@@ -30,5 +30,7 @@ artifacts({
 			.execute(() => {
 				print('Running client...')
 			})
-	}).description('Client Main Artifact')
+	})
+		.from('shiron.manila:cpp/console')
+		.description('Client Main Artifact')
 })

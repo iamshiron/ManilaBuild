@@ -52,7 +52,7 @@ public class Task(TaskBuilder builder) : ExecutableObject {
     /// </summary>
     /// <returns>The unique identifier of the task</returns>
     public string GetIdentifier() {
-        return RegexUtils.FromTaskMatch(new(Component is Workspace ? null : Component.GetIdentifier(), ArtiafactName, Name));
+        return new RegexUtils.TaskMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtiafactName, Name).Format();
     }
 
 

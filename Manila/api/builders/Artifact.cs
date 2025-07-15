@@ -83,8 +83,6 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
     /// </summary>
     /// <returns>The built artifact.</returns>
     public Artifact Build() {
-        if (PluginComponent == null) throw new ManilaException("Cannot build artifact without a component specified!");
-
         ManilaAPI.CurrentArtifactBuilder = this;
         Lambda.Invoke();
         ManilaAPI.CurrentArtifactBuilder = null;

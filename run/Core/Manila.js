@@ -19,5 +19,7 @@ artifacts({
 			.execute(() => {
 				Manila.build(workspace, project, config)
 			})
-	}).description('Core Main Artifact')
+	})
+		.from('shiron.manila:cpp/console')
+		.description('Core Main Artifact')
 })

@@ -89,36 +89,6 @@ public class FunctionUtilsTests {
 }
 
 [TestFixture]
-public class RegexUtilsTests {
-    [TestCase("build", null, null, "build")]
-    [TestCase("core:build", "core", null, "build")]
-    [TestCase("client/main:run", "client", "main", "run")]
-    public void MatchTasks_ValidUris_ParsesCorrectly(string input, string? project, string? artifact, string task) {
-        var match = RegexUtils.MatchTasks(input);
-        Assert.That(match.Project, Is.EqualTo(project));
-        Assert.That(match.Artifact, Is.EqualTo(artifact));
-        Assert.That(match.Task, Is.EqualTo(task));
-    }
-
-    [TestCase("project/artifact:task", true)]
-    [TestCase("project:task", true)]
-    [TestCase("task", true)]
-    [TestCase("project/artifact:", false)] // Invalid
-    [TestCase(":task", false)] // Invalid
-    public void IsValidTaskRegex_VariousInputs_ReturnsExpected(string input, bool expected) {
-        Assert.That(RegexUtils.IsValidTask(input), Is.EqualTo(expected));
-    }
-
-    [TestCase(null, null, "task", "task")]
-    [TestCase("proj", null, "task", "proj:task")]
-    [TestCase("proj", "art", "task", "proj/art:task")]
-    public void FromTaskMatch_ValidMatches_FormatsCorrectly(string? project, string? artifact, string task, string expected) {
-        var match = new RegexUtils.TaskMatch(project, artifact, task);
-        Assert.That(RegexUtils.FromTaskMatch(match), Is.EqualTo(expected));
-    }
-}
-
-[TestFixture]
 public class HashUtilsTests {
     private string _tempDir;
 

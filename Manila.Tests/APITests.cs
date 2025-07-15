@@ -38,7 +38,9 @@ public class ProjectFilterTests {
         var project1 = new Project("core-lib", ".", workspace);
         var project2 = new Project("client-app", ".", workspace);
 
-        Assert.That(filter.Predicate(project1), Is.True);
-        Assert.That(filter.Predicate(project2), Is.False);
+        using (Assert.EnterMultipleScope()) {
+            Assert.That(filter.Predicate(project1), Is.True);
+            Assert.That(filter.Predicate(project2), Is.False);
+        }
     }
 }

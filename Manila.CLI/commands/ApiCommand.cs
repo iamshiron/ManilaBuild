@@ -3,15 +3,17 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Shiron.Manila.Exceptions;
 using Spectre.Console.Cli;
+using System.Linq;
 using System.ComponentModel;
+using Shiron.Manila.Ext;
 
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("API commands for retrieving information as JSON output")]
 internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
     public sealed class Settings : DefaultCommandSettings {
-        [Description("API subcommand: tasks, artifacts, projects, workspace")]
-        [CommandArgument(0, "<subcommand>")]
+        [Description("API subcommand: tasks, artifacts, projects, workspace, plugins")]
+        [CommandArgument(0, "[subcommand]")]
         public string Subcommand { get; set; } = string.Empty;
 
         [Description("Filter results by project name")]
@@ -39,12 +41,17 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         await engine.Run();
         if (engine.Workspace == null) throw new ManilaException("Not inside a workspace");
 
-        var result = settings.Subcommand.ToLowerInvariant() switch {
+        var valid = new[] { "tasks", "artifacts", "projects", "workspace", "plugins" };
+        var cmd = settings.Subcommand?.ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(cmd) || !valid.Contains(cmd))
+            throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Valid subcommands: {string.Join(", ", valid)}");
+        var result = cmd switch {
             "tasks" => GetTasksData(engine, settings),
             "artifacts" => GetArtifactsData(engine, settings),
             "projects" => GetProjectsData(engine, settings),
             "workspace" => GetWorkspaceData(engine, settings),
-            _ => throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Available: tasks, artifacts, projects, workspace")
+            "plugins" => GetPluginsData(engine, settings),
+            _ => throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Available: tasks, artifacts, projects, workspace, plugins")
         };
 
         var json = JsonConvert.SerializeObject(result, JsonSettings);
@@ -179,7 +186,8 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                     description = artifact.Description,
                     project = projectName,
                     root = artifact.Root,
-                    taskCount = artifact.Tasks.Length
+                    taskCount = artifact.Tasks.Length,
+                    component = artifact.PluginComponent.Format()
                 };
 
                 if (settings.Detailed) {
@@ -189,12 +197,14 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                         artifactData.project,
                         artifactData.root,
                         artifactData.taskCount,
+                        component = artifact.PluginComponent.Format(),
                         tasks = artifact.Tasks.Select(t => new {
                             name = t.Name,
                             identifier = t.GetIdentifier(),
                             description = t.Description,
                             dependencies = t.Dependencies,
-                            blocking = t.Blocking
+                            blocking = t.Blocking,
+                            component = t.Component?.GetIdentifier()
                         }).ToArray()
                     });
                 } else {
@@ -246,7 +256,8 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                     artifacts = project.Artifacts.Select(a => new {
                         name = a.Key,
                         description = a.Value.Description,
-                        taskCount = a.Value.Tasks.Length
+                        taskCount = a.Value.Tasks.Length,
+                        component = a.Value.PluginComponent.Format()
                     }).ToArray(),
                     sourceSets = project.SourceSets.Select(s => new {
                         name = s.Key,
@@ -262,6 +273,30 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
             projects = projects.ToArray(),
             count = projects.Count
         };
+    }
+
+    private static object GetPluginsData(ManilaEngine engine, Settings settings) {
+        var mgr = ExtensionManager.GetInstance();
+        var list = new List<object>();
+        foreach (var plugin in mgr.Plugins) {
+            var pluginData = new {
+                group = plugin.Group,
+                name = plugin.Name,
+                version = plugin.Version
+            };
+            if (settings.Detailed) {
+                list.Add(new {
+                    pluginData.group,
+                    pluginData.name,
+                    pluginData.version,
+                    components = plugin.Components.Keys.ToArray(),
+                    apiClasses = plugin.APIClasses.Keys.ToArray()
+                });
+            } else {
+                list.Add(pluginData);
+            }
+        }
+        return new { plugins = list.ToArray(), count = list.Count };
     }
 
     private static object GetWorkspaceData(ManilaEngine engine, Settings settings) {
