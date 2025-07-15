@@ -1,4 +1,5 @@
 using Shiron.Manila.Artifacts;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API.Builders;
@@ -38,20 +39,14 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
     public readonly Manila ManilaAPI = manilaAPI;
 
     /// <summary>
+    /// Plugin component match for this artifact.
+    /// </summary>
+    public RegexUtils.PluginComponentMatch? PluginComponent;
+
+    /// <summary>
     /// The name of the artifact.
     /// </summary>
     public string? Name = null;
-
-    /// <summary>
-    /// Builds the artifact by executing the lambda configuration and creating an Artifact instance.
-    /// </summary>
-    /// <returns>The built artifact.</returns>
-    public Artifact Build() {
-        ManilaAPI.CurrentArtifactBuilder = this;
-        Lambda.Invoke();
-        ManilaAPI.CurrentArtifactBuilder = null;
-        return new(this);
-    }
 
     /// <summary>
     /// Sets the description for this artifact.
@@ -64,10 +59,35 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
     }
 
     /// <summary>
+    /// Applies plugin functionality to this artifact.
+    /// </summary>
+    /// <param name="plugin">The plugin to apply.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    public ArtifactBuilder from(string key) {
+        var temp = RegexUtils.MatchPluginComponent(key) ?? throw new ArgumentException($"Invalid plugin component format: {key}");
+        PluginComponent = temp;
+
+        return this;
+    }
+
+    /// <summary>
     /// Configures dependencies for this artifact.
     /// </summary>
     /// <returns>This builder instance for method chaining.</returns>
     public ArtifactBuilder dependencies() {
         return this;
+    }
+
+    /// <summary>
+    /// Builds the artifact by executing the lambda configuration and creating an Artifact instance.
+    /// </summary>
+    /// <returns>The built artifact.</returns>
+    public Artifact Build() {
+        if (PluginComponent == null) throw new ManilaException("Cannot build artifact without a component specified!");
+
+        ManilaAPI.CurrentArtifactBuilder = this;
+        Lambda.Invoke();
+        ManilaAPI.CurrentArtifactBuilder = null;
+        return new(this);
     }
 }

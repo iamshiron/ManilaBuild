@@ -106,7 +106,7 @@ public class RegexUtilsTests {
     [TestCase("project/artifact:", false)] // Invalid
     [TestCase(":task", false)] // Invalid
     public void IsValidTaskRegex_VariousInputs_ReturnsExpected(string input, bool expected) {
-        Assert.That(RegexUtils.IsValidTaskRegex(input), Is.EqualTo(expected));
+        Assert.That(RegexUtils.IsValidTask(input), Is.EqualTo(expected));
     }
 
     [TestCase(null, null, "task", "task")]

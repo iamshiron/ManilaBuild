@@ -55,7 +55,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// <returns>Task instance for chaining calls</returns>
     public TaskBuilder after(string task) {
         if (task.Contains(":") || task.Contains("/")) {
-            if (!RegexUtils.IsValidTaskRegex(task)) throw new ManilaException($"Invalid task regex {task}!");
+            if (!RegexUtils.IsValidTask(task)) throw new ManilaException($"Invalid task regex {task}!");
             Dependencies.Add(task);
             return this;
         }
