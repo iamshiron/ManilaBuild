@@ -23,6 +23,24 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/Directory.Packages.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Cache build outputs
+      uses: actions/cache@v4
+      with:
+        path: |
+          **/bin
+          **/obj
+        key: ${{ runner.os }}-build-${{ hashFiles('**/*.cs', '**/*.csproj', '**/Directory.Packages.props') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+
     - name: Restore dependencies
       run: dotnet restore
 
@@ -48,6 +66,27 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.nuget/packages
+          %USERPROFILE%\.nuget\packages
+          ~/Library/Caches/NuGet
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/Directory.Packages.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Cache build outputs
+      uses: actions/cache@v4
+      with:
+        path: |
+          **/bin
+          **/obj
+        key: ${{ runner.os }}-build-${{ hashFiles('**/*.cs', '**/*.csproj', '**/Directory.Packages.props') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
 
     - name: Restore dependencies
       run: dotnet restore
