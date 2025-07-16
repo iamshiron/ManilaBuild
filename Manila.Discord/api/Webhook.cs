@@ -30,7 +30,8 @@ public class Webhook {
     }
 
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public static Impl create(string url) {
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance method for creating webhook")]
+    public Impl create(string url) {
         return new Impl(url);
     }
 }
