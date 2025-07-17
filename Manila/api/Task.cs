@@ -16,8 +16,10 @@ public class TaskScriptAction(ScriptObject obj) : ITaskAction {
 
     public void Execute() {
         try {
-            System.Threading.Tasks.Task task = (System.Threading.Tasks.Task) _scriptObject.InvokeAsFunction();
-            task.Wait();
+            var res = _scriptObject.InvokeAsFunction();
+            if (res is System.Threading.Tasks.Task task) {
+                task.Wait();
+            }
         } catch (Exception e) {
             Logger.Error("Error executing task script action: " + e.Message);
             throw new ManilaException("Error executing task script action", e);
@@ -62,7 +64,6 @@ public class Task(TaskBuilder builder) : ExecutableObject {
     public string GetIdentifier() {
         return new RegexUtils.TaskMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtiafactName, Name).Format();
     }
-
 
     /// <summary>
     /// Gets the execution order of the task and its dependencies.

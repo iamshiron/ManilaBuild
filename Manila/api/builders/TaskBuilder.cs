@@ -84,12 +84,12 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// <param name="action">The action</param>
     /// <returns>Task instance for chaining calls</returns>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public TaskBuilder execute(dynamic o) {
+    public TaskBuilder execute(object o) {
+        Logger.System($"Adding action to task {Name} in ({o.GetType().FullName})");
         if (o is ITaskAction action) {
             Logger.Debug($"Found task action of type {action.GetType().FullName}");
             Actions = [action];
-        } else
-        if (o is IList<object> list) {
+        } else if (o is IList<object> list) {
             Logger.Debug($"Found {list.Count} chained actions!");
             Actions = list.Cast<ITaskAction>().ToArray();
         } else {
