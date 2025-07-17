@@ -210,15 +210,15 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
 
                 using (new ProfileScope("Executing Script")) {
                     ScriptEngine.Execute(new DocumentInfo(ScriptPath), $@"
-                (async function() {{
-                    try {{
-                        {await scriptContent}
-                        __Manila_signalCompletion();
-                    }} catch (e) {{
-                        __Manila_handleError(e);
-                    }}
-                }})();
-            ");
+                        (async function() {{
+                            try {{
+                                {await scriptContent}
+                                __Manila_signalCompletion();
+                            }} catch (e) {{
+                                __Manila_handleError(e);
+                            }}
+                        }})();
+                    ");
                 }
 
                 // Wait for the script to either complete or throw an exception
