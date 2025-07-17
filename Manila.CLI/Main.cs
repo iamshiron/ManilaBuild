@@ -24,11 +24,11 @@ public static class ManilaCLI {
         AnsiConsoleRenderer.Init(settings.Quiet, settings.Verbose, settings.Structured, settings.StackTrace);
     }
 
-    public static void InitExtensions() {
+    public static async Task InitExtensions() {
         using (new ProfileScope("Initializing Plugins")) {
             var extensionManager = ExtensionManager.GetInstance();
             extensionManager.Init($"./{Directories.Plugins}");
-            extensionManager.LoadPlugins();
+            await extensionManager.LoadPlugins();
             extensionManager.InitPlugins();
         }
     }

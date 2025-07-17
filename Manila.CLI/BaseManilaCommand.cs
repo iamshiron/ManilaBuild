@@ -40,7 +40,7 @@ public abstract class BaseAsyncManilaCommand<TSettings> : AsyncCommand<TSettings
     /// Override ExecuteCommand instead of this method.
     /// </summary>
     public override async Task<int> ExecuteAsync(CommandContext context, TSettings settings) {
-        return await ErrorHandler.SafeExecuteAsync(async () => await ExecuteCommandAsync(context, settings), settings);
+        return await ErrorHandler.SafeExecuteAsync(() => ExecuteCommandAsync(context, settings), settings);
     }
 
     /// <summary>

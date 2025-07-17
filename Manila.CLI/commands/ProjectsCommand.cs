@@ -11,7 +11,7 @@ internal sealed class ProjectsCommand : BaseAsyncManilaCommand<ProjectsCommand.S
     protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         var engine = ManilaEngine.GetInstance();
 
-        ManilaCLI.InitExtensions();
+        await ManilaCLI.InitExtensions();
         await engine.Run();
         if (engine.Workspace == null) throw new ManilaException(Messages.NoWorkspace);
 

@@ -16,7 +16,7 @@ public sealed class RunCommand : BaseAsyncManilaCommand<RunCommand.Settings> {
 
     protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         ManilaCLI.SetupInitialComponents(settings);
-        ManilaCLI.InitExtensions();
+        await ManilaCLI.InitExtensions();
 
         var engine = ManilaEngine.GetInstance();
         var extensionManager = ExtensionManager.GetInstance();

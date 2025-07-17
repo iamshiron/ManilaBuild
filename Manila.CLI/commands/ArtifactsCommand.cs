@@ -11,7 +11,7 @@ internal sealed class ArtifactsCommand : AsyncCommand<ArtifactsCommand.Settings>
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings) {
         var engine = ManilaEngine.GetInstance();
 
-        ManilaCLI.InitExtensions();
+        await ManilaCLI.InitExtensions();
         await engine.Run();
         if (engine.Workspace == null) throw new ManilaException("Not inside a workspace");
 

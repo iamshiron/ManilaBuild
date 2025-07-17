@@ -60,7 +60,7 @@ public class ExtensionManager {
     /// <summary>
     /// Discovers and loads all plugins from the specified plugin directory.
     /// </summary>
-    public void LoadPlugins() {
+    public async Task LoadPlugins() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             if (PluginDir == null) throw new Exception("Plugin directory not set. Call Init() first.");
 
@@ -101,7 +101,7 @@ public class ExtensionManager {
 
                                 List<string> nugetPackages = [];
                                 using (new ProfileScope("Download Dependencies")) {
-                                    nugetPackages = nugetManager.DownloadPackageWithDependenciesAsync(package, version).GetAwaiter().GetResult();
+                                    nugetPackages = await nugetManager.DownloadPackageWithDependenciesAsync(package, version);
                                 }
 
                                 using (new ProfileScope("Load Assemblies")) {

@@ -5,12 +5,12 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
-internal sealed class PluginsCommand : BaseManilaCommand<PluginsCommand.Settings> {
+internal sealed class PluginsCommand : BaseAsyncManilaCommand<PluginsCommand.Settings> {
     public class Settings : DefaultCommandSettings { }
 
-    protected override int ExecuteCommand(CommandContext context, Settings settings) {
+    protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         var extensionManager = ExtensionManager.GetInstance();
-        ManilaCLI.InitExtensions();
+        await ManilaCLI.InitExtensions();
 
         var table = new Table().Border(TableBorder.Rounded);
         table.AddColumn(new TableColumn(TableColumns.Project)); // Using Project column for Plugin
