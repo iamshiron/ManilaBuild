@@ -10,5 +10,6 @@
   <Project Path="Manila.Logging/Manila.Logging.csproj" />
   <Project Path="Manila.Profiling/Manila.Profiling.csproj" />
   <Project Path="Manila.Tests/Manila.Tests.csproj" />
+  <Project Path="Manila.Zip/Manila.Zip.csproj" />
   <Project Path="Manila/Manila.csproj" />
 </Solution>
