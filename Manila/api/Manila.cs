@@ -91,7 +91,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// Pauses execution for the specified milliseconds.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public async void sleep(int milliseconds) {
+    public async System.Threading.Tasks.Task sleep(int milliseconds) {
         await System.Threading.Tasks.Task.Delay(milliseconds);
     }
 

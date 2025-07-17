@@ -30,3 +30,9 @@ Manila.task('shell').after('build').execute(Manila.shell('echo From Shell!'))
 Manila.task('chained')
 	.after('build')
 	.execute([Manila.shell('echo One'), Manila.shell('echo Two'), Manila.shell('echo Three')])
+
+Manila.task('sleep').execute(async () => {
+	print('Sleeping for 2 seconds...')
+	await Manila.sleep(2000)
+	print('Done sleeping!')
+})

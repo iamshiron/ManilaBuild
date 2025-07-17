@@ -15,7 +15,11 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <summary>
     /// The script engine used by this context.
     /// </summary>
-    public readonly ScriptEngine ScriptEngine = new V8ScriptEngine();
+    public readonly ScriptEngine ScriptEngine = new V8ScriptEngine(
+        V8ScriptEngineFlags.EnableTaskPromiseConversion
+    ) {
+        ExposeHostObjectStaticMembers = true
+    };
     /// <summary>
     /// The engine this context is part of. Currently only used as an alias for the to not have to call GetInstance() all the time.
     /// </summary>

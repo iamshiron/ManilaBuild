@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.ClearScript;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
@@ -83,7 +84,7 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
     /// <param name="action">The action</param>
     /// <returns>Task instance for chaining calls</returns>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public TaskBuilder execute(object o) {
+    public TaskBuilder execute(dynamic o) {
         if (o is ITaskAction action) {
             Logger.Debug($"Found task action of type {action.GetType().FullName}");
             Actions = [action];
@@ -92,7 +93,8 @@ public sealed class TaskBuilder(string name, ScriptContext context, Component co
             Logger.Debug($"Found {list.Count} chained actions!");
             Actions = list.Cast<ITaskAction>().ToArray();
         } else {
-            Actions = [new TaskScriptAction((dynamic) o)];
+            var obj = (ScriptObject) o;
+            Actions = [new TaskScriptAction(obj)];
         }
 
         return this;

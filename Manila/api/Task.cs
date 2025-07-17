@@ -1,5 +1,7 @@
 
+using Microsoft.ClearScript;
 using Shiron.Manila.API.Builders;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 
@@ -9,11 +11,17 @@ public interface ITaskAction {
     void Execute();
 }
 
-public class TaskScriptAction(dynamic action) : ITaskAction {
-    private readonly Action _action = () => action();
+public class TaskScriptAction(ScriptObject obj) : ITaskAction {
+    private readonly ScriptObject _scriptObject = obj;
 
     public void Execute() {
-        _action.Invoke();
+        try {
+            System.Threading.Tasks.Task task = (System.Threading.Tasks.Task) _scriptObject.InvokeAsFunction();
+            task.Wait();
+        } catch (Exception e) {
+            Logger.Error("Error executing task script action: " + e.Message);
+            throw new ManilaException("Error executing task script action", e);
+        }
     }
 }
 public class TaskShellAction(ShellUtils.CommandInfo info) : ITaskAction {
