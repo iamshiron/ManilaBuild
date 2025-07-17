@@ -9,10 +9,10 @@ public class CLIException : ManilaException {
     public CLIException(string message, Exception innerException) : base(message, innerException) { }
 }
 
-public class TaskNotFoundException : BuildException {
-    public readonly string TaskKey;
+public class JobNotFoundException : BuildException {
+    public readonly string JobKey;
 
-    public TaskNotFoundException(string key) : base($"Task '{key}' not found.") {
-        TaskKey = key;
+    public JobNotFoundException(string key) : base($"Job '{key}' not found.") {
+        JobKey = key;
     }
 }

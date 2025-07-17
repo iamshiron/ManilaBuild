@@ -47,11 +47,10 @@ public static class ErrorHandler {
     /// <param name="commandFunction">The async command function to execute</param>
     /// <param name="settings">Command settings for error handling</param>
     /// <returns>Exit code - 0 for success, negative values for errors</returns>
-    public static int SafeExecuteAsync(Func<System.Threading.Tasks.Task<int>> commandFunction, DefaultCommandSettings settings) {
+    public static async Task<int> SafeExecuteAsync(Func<Task<int>> commandFunction, DefaultCommandSettings settings) {
         try {
-            return commandFunction().Result;
+            return await commandFunction();
         } catch (AggregateException ae) {
-            // Unwrap AggregateException from async operations
             var innerException = ae.InnerException ?? ae;
             return HandleException(innerException, settings);
         } catch (Exception e) {

@@ -63,7 +63,7 @@ public sealed class ManilaEngine {
     public readonly long EngineCreatedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     /// <summary>
-    /// Gets the execution graph for managing task dependencies.
+    /// Gets the execution graph for managing job dependencies.
     /// </summary>
     public ExecutionGraph ExecutionGraph { get; } = new();
 
@@ -93,7 +93,7 @@ public sealed class ManilaEngine {
     /// <summary>
     /// Main entry point for the engine. Runs the workspace script and all project scripts.
     /// </summary>
-    public async System.Threading.Tasks.Task Run() {
+    public async Task Run() {
         if (!File.Exists("Manila.js")) {
             Logger.Error("No Manila.js file found in the current directory.");
             return;
@@ -138,7 +138,7 @@ public sealed class ManilaEngine {
     /// Executes a specific project script.
     /// </summary>
     /// <param name="path">The relative path to the project script from the root directory.</param>
-    public async System.Threading.Tasks.Task RunProjectScript(string path) {
+    public async Task RunProjectScript(string path) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path));
             var scriptPath = Path.Join(Directory.GetCurrentDirectory(), path);
@@ -170,7 +170,7 @@ public sealed class ManilaEngine {
     /// <summary>
     /// Executes the workspace script (Manila.js in the root directory).
     /// </summary>
-    public async System.Threading.Tasks.Task RunWorkspaceScript() {
+    public async Task RunWorkspaceScript() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             Logger.Debug("Running workspace script: " + WorkspaceContext.ScriptPath);
 
@@ -187,33 +187,33 @@ public sealed class ManilaEngine {
     }
 
     /// <summary>
-    /// Constructs the execution graph and runs the build logic for a specified task.
+    /// Constructs the execution graph and runs the build logic for a specified job.
     /// </summary>
-    /// <param name="taskID">The ID of the task to execute.</param>
-    public void ExecuteBuildLogic(string taskID) {
-        var task = GetTask(taskID);
-        Logger.Debug($"Found task: {task}");
+    /// <param name="jobID">The ID of the job to execute.</param>
+    public void ExecuteBuildLogic(string jobID) {
+        var job = GetJob(jobID);
+        Logger.Debug($"Found job: {job}");
 
-        // Add all existing tasks to the graph, hopefully I'll find a better solution for this in the future
+        // Add all existing jobs to the graph, hopefully I'll find a better solution for this in the future
         ExecutionGraph.ExecutionLayer[] layers = [];
         using (new ProfileScope("Building Dependency Tree")) {
-            List<API.Task> Tasks = [.. Workspace.Tasks];
+            List<API.Job> Jobs = [.. Workspace.Jobs];
             foreach (var p in Workspace.Projects.Values) {
-                Tasks.AddRange([.. p.Tasks]);
+                Jobs.AddRange([.. p.Jobs]);
                 foreach (var a in p.Artifacts.Values) {
-                    Tasks.AddRange([.. a.Tasks]);
+                    Jobs.AddRange([.. a.Jobs]);
                 }
             }
 
-            foreach (var t in Tasks) {
+            foreach (var t in Jobs) {
                 List<ExecutableObject> dependencies = [];
                 foreach (var d in t.Dependencies) {
-                    dependencies.Add(GetTask(d));
+                    dependencies.Add(GetJob(d));
                 }
                 ExecutionGraph.Attach(t, dependencies);
             }
 
-            layers = ExecutionGraph.GetExecutionLayers(taskID);
+            layers = ExecutionGraph.GetExecutionLayers(jobID);
         }
 
         Logger.Log(new BuildLayersLogEntry(layers));
@@ -229,13 +229,13 @@ public sealed class ManilaEngine {
                         Guid layerContextID = Guid.NewGuid();
                         Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
                         using (LogContext.PushContext(layerContextID)) {
-                            List<System.Threading.Tasks.Task> layerTasks = [];
+                            List<Task> layerJobs = [];
 
                             foreach (var o in layer.Items) {
-                                layerTasks.Add(System.Threading.Tasks.Task.Run(() => o.Execute()));
+                                layerJobs.Add(Task.Run(() => o.Execute()));
                             }
 
-                            System.Threading.Tasks.Task.WhenAll(layerTasks).GetAwaiter().GetResult();
+                            Task.WhenAll(layerJobs).GetAwaiter().GetResult();
                             Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
                         }
 
@@ -251,34 +251,34 @@ public sealed class ManilaEngine {
         }
     }
 
-    public bool HasTask(string uri) {
-        return GetTask(uri) != null;
+    public bool HasJob(string uri) {
+        return GetJob(uri) != null;
     }
 
-    public API.Task GetTask(string uri) {
-        var info = RegexUtils.MatchTasks(uri) ?? throw new ManilaException($"Invalid task URI: {uri}");
+    public API.Job GetJob(string uri) {
+        var info = RegexUtils.MatchJobs(uri) ?? throw new ManilaException($"Invalid job URI: {uri}");
 
         if (info.Project == null) {
-            var temp = Workspace.Tasks.Find(m => m.Name == info.Task) ?? throw new ManilaException($"Task {uri} not found!");
+            var temp = Workspace.Jobs.Find(m => m.Name == info.Job) ?? throw new ManilaException($"Job {uri} not found!");
             return temp;
         }
 
         var project = Workspace.Projects[info.Project];
         if (info.Artifact == null) {
-            var temp = project.Tasks.Find(m => m.Name == info.Task) ?? throw new ManilaException($"Task {uri} not found!");
+            var temp = project.Jobs.Find(m => m.Name == info.Job) ?? throw new ManilaException($"Job {uri} not found!");
             return temp;
         }
 
-        var t = project.Artifacts[info.Artifact].Tasks.First(t => t.Name == info.Task) ?? throw new ManilaException($"Task {uri} not found!");
+        var t = project.Artifacts[info.Artifact].Jobs.First(t => t.Name == info.Job) ?? throw new ManilaException($"Job {uri} not found!");
         return t;
     }
-    public bool TryGetTask(string uri, out API.Task? task) {
+    public bool TryGetJob(string uri, out API.Job? job) {
         try {
-            var t = GetTask(uri);
-            task = t;
+            var t = GetJob(uri);
+            job = t;
             return t != null;
         } catch {
-            task = null;
+            job = null;
             return false;
         }
     }

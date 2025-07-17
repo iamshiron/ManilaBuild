@@ -9,7 +9,7 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila.API;
 
 /// <summary>
-/// Represents a component in the build script that groups tasks and plugins.
+/// Represents a component in the build script that groups jobs and plugins.
 /// </summary>
 public class Component(string path) : DynamicObject, IScriptableObject {
     /// <summary>
@@ -34,9 +34,9 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     public Dictionary<string, List<Delegate>> DynamicMethods { get; } = [];
 
     /// <summary>
-    /// Collection of tasks belonging to this component.
+    /// Collection of jobs belonging to this component.
     /// </summary>
-    public List<Task> Tasks { get; } = [];
+    public List<Job> Jobs { get; } = [];
 
     /// <summary>
     /// Types of dependencies used by this component.
@@ -282,10 +282,10 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     }
 
     /// <summary>
-    /// Finalizes the component by building all tasks.
+    /// Finalizes the component by building all jobs.
     /// </summary>
     /// <param name="manilaAPI">The Manila API instance.</param>
     public virtual void Finalize(Manila manilaAPI) {
-        Tasks.AddRange(manilaAPI.TaskBuilders.Select(b => b.Build()));
+        Jobs.AddRange(manilaAPI.JobBuilders.Select(b => b.Build()));
     }
 }

@@ -25,9 +25,9 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
     public string Description = string.Empty;
 
     /// <summary>
-    /// Collection of task builders for this artifact.
+    /// Collection of job builders for this artifact.
     /// </summary>
-    public readonly List<TaskBuilder> TaskBuilders = [];
+    public readonly List<JobBuilder> JobBuilders = [];
 
     /// <summary>
     /// Lambda function that defines the artifact configuration.

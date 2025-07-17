@@ -21,16 +21,16 @@ public abstract class ExecutableObject {
     public virtual string GetID() { return ExecutableID.ToString(); }
 
     protected virtual void PreRun() { }
-    protected abstract void Run();
+    protected abstract Task Run();
     protected virtual void PostRun() { }
 
-    public void Execute() {
+    public async Task Execute() {
         PreRun();
 
         if (IsBlocking()) {
-            Run();
+            await Run();
         } else {
-            Task.Run(Run);
+            await Task.Run(Run);
         }
 
         PostRun();
@@ -64,7 +64,9 @@ public abstract class ExecutableObject {
 /// </summary>
 public class NoOpExecutableObject : ExecutableObject {
     public override bool IsBlocking() { return true; }
-    protected override void Run() { }
+    protected override async Task Run() {
+        await Task.Yield();
+    }
 }
 
 /// <summary>
@@ -139,7 +141,7 @@ public class ExecutionGraph {
     /// <param name="main">The main object to be added or updated in the graph.</param>
     /// <param name="dependencies">A list of objects that the main object directly depends on.</param>
     public void Attach(ExecutableObject main, List<ExecutableObject> dependencies) {
-        Logger.Debug($"Attaching {((API.Task) main).GetIdentifier()}");
+        Logger.Debug($"Attaching {((API.Job) main).GetIdentifier()}");
 
         var mainNode = GetOrCreateNode(main);
 
@@ -231,31 +233,31 @@ public class ExecutionGraph {
     }
 
     /// <summary>
-    /// Finds a node in the graph associated with a specific task identifier.
-    /// Note: This requires the ExecutableObject to be of a specific 'API.Task' type.
+    /// Finds a node in the graph associated with a specific job identifier.
+    /// Note: This requires the ExecutableObject to be of a specific 'API.Job' type.
     /// </summary>
-    /// <param name="taskID">The unique identifier of the task to find.</param>
+    /// <param name="jobID">The unique identifier of the job to find.</param>
     /// <returns>The corresponding <see cref="ExecutionNode"/>, or null if not found.</returns>
-    public ExecutionNode? GetByTask(string taskID) {
+    public ExecutionNode? GetByJob(string jobID) {
         foreach (var o in _nodes.Keys) {
-            if (o is API.Task task) {
-                if (task.GetIdentifier() == taskID) return _nodes[o];
+            if (o is API.Job job) {
+                if (job.GetIdentifier() == jobID) return _nodes[o];
             }
         }
         return null;
     }
 
     /// <summary>
-    /// Calculates the execution layers for a given task using a topological sort.
+    /// Calculates the execution layers for a given job using a topological sort.
     /// Each layer contains nodes that can be run in parallel. The calculation is based on the
-    /// subgraph containing only the target task and its direct and indirect dependencies.
+    /// subgraph containing only the target job and its direct and indirect dependencies.
     /// </summary>
-    /// <param name="task">The identifier of the final task to be executed.</param>
+    /// <param name="job">The identifier of the final job to be executed.</param>
     /// <returns>An array of arrays, where each inner array is a layer of <see cref="ExecutionNode"/> that can be run in parallel.</returns>
-    /// <exception cref="Exception">Thrown if the specified task is not found in the graph.</exception>
-    /// <exception cref="InvalidOperationException">Thrown if a cycle is detected in the dependency graph for the task.</exception>
-    public ExecutionLayer[] GetExecutionLayers(string task) {
-        var targetNode = GetByTask(task) ?? throw new ManilaException($"Task '{task}' not inside graph!");
+    /// <exception cref="Exception">Thrown if the specified job is not found in the graph.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if a cycle is detected in the dependency graph for the job.</exception>
+    public ExecutionLayer[] GetExecutionLayers(string job) {
+        var targetNode = GetByJob(job) ?? throw new ManilaException($"Job '{job}' not inside graph!");
         var subgraphNodes = new HashSet<ExecutionNode> {
             targetNode
         };
@@ -304,7 +306,7 @@ public class ExecutionGraph {
         }
 
         if (processedNodesCount != subgraphNodes.Count) {
-            throw new InvalidOperationException("A cycle was detected in the dependency graph for the given task.");
+            throw new InvalidOperationException("A cycle was detected in the dependency graph for the given job.");
         }
 
         return allLayers

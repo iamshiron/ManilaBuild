@@ -8,7 +8,7 @@ namespace Shiron.Manila.CLI.Commands;
 internal sealed class ProjectsCommand : BaseAsyncManilaCommand<ProjectsCommand.Settings> {
     public sealed class Settings : DefaultCommandSettings { }
 
-    protected override async System.Threading.Tasks.Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
+    protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         var engine = ManilaEngine.GetInstance();
 
         ManilaCLI.InitExtensions();
@@ -30,7 +30,7 @@ internal sealed class ProjectsCommand : BaseAsyncManilaCommand<ProjectsCommand.S
             artifactsTable.AddColumn(new TableColumn(TableColumns.Description));
 
             foreach (var (name, artifact) in project.Artifacts) {
-                artifactsTable.AddRow(string.Format(Format.TaskIdentifier, name), artifact.Description);
+                artifactsTable.AddRow(string.Format(Format.JobIdentifier, name), artifact.Description);
             }
 
             table.AddRow(new Markup($"[cyan bold]{project.Name}[/]"), new Markup(project.Description ?? "[grey](none)[/]"), new Markup(project.Version ?? "[grey](none)[/]"), artifactsTable);

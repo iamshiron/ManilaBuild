@@ -16,22 +16,22 @@ Manila.onProject(['client', 'core'], p => {
 	p.setToolChain(ToolChain.Clang)
 })
 
-Manila.task('build').execute(() => {
+Manila.job('build').execute(() => {
 	print('Building...')
 })
 
-Manila.task('run')
+Manila.job('run')
 	.after('build')
 	.execute(() => {
 		print('Running...')
 	})
 
-Manila.task('shell').after('build').execute(Manila.shell('echo From Shell!'))
-Manila.task('chained')
+Manila.job('shell').after('build').execute(Manila.shell('echo From Shell!'))
+Manila.job('chained')
 	.after('build')
 	.execute([Manila.shell('echo One'), Manila.shell('echo Two'), Manila.shell('echo Three')])
 
-Manila.task('sleep').execute(async () => {
+Manila.job('sleep').execute(async () => {
 	print('Sleeping for 2 seconds...')
 	await Manila.sleep(2000)
 	print('Done sleeping!')

@@ -20,7 +20,7 @@ internal sealed class PluginsCommand : BaseManilaCommand<PluginsCommand.Settings
         table.AddColumn(new TableColumn(TableColumns.Author));
         foreach (var p in extensionManager.Plugins) {
             table.AddRow(
-                string.Format(Format.TaskIdentifier, p.Name),
+                string.Format(Format.JobIdentifier, p.Name),
                 p.Version.ToString(),
                 p.Group ?? "",
                 Path.GetFileName(p.File) ?? "",

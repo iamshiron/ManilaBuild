@@ -14,7 +14,7 @@ sourceSets({
 
 artifacts({
 	main: Manila.artifact(() => {
-		Manila.task('build')
+		Manila.job('build')
 			.description('Build the Core')
 			.execute(() => {
 				Manila.build(workspace, project, config)

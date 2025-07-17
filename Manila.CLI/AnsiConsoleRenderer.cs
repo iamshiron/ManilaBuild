@@ -27,7 +27,7 @@ public static class AnsiConsoleRenderer {
     private static Tree? _executionTree;
     private static Action? _refresh; // Action to refresh the LiveDisplay
     private static TaskCompletionSource<bool>? _buildCompletion; // Controls the LiveDisplay lifetime
-    private static Dictionary<string, TaskCompletionSource> _nodeCompletiosn = [];
+    private static readonly Dictionary<string, TaskCompletionSource> _nodeCompletiosn = [];
     private static bool _verbose = false;
     private static bool _stackTrace = false;
 
@@ -122,14 +122,14 @@ public static class AnsiConsoleRenderer {
             case ScriptExecutionFailedLogEntry log:
                 HandleScriptExecutionFailedLogEntry(log);
                 break;
-            case TaskExecutionStartedLogEntry log:
-                HandleTaskExecutionStartedLogEntry(log);
+            case JobExecutionStartedLogEntry log:
+                HandleJobExecutionStartedLogEntry(log);
                 break;
-            case TaskExecutionFinishedLogEntry log:
-                HandleTaskExecutionFinishedLogEntry(log);
+            case JobExecutionFinishedLogEntry log:
+                HandleJobExecutionFinishedLogEntry(log);
                 break;
-            case TaskExecutionFailedLogEntry log:
-                HandleTaskExecutionFailedLogEntry(log);
+            case JobExecutionFailedLogEntry log:
+                HandleJobExecutionFailedLogEntry(log);
                 break;
             case ProjectDiscoveredLogEntry log:
                 HandleProjectDiscoveredLogEntry(log);
@@ -137,8 +137,8 @@ public static class AnsiConsoleRenderer {
             case ProjectInitializedLogEntry log:
                 HandleProjectInitializedLogEntry(log);
                 break;
-            case TaskDiscoveredLogEntry log:
-                HandleTaskDiscoveredLogEntry(log);
+            case JobDiscoveredLogEntry log:
+                HandleJobDiscoveredLogEntry(log);
                 break;
             case CommandExecutionLogEntry log:
                 HandleCommandExecutionLogEntry(log);
@@ -202,8 +202,8 @@ public static class AnsiConsoleRenderer {
             .AutoClear(false)
             .Overflow(VerticalOverflow.Ellipsis)
             .StartAsync(async ctx => {
-                _refresh = ctx.Refresh; // Store the refresh delegate
-                await _buildCompletion.Task; // Wait until build is marked as complete
+                _refresh = ctx.Refresh;
+                _ = await _buildCompletion.Task;
                 ctx.Refresh();
             });
     }
@@ -214,9 +214,9 @@ public static class AnsiConsoleRenderer {
         _refresh?.Invoke();
     }
 
-    private static void HandleTaskExecutionStartedLogEntry(TaskExecutionStartedLogEntry entry) {
-        // Attach the task to the current layer's node
-        PushLog($"[deepskyblue1]Task [skyblue1]{entry.Task.Name}[/][/]", entry.ParentContextID.ToString(), entry.ContextID);
+    private static void HandleJobExecutionStartedLogEntry(JobExecutionStartedLogEntry entry) {
+        // Attach the job to the current layer's node
+        PushLog($"[deepskyblue1]Job [skyblue1]{entry.Job.Name}[/][/]", entry.ParentContextID.ToString(), entry.ContextID);
         _refresh?.Invoke();
     }
 
@@ -260,10 +260,10 @@ public static class AnsiConsoleRenderer {
     private static void HandleScriptExecutionFailedLogEntry(ScriptExecutionFailedLogEntry entry) {
         _buildCompletion?.TrySetResult(true);
     }
-    private static void HandleTaskExecutionFinishedLogEntry(TaskExecutionFinishedLogEntry entry) {
-        PushLog($"[green]Task [skyblue1]{entry.Task.Name}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
+    private static void HandleJobExecutionFinishedLogEntry(JobExecutionFinishedLogEntry entry) {
+        PushLog($"[green]Job [skyblue1]{entry.Job.Name}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
     }
-    private static void HandleTaskExecutionFailedLogEntry(TaskExecutionFailedLogEntry entry) {
+    private static void HandleJobExecutionFailedLogEntry(JobExecutionFailedLogEntry entry) {
         _buildCompletion?.TrySetResult(true);
     }
     private static void HandleProjectDiscoveredLogEntry(ProjectDiscoveredLogEntry entry) {
@@ -272,8 +272,8 @@ public static class AnsiConsoleRenderer {
     private static void HandleProjectInitializedLogEntry(ProjectInitializedLogEntry entry) {
         Logger.System($"Project {entry.Project.Name} initialized!");
     }
-    private static void HandleTaskDiscoveredLogEntry(TaskDiscoveredLogEntry entry) {
-        Logger.System($"Discovered task {entry.Task.Name} for {entry.Component.Root} in {entry.Component.Root}");
+    private static void HandleJobDiscoveredLogEntry(JobDiscoveredLogEntry entry) {
+        Logger.System($"Discovered job {entry.Job.Name} for {entry.Component.Root} in {entry.Component.Root}");
     }
     private static void HandleCommandExecutionLogEntry(CommandExecutionLogEntry entry) {
         PushLog($"[green]$>[/] [grey]{Path.GetFileName(entry.Executable)} {Markup.Escape(string.Join(" ", entry.Args))}[/]", entry.ParentContextID.ToString(), entry.ContextID);

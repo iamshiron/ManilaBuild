@@ -2,7 +2,7 @@ namespace Shiron.Manila.Exceptions;
 
 /// <summary>
 /// Represents errors that occur specifically during the build process,
-/// such as task failures or dependency resolution issues.
+/// such as job failures or dependency resolution issues.
 /// </summary>
 public class BuildException : ManilaException {
     public BuildException(string message) : base(message) { }
@@ -11,31 +11,31 @@ public class BuildException : ManilaException {
 }
 
 /// <summary>
-/// Thrown when a task fails during its execution. It captures the specific task
+/// Thrown when a job fails during its execution. It captures the specific job
 /// and the underlying exception for detailed diagnostics.
 /// </summary>
-public class TaskFailedException : BuildException {
+public class JobFailedException : BuildException {
     /// <summary>
-    /// The task that failed, providing context for the error.
+    /// The job that failed, providing context for the error.
     /// </summary>
-    public readonly API.Task Task;
+    public readonly API.Job Job;
 
-    public TaskFailedException(API.Task task, Exception innerException)
-        : base($"Task '{task.GetIdentifier()}' failed during execution.", innerException) {
-        Task = task;
+    public JobFailedException(API.Job job, Exception innerException)
+        : base($"Job '{job.GetIdentifier()}' failed during execution.", innerException) {
+        Job = job;
     }
 }
 
 /// <summary>
-/// Thrown when a task with the specified key cannot be found in the workspace or project.
+/// Thrown when a job with the specified key cannot be found in the workspace or project.
 /// </summary>
-public class TaskNotFoundException : BuildException {
+public class JobNotFoundException : BuildException {
     /// <summary>
-    /// The key of the task that was not found.
+    /// The key of the job that was not found.
     /// </summary>
-    public readonly string TaskKey;
+    public readonly string JobKey;
 
-    public TaskNotFoundException(string key) : base($"Task '{key}' not found.") {
-        TaskKey = key;
+    public JobNotFoundException(string key) : base($"Job '{key}' not found.") {
+        JobKey = key;
     }
 }

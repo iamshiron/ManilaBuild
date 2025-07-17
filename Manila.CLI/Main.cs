@@ -33,14 +33,14 @@ public static class ManilaCLI {
         }
     }
 
-    public static async System.Threading.Tasks.Task StartEngine(ManilaEngine engine) {
+    public static async Task StartEngine(ManilaEngine engine) {
         await engine.Run();
         if (engine.Workspace == null) throw new Exception("Workspace not found!");
     }
 
-    public static int RunTask(ManilaEngine engine, ExtensionManager extensionManager, DefaultCommandSettings settings, string task) {
+    public static int RunJob(ManilaEngine engine, ExtensionManager extensionManager, DefaultCommandSettings settings, string job) {
         return ErrorHandler.SafeExecute(() => {
-            engine.ExecuteBuildLogic(task);
+            engine.ExecuteBuildLogic(job);
             extensionManager.ReleasePlugins();
             return ExitCodes.SUCCESS;
         }, settings);
@@ -70,7 +70,7 @@ public static class ManilaCLI {
             c.SetApplicationName("manila");
             c.SetApplicationVersion(ManilaEngine.VERSION);
             c.AddCommand<PluginsCommand>("plugins");
-            c.AddCommand<TasksCommand>("tasks");
+            c.AddCommand<JobsCommand>("jobs");
             c.AddCommand<RunCommand>("run");
             c.AddCommand<ArtifactsCommand>("artifacts");
             c.AddCommand<ProjectsCommand>("projects");

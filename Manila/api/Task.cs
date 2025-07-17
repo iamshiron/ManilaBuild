@@ -7,77 +7,79 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
-public interface ITaskAction {
-    void Execute();
+public interface IJobAction {
+    Task Execute();
 }
 
-public class TaskScriptAction(ScriptObject obj) : ITaskAction {
+public class JobScriptAction(ScriptObject obj) : IJobAction {
     private readonly ScriptObject _scriptObject = obj;
 
-    public void Execute() {
+    public async Task Execute() {
         try {
             var res = _scriptObject.InvokeAsFunction();
-            if (res is System.Threading.Tasks.Task task) {
-                task.Wait();
+            if (res is Task task) {
+                await task;
             }
         } catch (Exception e) {
-            Logger.Error("Error executing task script action: " + e.Message);
-            throw new ManilaException("Error executing task script action", e);
+            Logger.Error("Error executing job script action: " + e.Message);
+            throw new ManilaException("Error executing job script action", e);
         }
     }
 }
-public class TaskShellAction(ShellUtils.CommandInfo info) : ITaskAction {
+public class JobShellAction(ShellUtils.CommandInfo info) : IJobAction {
     private readonly ShellUtils.CommandInfo _commandInfo = info;
 
-    public void Execute() {
+    public async Task Execute() {
         ShellUtils.Run(_commandInfo);
+        await Task.Yield();
     }
 }
-public class PrintAction(string message, string scriptPath, Guid scriptContextID) : ITaskAction {
+public class PrintAction(string message, string scriptPath, Guid scriptContextID) : IJobAction {
     private readonly string _message = message;
     private readonly string _scriptPath = scriptPath;
     private readonly Guid _scriptContextID = scriptContextID;
 
-    public void Execute() {
+    public async Task Execute() {
         Logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextID));
+        await Task.Yield();
     }
 }
 
 /// <summary>
-/// Represents a task in the build script.
+/// Represents a job in the build script.
 /// </summary>
-public class Task(TaskBuilder builder) : ExecutableObject {
+public class Job(JobBuilder builder) : ExecutableObject {
     public readonly string Name = builder.Name;
     public readonly List<string> Dependencies = builder.Dependencies;
-    public readonly ITaskAction[] Actions = builder.Actions;
+    public readonly IJobAction[] Actions = builder.Actions;
     public readonly ScriptContext Context = builder.ScriptContext;
     public readonly Component Component = builder.Component;
     public readonly string Description = builder.Description;
     public readonly bool Blocking = builder.Blocking;
     public readonly string? ArtiafactName = builder.ArtifactBuilder?.Name;
-    public readonly string TaskID = Guid.NewGuid().ToString();
+    public readonly string JobID = Guid.NewGuid().ToString();
 
     /// <summary>
-    /// Get the identifier of the task.
+    /// Get the identifier of the job.
     /// </summary>
-    /// <returns>The unique identifier of the task</returns>
+    /// <returns>The unique identifier of the job</returns>
     public string GetIdentifier() {
-        return new RegexUtils.TaskMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtiafactName, Name).Format();
+        return new RegexUtils.JobMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtiafactName, Name).Format();
     }
 
     /// <summary>
-    /// Gets the execution order of the task and its dependencies.
+    /// Gets the execution order of the job and its dependencies.
     /// </summary>
-    /// <returns>A ascending list of the task execution order</returns>
+    /// <returns>A ascending list of the job execution order</returns>
     public List<string> GetExecutionOrder() {
         List<string> result = [];
         foreach (string dependency in Dependencies) {
-            Task? dependentTask = ManilaEngine.GetInstance().GetTask(dependency);
-            if (dependentTask == null) { Logger.Warning("Task not found: " + dependency); continue; }
-            List<string> dependencyOrder = dependentTask.GetExecutionOrder();
-            foreach (string depTask in dependencyOrder) {
-                if (!result.Contains(depTask)) {
-                    result.Add(depTask);
+            Job? dependentJob = ManilaEngine.GetInstance().GetJob(dependency);
+            if (dependentJob == null) { Logger.Warning("Job not found: " + dependency); continue; }
+            List<string> dependencyOrder = dependentJob.GetExecutionOrder();
+            foreach (string depJob in dependencyOrder) {
+                if (!result.Contains(depJob)) {
+                    result.Add(depJob);
                 }
             }
 
@@ -93,16 +95,16 @@ public class Task(TaskBuilder builder) : ExecutableObject {
         return Blocking;
     }
 
-    protected override void Run() {
-        Logger.Log(new TaskExecutionStartedLogEntry(this, ExecutableID));
+    protected override async Task Run() {
+        Logger.Log(new JobExecutionStartedLogEntry(this, ExecutableID));
         using (LogContext.PushContext(ExecutableID)) {
             try {
-                foreach (var a in Actions) a.Execute();
+                foreach (var a in Actions) await a.Execute();
             } catch (Exception e) {
-                Logger.Log(new TaskExecutionFailedLogEntry(this, ExecutableID, e));
+                Logger.Log(new JobExecutionFailedLogEntry(this, ExecutableID, e));
                 throw;
             }
-            Logger.Log(new TaskExecutionFinishedLogEntry(this, ExecutableID));
+            Logger.Log(new JobExecutionFinishedLogEntry(this, ExecutableID));
         }
     }
     public override string GetID() {
@@ -110,6 +112,6 @@ public class Task(TaskBuilder builder) : ExecutableObject {
     }
 
     public override string ToString() {
-        return $"Task({GetIdentifier()})";
+        return $"Job({GetIdentifier()})";
     }
 }

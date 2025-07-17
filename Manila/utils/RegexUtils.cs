@@ -8,18 +8,18 @@ namespace Shiron.Manila.Utils;
 /// </summary>
 public static partial class RegexUtils {
     /// <summary>
-    /// Regex for the format: [[project[/artifact]:]]task
+    /// Regex for the format: [[project[/artifact]:]]job
     /// </summary>
-    public static readonly Regex TaskRegex = TaskRegexGenerator();
+    public static readonly Regex JobRegex = JobRegexGenerator();
 
     /// <summary>
-    /// Represents a successful match for a task string.
+    /// Represents a successful match for a job string.
     /// </summary>
-    public record TaskMatch(string? Project, string? Artifact, string Task) {
+    public record JobMatch(string? Project, string? Artifact, string Job) {
         /// <summary>
-        /// Reconstructs the string identifier from this TaskMatch object.
+        /// Reconstructs the string identifier from this JobMatch object.
         /// </summary>
-        /// <returns>The formatted task string.</returns>
+        /// <returns>The formatted job string.</returns>
         public string Format() {
             var builder = new StringBuilder();
             if (Project != null) {
@@ -29,43 +29,43 @@ public static partial class RegexUtils {
                 }
                 builder.Append(':');
             }
-            builder.Append(Task);
+            builder.Append(Job);
             return builder.ToString();
         }
 
         /// <summary>
-        /// Returns a string representation of the TaskMatch object, including null parameters and the class name.
+        /// Returns a string representation of the JobMatch object, including null parameters and the class name.
         /// </summary>
         public override string ToString() {
-            return $"TaskMatch(Project: {Project ?? "null"}, Artifact: {Artifact ?? "null"}, Task: {Task})";
+            return $"JobMatch(Project: {Project ?? "null"}, Artifact: {Artifact ?? "null"}, Job: {Job})";
         }
     }
 
     /// <summary>
-    /// Matches a string against the TaskRegex.
+    /// Matches a string against the JobRegex.
     /// </summary>
     /// <param name="s">The input string.</param>
-    /// <returns>A <see cref="TaskMatch"/> record if the match is successful; otherwise, null.</returns>
-    public static TaskMatch? MatchTasks(string s) {
-        var match = TaskRegex.Match(s.Trim());
+    /// <returns>A <see cref="JobMatch"/> record if the match is successful; otherwise, null.</returns>
+    public static JobMatch? MatchJobs(string s) {
+        var match = JobRegex.Match(s.Trim());
         if (!match.Success) return null;
 
-        return new TaskMatch(
+        return new JobMatch(
             GetValueOrNull(match.Groups["project"]),
             GetValueOrNull(match.Groups["artifact"]),
-            match.Groups["task"].Value
+            match.Groups["job"].Value
         );
     }
 
     /// <summary>
-    /// Checks if a string is a valid task identifier.
+    /// Checks if a string is a valid job identifier.
     /// </summary>
     /// <param name="s">The string to validate.</param>
-    /// <returns>True if the string matches the task format; otherwise, false.</returns>
-    public static bool IsValidTask(string s) => TaskRegex.IsMatch(s.Trim());
+    /// <returns>True if the string matches the job format; otherwise, false.</returns>
+    public static bool IsValidJob(string s) => JobRegex.IsMatch(s.Trim());
 
-    [GeneratedRegex(@"^(?:(?<project>\w+)(?:\/(?<artifact>\w+))?:)?(?<task>\w+)$", RegexOptions.Compiled)]
-    private static partial Regex TaskRegexGenerator();
+    [GeneratedRegex(@"^(?:(?<project>\w+)(?:\/(?<artifact>\w+))?:)?(?<job>\w+)$", RegexOptions.Compiled)]
+    private static partial Regex JobRegexGenerator();
 
     /// <summary>
     /// Regex for the format: [group:]plugin[@version]

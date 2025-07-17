@@ -8,13 +8,13 @@ namespace Shiron.Manila.CLI.Commands;
 
 public sealed class RunCommand : BaseAsyncManilaCommand<RunCommand.Settings> {
     public class Settings : DefaultCommandSettings {
-        [CommandArgument(0, "<task>")]
-        [Description("The task to run")]
+        [CommandArgument(0, "<job>")]
+        [Description("The job to run")]
         [Required]
-        public string Task { get; set; } = "";
+        public string Job { get; set; } = "";
     }
 
-    protected override async System.Threading.Tasks.Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
+    protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         ManilaCLI.SetupInitialComponents(settings);
         ManilaCLI.InitExtensions();
 
@@ -22,10 +22,8 @@ public sealed class RunCommand : BaseAsyncManilaCommand<RunCommand.Settings> {
         var extensionManager = ExtensionManager.GetInstance();
 
         await ManilaCLI.StartEngine(engine);
-        if (engine.GetTask(settings.Task) == null) {
-            throw new TaskNotFoundException(settings.Task);
-        }
-
-        return ManilaCLI.RunTask(engine, extensionManager, settings, settings.Task);
+        return engine.GetJob(settings.Job) == null
+            ? throw new JobNotFoundException(settings.Job)
+            : ManilaCLI.RunJob(engine, extensionManager, settings, settings.Job);
     }
 }

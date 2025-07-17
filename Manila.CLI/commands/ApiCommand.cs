@@ -13,7 +13,7 @@ namespace Shiron.Manila.CLI.Commands;
 [Description("API commands for retrieving information as JSON output")]
 internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
     public sealed class Settings : DefaultCommandSettings {
-        [Description("API subcommand: tasks, artifacts, projects, workspace, plugins")]
+        [Description("API subcommand: jobs, artifacts, projects, workspace, plugins")]
         [CommandArgument(0, "[subcommand]")]
         public string Subcommand { get; set; } = string.Empty;
 
@@ -35,7 +35,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         ReferenceLoopHandling = ReferenceLoopHandling.Ignore
     };
 
-    protected override async System.Threading.Tasks.Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
+    protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         var engine = ManilaEngine.GetInstance();
 
         ManilaCLI.InitExtensions();
@@ -46,7 +46,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         if (string.IsNullOrWhiteSpace(cmd) || !ApiSubcommands.All.Contains(cmd))
             throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Valid subcommands: {string.Join(", ", ApiSubcommands.All)}");
         var result = cmd switch {
-            "tasks" => GetTasksData(engine, settings),
+            "jobs" => GetJobsData(engine, settings),
             "artifacts" => GetArtifactsData(engine, settings),
             "projects" => GetProjectsData(engine, settings),
             "workspace" => GetWorkspaceData(engine, settings),
@@ -60,117 +60,117 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         return ExitCodes.SUCCESS;
     }
 
-    private static object GetTasksData(ManilaEngine engine, Settings settings) {
-        var tasks = new List<object>();
+    private static object GetJobsData(ManilaEngine engine, Settings settings) {
+        var jobs = new List<object>();
 
-        // Workspace tasks
-        foreach (var task in engine.Workspace!.Tasks) {
-            if (settings.Project != null) continue; // Skip workspace tasks if filtering by project
+        // Workspace jobs
+        foreach (var job in engine.Workspace!.Jobs) {
+            if (settings.Project != null) continue; // Skip workspace jobs if filtering by project
 
-            var taskData = new {
-                name = task.Name,
-                identifier = task.GetIdentifier(),
-                description = task.Description,
-                dependencies = task.Dependencies,
+            var jobData = new {
+                name = job.Name,
+                identifier = job.GetIdentifier(),
+                description = job.Description,
+                dependencies = job.Dependencies,
                 type = ProjectTypes.Workspace,
                 project = (string?) null,
                 artifact = (string?) null,
-                blocking = task.Blocking
+                blocking = job.Blocking
             };
 
             if (settings.Detailed) {
-                tasks.Add(new {
-                    taskData.name,
-                    taskData.identifier,
-                    taskData.description,
-                    taskData.dependencies,
-                    taskData.type,
-                    taskData.project,
-                    taskData.artifact,
-                    taskData.blocking,
-                    executionOrder = task.GetExecutionOrder(),
-                    taskId = task.TaskID,
-                    component = task.Component?.GetIdentifier()
+                jobs.Add(new {
+                    jobData.name,
+                    jobData.identifier,
+                    jobData.description,
+                    jobData.dependencies,
+                    jobData.type,
+                    jobData.project,
+                    jobData.artifact,
+                    jobData.blocking,
+                    executionOrder = job.GetExecutionOrder(),
+                    jobId = job.JobID,
+                    component = job.Component?.GetIdentifier()
                 });
             } else {
-                tasks.Add(taskData);
+                jobs.Add(jobData);
             }
         }
 
-        // Project tasks
+        // Project jobs
         foreach (var (projectName, project) in engine.Workspace.Projects) {
             if (settings.Project != null && settings.Project != projectName) continue;
 
-            // Project-level tasks
-            foreach (var task in project.Tasks) {
-                var taskData = new {
-                    name = task.Name,
-                    identifier = task.GetIdentifier(),
-                    description = task.Description,
-                    dependencies = task.Dependencies,
+            // Project-level jobs
+            foreach (var job in project.Jobs) {
+                var jobData = new {
+                    name = job.Name,
+                    identifier = job.GetIdentifier(),
+                    description = job.Description,
+                    dependencies = job.Dependencies,
                     type = ProjectTypes.Project,
                     project = projectName,
                     artifact = (string?) null,
-                    blocking = task.Blocking
+                    blocking = job.Blocking
                 };
 
                 if (settings.Detailed) {
-                    tasks.Add(new {
-                        taskData.name,
-                        taskData.identifier,
-                        taskData.description,
-                        taskData.dependencies,
-                        taskData.type,
-                        taskData.project,
-                        taskData.artifact,
-                        taskData.blocking,
-                        executionOrder = task.GetExecutionOrder(),
-                        taskId = task.TaskID,
-                        component = task.Component?.GetIdentifier()
+                    jobs.Add(new {
+                        jobData.name,
+                        jobData.identifier,
+                        jobData.description,
+                        jobData.dependencies,
+                        jobData.type,
+                        jobData.project,
+                        jobData.artifact,
+                        jobData.blocking,
+                        executionOrder = job.GetExecutionOrder(),
+                        jobId = job.JobID,
+                        component = job.Component?.GetIdentifier()
                     });
                 } else {
-                    tasks.Add(taskData);
+                    jobs.Add(jobData);
                 }
             }
 
-            // Artifact tasks
+            // Artifact jobs
             foreach (var (artifactName, artifact) in project.Artifacts) {
-                foreach (var task in artifact.Tasks) {
-                    var taskData = new {
-                        name = task.Name,
-                        identifier = task.GetIdentifier(),
-                        description = task.Description,
-                        dependencies = task.Dependencies,
+                foreach (var job in artifact.Jobs) {
+                    var jobData = new {
+                        name = job.Name,
+                        identifier = job.GetIdentifier(),
+                        description = job.Description,
+                        dependencies = job.Dependencies,
                         type = ProjectTypes.Artifact,
                         project = projectName,
                         artifact = artifactName,
-                        blocking = task.Blocking
+                        blocking = job.Blocking
                     };
 
                     if (settings.Detailed) {
-                        tasks.Add(new {
-                            taskData.name,
-                            taskData.identifier,
-                            taskData.description,
-                            taskData.dependencies,
-                            taskData.type,
-                            taskData.project,
-                            taskData.artifact,
-                            taskData.blocking,
-                            executionOrder = task.GetExecutionOrder(),
-                            taskId = task.TaskID,
-                            component = task.Component?.GetIdentifier()
+                        jobs.Add(new {
+                            jobData.name,
+                            jobData.identifier,
+                            jobData.description,
+                            jobData.dependencies,
+                            jobData.type,
+                            jobData.project,
+                            jobData.artifact,
+                            jobData.blocking,
+                            executionOrder = job.GetExecutionOrder(),
+                            jobId = job.JobID,
+                            component = job.Component?.GetIdentifier()
                         });
                     } else {
-                        tasks.Add(taskData);
+                        jobs.Add(jobData);
                     }
                 }
             }
         }
 
         return new {
-            tasks = tasks.ToArray(),
-            count = tasks.Count
+            jobs = jobs.ToArray(),
+            count = jobs.Count
         };
     }
 
@@ -186,7 +186,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                     description = artifact.Description,
                     project = projectName,
                     root = artifact.Root,
-                    taskCount = artifact.Tasks.Length,
+                    jobCount = artifact.Jobs.Length,
                     component = artifact.PluginComponent.Format()
                 };
 
@@ -196,9 +196,9 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                         artifactData.description,
                         artifactData.project,
                         artifactData.root,
-                        artifactData.taskCount,
+                        artifactData.jobCount,
                         component = artifact.PluginComponent.Format(),
-                        tasks = artifact.Tasks.Select(t => new {
+                        jobs = artifact.Jobs.Select(t => new {
                             name = t.Name,
                             identifier = t.GetIdentifier(),
                             description = t.Description,
@@ -232,7 +232,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                 version = project.Version,
                 group = project.Group,
                 location = project.Path.Handle,
-                taskCount = project.Tasks.Count,
+                jobCount = project.Jobs.Count,
                 artifactCount = project.Artifacts.Count,
                 sourceSetCount = project.SourceSets.Count
             };
@@ -245,10 +245,10 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                     projectData.version,
                     projectData.group,
                     projectData.location,
-                    projectData.taskCount,
+                    projectData.jobCount,
                     projectData.artifactCount,
                     projectData.sourceSetCount,
-                    tasks = project.Tasks.Select(t => new {
+                    jobs = project.Jobs.Select(t => new {
                         name = t.Name,
                         identifier = t.GetIdentifier(),
                         description = t.Description
@@ -256,7 +256,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                     artifacts = project.Artifacts.Select(a => new {
                         name = a.Key,
                         description = a.Value.Description,
-                        taskCount = a.Value.Tasks.Length,
+                        jobCount = a.Value.Jobs.Length,
                         component = a.Value.PluginComponent.Format()
                     }).ToArray(),
                     sourceSets = project.SourceSets.Select(s => new {
@@ -306,7 +306,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
             location = workspace.Path.Handle,
             identifier = workspace.GetIdentifier(),
             projectCount = workspace.Projects.Count,
-            taskCount = workspace.Tasks.Count
+            jobCount = workspace.Jobs.Count
         };
 
         if (settings.Detailed) {
@@ -314,14 +314,14 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                 workspaceData.location,
                 workspaceData.identifier,
                 workspaceData.projectCount,
-                workspaceData.taskCount,
+                workspaceData.jobCount,
                 projects = workspace.Projects.Select(p => new {
                     name = p.Key,
                     location = p.Value.Path.Handle,
-                    taskCount = p.Value.Tasks.Count,
+                    jobCount = p.Value.Jobs.Count,
                     artifactCount = p.Value.Artifacts.Count
                 }).ToArray(),
-                tasks = workspace.Tasks.Select(t => new {
+                jobs = workspace.Jobs.Select(t => new {
                     name = t.Name,
                     identifier = t.GetIdentifier(),
                     description = t.Description

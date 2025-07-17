@@ -29,26 +29,26 @@ public abstract class BaseManilaCommand<TSettings> : Command<TSettings>
 }
 
 /// <summary>
-/// Base class for async Manila CLI commands that provides centralized error handling.
+/// Base class for all Manila CLI commands that provides centralized error handling.
 /// </summary>
 /// <typeparam name="TSettings">The settings type for the command</typeparam>
-public abstract class BaseAsyncManilaCommand<TSettings> : Command<TSettings>
+public abstract class BaseAsyncManilaCommand<TSettings> : AsyncCommand<TSettings>
     where TSettings : DefaultCommandSettings {
 
     /// <summary>
     /// Final execute method that wraps the command execution with error handling.
-    /// Override ExecuteCommandAsync instead of this method.
+    /// Override ExecuteCommand instead of this method.
     /// </summary>
-    public sealed override int Execute(CommandContext context, TSettings settings) {
-        return ErrorHandler.SafeExecuteAsync(() => ExecuteCommandAsync(context, settings), settings);
+    public override async Task<int> ExecuteAsync(CommandContext context, TSettings settings) {
+        return await ErrorHandler.SafeExecuteAsync(async () => await ExecuteCommandAsync(context, settings), settings);
     }
 
     /// <summary>
-    /// Override this method to implement your async command logic.
+    /// Override this method to implement your command logic.
     /// Any exceptions thrown will be automatically handled by the ErrorHandler.
     /// </summary>
     /// <param name="context">The command context</param>
     /// <param name="settings">The command settings</param>
-    /// <returns>Task with exit code - 0 for success, negative values for errors</returns>
-    protected abstract System.Threading.Tasks.Task<int> ExecuteCommandAsync(CommandContext context, TSettings settings);
+    /// <returns>Exit code - 0 for success, negative values for errors</returns>
+    protected abstract Task<int> ExecuteCommandAsync(CommandContext context, TSettings settings);
 }

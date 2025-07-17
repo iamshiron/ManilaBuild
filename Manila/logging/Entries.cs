@@ -21,14 +21,14 @@ public sealed class PluginInfo(ManilaPlugin plugin) {
 }
 
 /// <summary>
-/// Represents a snapshot of a task's information for logging.
+/// Represents a snapshot of a job's information for logging.
 /// </summary>
-public sealed class TaskInfo(API.Task task) {
-    public string Name { get; init; } = task.Name;
-    public string ID { get; init; } = task.GetIdentifier();
-    public string ScriptPath { get; init; } = task.Context.ScriptPath;
-    public string Description { get; init; } = task.Description;
-    public ComponentInfo Component { get; init; } = new(task.Component);
+public sealed class JobInfo(API.Job job) {
+    public string Name { get; init; } = job.Name;
+    public string ID { get; init; } = job.GetIdentifier();
+    public string ScriptPath { get; init; } = job.Context.ScriptPath;
+    public string Description { get; init; } = job.Description;
+    public ComponentInfo Component { get; init; } = new(job.Component);
 }
 
 /// <summary>
@@ -149,7 +149,7 @@ public class BuildFailedLogEntry(long duration, Exception e) : BaseLogEntry {
 
 #endregion
 
-#region Project & Task Discovery Log Entries
+#region Project & Job Discovery Log Entries
 
 /// <summary>
 /// Logged when projects have been fully initialized.
@@ -177,17 +177,17 @@ public class ProjectInitializedLogEntry(Project project) : BaseLogEntry {
 }
 
 /// <summary>
-/// Logged when a task is discovered within a component.
+/// Logged when a job is discovered within a component.
 /// </summary>
-public class TaskDiscoveredLogEntry(API.Task task, Component component) : BaseLogEntry {
+public class JobDiscoveredLogEntry(API.Job job, Component component) : BaseLogEntry {
     public override LogLevel Level => LogLevel.System;
     public ComponentInfo Component { get; } = new(component);
-    public TaskInfo Task { get; } = new(task);
+    public JobInfo Job { get; } = new(job);
 }
 
 #endregion
 
-#region Script & Task Execution Log Entries
+#region Script & Job Execution Log Entries
 
 /// <summary>
 /// Logged when a script begins execution.
@@ -229,29 +229,29 @@ public class ScriptExecutionFailedLogEntry(string scriptPath, Exception exceptio
 }
 
 /// <summary>
-/// Logged when a task begins execution.
+/// Logged when a job begins execution.
 /// </summary>
-public class TaskExecutionStartedLogEntry(API.Task task, Guid contextID) : BaseLogEntry {
+public class JobExecutionStartedLogEntry(API.Job job, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
-    public TaskInfo Task { get; } = new(task);
+    public JobInfo Job { get; } = new(job);
     public string ContextID { get; } = contextID.ToString();
 }
 
 /// <summary>
-/// Logged when a task finishes execution.
+/// Logged when a job finishes execution.
 /// </summary>
-public class TaskExecutionFinishedLogEntry(API.Task task, Guid contextID) : BaseLogEntry {
+public class JobExecutionFinishedLogEntry(API.Job job, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
-    public TaskInfo Task { get; } = new(task);
+    public JobInfo Job { get; } = new(job);
     public string ContextID { get; } = contextID.ToString();
 }
 
 /// <summary>
-/// Logged when a task fails to execute.
+/// Logged when a job fails to execute.
 /// </summary>
-public class TaskExecutionFailedLogEntry(API.Task task, Guid contextID, Exception exception) : BaseLogEntry {
+public class JobExecutionFailedLogEntry(API.Job job, Guid contextID, Exception exception) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
-    public TaskInfo Task { get; } = new(task);
+    public JobInfo Job { get; } = new(job);
     public string ContextID { get; } = contextID.ToString();
     public Exception Exception { get; } = exception;
 }

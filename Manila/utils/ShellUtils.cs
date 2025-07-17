@@ -103,17 +103,17 @@ public static class ShellUtils {
 
         process.OutputDataReceived += (sender, e) => {
             if (e.Data == null) return;
-            stdOutBuilder.AppendLine(e.Data);
+            _ = stdOutBuilder.AppendLine(e.Data);
             if (!info.Suppress) Logger.Log(new CommandStdOutLogEntry(contextID, e.Data, info.Quiet));
         };
 
         process.ErrorDataReceived += (sender, e) => {
             if (e.Data == null) return;
-            stdErrBuilder.AppendLine(e.Data);
+            _ = stdErrBuilder.AppendLine(e.Data);
             if (!info.Suppress) Logger.Log(new CommandStdErrLogEntry(contextID, e.Data, info.Quiet));
         };
 
-        process.Start();
+        _ = process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         process.WaitForExit();

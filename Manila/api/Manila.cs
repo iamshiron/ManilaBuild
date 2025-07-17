@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.Exceptions;
@@ -22,9 +23,9 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     public BuildConfig? BuildConfig { get; private set; } = null;
 
     /// <summary>
-    /// The list of task builders in this Manila instance.
+    /// The list of job builders in this Manila instance.
     /// </summary>
-    public List<TaskBuilder> TaskBuilders { get; } = [];
+    public List<JobBuilder> JobBuilders { get; } = [];
 
     /// <summary>
     /// The list of artifact builders in this Manila instance.
@@ -91,29 +92,29 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// Pauses execution for the specified milliseconds.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public async System.Threading.Tasks.Task sleep(int milliseconds) {
-        await System.Threading.Tasks.Task.Delay(milliseconds);
+    public async Task sleep(int milliseconds) {
+        await Task.Delay(milliseconds);
     }
 
     /// <summary>
-    /// Creates a task with the given name.
+    /// Creates a job with the given name.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public TaskBuilder task(string name) {
+    public JobBuilder job(string name) {
         if (CurrentArtifactBuilder != null) {
-            var taskBuilder = new TaskBuilder(name, _context, getProject(), CurrentArtifactBuilder);
-            CurrentArtifactBuilder.TaskBuilders.Add(taskBuilder);
-            return taskBuilder;
+            var jobBuilder = new JobBuilder(name, _context, getProject(), CurrentArtifactBuilder);
+            CurrentArtifactBuilder.JobBuilders.Add(jobBuilder);
+            return jobBuilder;
         }
 
         try {
-            var builder = new TaskBuilder(name, _context, getProject(), null);
-            TaskBuilders.Add(builder);
+            var builder = new JobBuilder(name, _context, getProject(), null);
+            JobBuilders.Add(builder);
             return builder;
         } catch (ContextException e) {
             if (e.Is != Exceptions.Context.WORKSPACE) throw;
-            var builder = new TaskBuilder(name, _context, getWorkspace(), null);
-            TaskBuilders.Add(builder);
+            var builder = new JobBuilder(name, _context, getWorkspace(), null);
+            JobBuilders.Add(builder);
             return builder;
         }
     }
@@ -180,12 +181,12 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     }
 
     /// <summary>
-    /// Executes the task identified by the given key.
+    /// Executes the job identified by the given key.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void runTask(string key) {
-        var task = ManilaEngine.GetInstance().GetTask(key) ?? throw new Exception("Task not found: " + key);
-        task.Execute();
+    public async Task runJob(string key) {
+        var job = ManilaEngine.GetInstance().GetJob(key) ?? throw new Exception("Job not found: " + key);
+        await job.Execute();
     }
 
     /// <summary>
@@ -270,24 +271,24 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         }
     }
 
-    // Task Actions
+    // Job Actions
     /// <summary>
-    /// Creates a shell-based task action with cmd.exe.
+    /// Creates a shell-based job action with cmd.exe.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public ITaskAction shell(string command) {
-        return new TaskShellAction(new(
+    public IJobAction shell(string command) {
+        return new JobShellAction(new(
             "cmd.exe",
             ["/c", .. command.Split(" ")]
         ));
     }
 
     /// <summary>
-    /// Creates a task action to execute the given command.
+    /// Creates a job action to execute the given command.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public ITaskAction execute(string command) {
-        return new TaskShellAction(new(
+    public IJobAction execute(string command) {
+        return new JobShellAction(new(
             command.Split(" ")[0],
             command.Split(" ")[1..]
         ));

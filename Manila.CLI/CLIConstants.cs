@@ -11,13 +11,13 @@ public static class CLIConstants {
         public static readonly string Rule = "[bold yellow]{0}[/]";
         public static readonly string Header = "[bold blue]{0}[/]";
         public static readonly string SubHeader = "[bold yellow]{0}[/]";
-        public static readonly string TaskIdentifier = "[bold cyan]{0}[/]";
+        public static readonly string JobIdentifier = "[bold cyan]{0}[/]";
         public static readonly string Dependencies = "[italic]{0}[/]";
     }
 
     // Table column headers
     public static class TableColumns {
-        public static readonly string Task = "[cyan]Task[/]";
+        public static readonly string Job = "[cyan]Job[/]";
         public static readonly string Description = "[green]Description[/]";
         public static readonly string Dependencies = "[magenta]Direct Dependencies[/]";
         public static readonly string Project = "[cyan]Project[/]";
@@ -32,10 +32,10 @@ public static class CLIConstants {
     // Common messages and titles
     public static class Messages {
         public static readonly string NoWorkspace = "Not inside a workspace";
-        public static readonly string AvailableTasks = "Available Tasks";
+        public static readonly string AvailableJobs = "Available Jobs";
         public static readonly string AvailableProjects = "Available Projects";
         public static readonly string AvailablePlugins = "Available Plugins";
-        public static readonly string WorkspaceTasks = "Workspace Tasks";
+        public static readonly string WorkspaceJobs = "Workspace Jobs";
     }
 
     // Border styles
@@ -46,14 +46,14 @@ public static class CLIConstants {
 
     // API subcommands
     public static class ApiSubcommands {
-        public static readonly string Tasks = "tasks";
+        public static readonly string Jobs = "jobs";
         public static readonly string Artifacts = "artifacts";
         public static readonly string Projects = "projects";
         public static readonly string Workspace = "workspace";
         public static readonly string Plugins = "plugins";
 
         // Returns an array of all valid API subcommands
-        public static string[] All => [Tasks, Artifacts, Projects, Workspace, Plugins];
+        public static string[] All => [Jobs, Artifacts, Projects, Workspace, Plugins];
     }
 
     // Command line options

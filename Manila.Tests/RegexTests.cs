@@ -9,16 +9,16 @@ public class RegexUtilsTests {
     [TestCase("build", null, null, "build")]
     [TestCase("myproj:build", "myproj", null, "build")]
     [TestCase("myproj/mylib:build", "myproj", "mylib", "build")]
-    [TestCase("another_proj:some_task", "another_proj", null, "some_task")]
-    public void MatchTasks_ValidCases_ShouldSucceed(string input, string? expectedProject, string? expectedArtifact, string expectedTask) {
-        var result = RegexUtils.MatchTasks(input);
+    [TestCase("another_proj:some_job", "another_proj", null, "some_job")]
+    public void MatchJobs_ValidCases_ShouldSucceed(string input, string? expectedProject, string? expectedArtifact, string expectedJob) {
+        var result = RegexUtils.MatchJobs(input);
 
         Assert.That(result, Is.Not.Null, $"Input: '{input}' should produce a match.");
         using (Assert.EnterMultipleScope()) {
             Assert.That(result.Project, Is.EqualTo(expectedProject), $"Input: '{input}' Project mismatch.");
             Assert.That(result.Artifact, Is.EqualTo(expectedArtifact), $"Input: '{input}' Artifact mismatch.");
-            Assert.That(result.Task, Is.EqualTo(expectedTask), $"Input: '{input}' Task mismatch.");
-            Assert.That(RegexUtils.IsValidTask(input), Is.True, $"Input: '{input}' should be valid.");
+            Assert.That(result.Job, Is.EqualTo(expectedJob), $"Input: '{input}' Job mismatch.");
+            Assert.That(RegexUtils.IsValidJob(input), Is.True, $"Input: '{input}' should be valid.");
         }
 
         var reconstructed = result!.Format();
@@ -29,24 +29,24 @@ public class RegexUtilsTests {
     [TestCase("")] // Empty string
     [TestCase(" ")] // Whitespace
     [TestCase(":build")] // Missing project/artifact
-    [TestCase("myproj:")] // Missing task
-    [TestCase("myproj/")] // Missing task
+    [TestCase("myproj:")] // Missing job
+    [TestCase("myproj/")] // Missing job
     [TestCase("my-proj:build")] // Invalid character '-' in project (not in \w)
     [TestCase("myproj/my-lib:build")] // Invalid character '-' in artifact (not in \w)
-    [TestCase("myproj:build-task")] // Invalid character '-' in task (not in \w)
+    [TestCase("myproj:build-job")] // Invalid character '-' in job (not in \w)
     [TestCase("myproj/:build")] // Empty artifact
-    [TestCase("myproj/mylib:")] // Missing task
+    [TestCase("myproj/mylib:")] // Missing job
     [TestCase("myproj//mylib:build")] // Double slash
     [TestCase("myproj:mylib:build")] // Extra colon
     [TestCase("myproj@1.0:build")] // Invalid character '@'
     [TestCase("myproj/mylib/sublib:build")] // Too many slashes
-    [TestCase("myproj/mylib:build:extra")] // Extra colon after task
+    [TestCase("myproj/mylib:build:extra")] // Extra colon after job
     [TestCase("myproj/mylib@1.0:build")] // Invalid character '@' in artifact
-    public void MatchTasks_InvalidCases_ShouldFail(string input) {
-        var result = RegexUtils.MatchTasks(input);
+    public void MatchJobs_InvalidCases_ShouldFail(string input) {
+        var result = RegexUtils.MatchJobs(input);
 
         Assert.That(result, Is.Null, $"Input: '{input}' should not produce a match.");
-        Assert.That(RegexUtils.IsValidTask(input), Is.False, $"Input: '{input}' should be invalid.");
+        Assert.That(RegexUtils.IsValidJob(input), Is.False, $"Input: '{input}' should be invalid.");
     }
 
     [Test]

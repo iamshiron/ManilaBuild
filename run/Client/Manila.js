@@ -14,17 +14,17 @@ sourceSets({
 
 artifacts({
 	main: Manila.artifact(() => {
-		Manila.task('clean')
+		Manila.job('clean')
 			.description('Clean the client')
 			.execute(() => {
 				print('Cleaning Client...')
 			})
 
-		Manila.task('build').execute(() => {
+		Manila.job('build').execute(() => {
 			print('Building client...')
 		})
 
-		Manila.task('run')
+		Manila.job('run')
 			.description('Run the Client')
 			.after('build')
 			.execute(() => {

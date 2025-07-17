@@ -141,7 +141,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <summary>
     /// Executes the script.
     /// </summary>
-    public async System.Threading.Tasks.Task ExecuteAsync() {
+    public async Task ExecuteAsync() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             if (ManilaAPI == null) throw new ManilaException("ScriptEngine needs to be initialized before running a script!");
 
@@ -153,11 +153,11 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 // Load environment variables before executing script
                 LoadEnvironmentVariables();
 
-                // Create a TaskCompletionSource to track script completion
-                var taskCompletion = new TaskCompletionSource<bool>();
+                // Create a JobCompletionSource to track script completion
+                var jobCompletion = new TaskCompletionSource<bool>();
 
                 ScriptEngine.AddHostObject("__Manila_signalCompletion", new Action(() => {
-                    taskCompletion.TrySetResult(true);
+                    jobCompletion.TrySetResult(true);
                 }));
 
                 ScriptEngine.AddHostObject("__Manila_handleError", new Action<object>(e => {
@@ -202,7 +202,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                         exceptionToThrow = new ScriptingException($"JavaScript error: {errorMessage}");
                     }
 
-                    taskCompletion.TrySetException(exceptionToThrow);
+                    jobCompletion.TrySetException(exceptionToThrow);
                 }));
 
                 ScriptEngine.AllowReflection = true;
@@ -222,7 +222,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 }
 
                 // Wait for the script to either complete or throw an exception
-                await taskCompletion.Task;
+                _ = await jobCompletion.Task;
 
                 Component.Finalize(ManilaAPI);
             } catch (ScriptEngineException see) {

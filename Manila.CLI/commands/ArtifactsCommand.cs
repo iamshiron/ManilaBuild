@@ -5,10 +5,10 @@ using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
-internal sealed class ArtifactsCommand : BaseAsyncManilaCommand<ArtifactsCommand.Settings> {
+internal sealed class ArtifactsCommand : AsyncCommand<ArtifactsCommand.Settings> {
     public sealed class Settings : DefaultCommandSettings { }
 
-    protected override async System.Threading.Tasks.Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings) {
         var engine = ManilaEngine.GetInstance();
 
         ManilaCLI.InitExtensions();
@@ -21,18 +21,18 @@ internal sealed class ArtifactsCommand : BaseAsyncManilaCommand<ArtifactsCommand
         table.AddColumn(new TableColumn("[blue]Artifact[/]"));
         table.AddColumn(new TableColumn("[cyan]Project[/]"));
         table.AddColumn(new TableColumn("[green]Description[/]"));
-        table.AddColumn(new TableColumn("[blue]Tasks[/]"));
+        table.AddColumn(new TableColumn("[blue]Jobs[/]"));
 
         foreach (var p in engine.Workspace.Projects) {
             var project = p.Value;
 
             foreach (var (name, artifact) in project.Artifacts) {
                 var artifactsTable = new Table();
-                artifactsTable.AddColumn(new TableColumn("[cyan]Task[/]"));
+                artifactsTable.AddColumn(new TableColumn("[cyan]Job[/]"));
                 artifactsTable.AddColumn(new TableColumn("[green]Description[/]"));
 
-                foreach (var task in artifact.Tasks) {
-                    artifactsTable.AddRow($"[cyan bold]{task.Name}[/]", task.Description);
+                foreach (var job in artifact.Jobs) {
+                    artifactsTable.AddRow($"[cyan bold]{job.Name}[/]", job.Description);
                 }
 
                 table.AddRow(
