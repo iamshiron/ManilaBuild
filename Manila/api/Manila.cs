@@ -194,8 +194,21 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void build(Workspace workspace, Project project, BuildConfig config, string artifactID) {
+        var artifact = project.Artifacts[artifactID];
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            project.GetLanguageComponent().Build(workspace, project, config, project.Artifacts[artifactID]);
+            using var logInjector = new LogInjector(
+                artifact.ArtifactLogs.Add
+            );
+
+            var res = project.GetLanguageComponent().Build(workspace, project, config, artifact);
+
+            if (res is BuildExitCodeSuccess) {
+                Logger.Info($"Build successful for {project.Name} with artifact {artifactID}");
+            } else if (res is BuildExitCodeCached cached) {
+                Logger.Info($"Build cached for {project.Name} with artifact {artifactID} at {cached.CacheKey}");
+            } else if (res is BuildExitCodeFailed failed) {
+                Logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
+            }
         }
     }
 
