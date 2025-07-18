@@ -221,30 +221,30 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// Retrieves the value of the specified environment variable.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public string getEnv(string key) {
-        return _context.GetEnvironmentVariable(key);
+    public string getEnv(string key, string? defaultValue = null) {
+        return _context.GetEnvironmentVariable(key) ?? defaultValue ?? throw new Exception($"Environment variable {key} is not set.");
     }
 
     /// <summary>
     /// Retrieves the specified environment variable as a double or zero if unset.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public double getEnvNumber(string key) {
+    public double getEnvNumber(string key, double? defaultValue = null) {
         var value = _context.GetEnvironmentVariable(key);
-        if (string.IsNullOrEmpty(value)) return 0;
-        if (double.TryParse(value, out var result)) return result;
-        throw new Exception($"Environment variable {key} is not a number: {value}");
+        return string.IsNullOrEmpty(value)
+            ? 0
+            : double.TryParse(value, out var result) ? result : defaultValue ?? throw new Exception($"Environment variable {key} is not a number: {value}");
     }
 
     /// <summary>
     /// Retrieves the specified environment variable as a boolean or false if unset.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public bool getEnvBool(string key) {
+    public bool getEnvBool(string key, bool? defaultValue = null) {
         var value = _context.GetEnvironmentVariable(key);
-        if (string.IsNullOrEmpty(value)) return false;
-        if (bool.TryParse(value, out var result)) return result;
-        throw new Exception($"Environment variable {key} is not a boolean: {value}");
+        return string.IsNullOrEmpty(value)
+            ? false
+            : bool.TryParse(value, out var result) ? result : defaultValue ?? throw new Exception($"Environment variable {key} is not a number: {value}");
     }
 
     /// <summary>

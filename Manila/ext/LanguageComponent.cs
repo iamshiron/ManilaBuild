@@ -13,6 +13,6 @@ public abstract class LanguageComponent : PluginComponent {
         return $"LanguageComponent({Name})";
     }
 
-    public abstract void Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact);
+    public abstract IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact);
     public abstract void Run(Project project);
 }

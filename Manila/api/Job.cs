@@ -1,5 +1,5 @@
-
 using Microsoft.ClearScript;
+using Newtonsoft.Json;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
@@ -52,7 +52,9 @@ public class Job(JobBuilder builder) : ExecutableObject {
     public readonly string Name = builder.Name;
     public readonly List<string> Dependencies = builder.Dependencies;
     public readonly IJobAction[] Actions = builder.Actions;
+    [JsonIgnore]
     public readonly ScriptContext Context = builder.ScriptContext;
+    [JsonIgnore]
     public readonly Component Component = builder.Component;
     public readonly string Description = builder.Description;
     public readonly bool Blocking = builder.Blocking;

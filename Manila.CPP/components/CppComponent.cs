@@ -19,7 +19,7 @@ public class CppComponent : LanguageComponent {
     public List<string> IncludeDirs { get; set; } = [];
     public List<string> Links { get; set; } = [];
 
-    public override void Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact) {
+    public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact) {
         foreach (var dep in project.Dependencies) {
             dep.Resolve(project);
         }
@@ -30,6 +30,8 @@ public class CppComponent : LanguageComponent {
             throw new Exception($"Toolchain '{ToolChain}' is not supported.");
 
         toolchain.Build(workspace, project, config);
+
+        return new BuildExitCodeSuccess();
     }
 
     public override void Run(Project project) {

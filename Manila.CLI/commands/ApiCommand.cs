@@ -3,6 +3,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
+using Shiron.Manila.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Spectre.Console.Cli;
@@ -185,7 +186,6 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                     name = artifactName,
                     description = artifact.Description,
                     project = projectName,
-                    root = artifact.Root,
                     jobCount = artifact.Jobs.Length,
                     component = artifact.PluginComponent.Format()
                 };
@@ -195,7 +195,6 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
                         artifactData.name,
                         artifactData.description,
                         artifactData.project,
-                        artifactData.root,
                         artifactData.jobCount,
                         component = artifact.PluginComponent.Format(),
                         jobs = artifact.Jobs.Select(t => new {

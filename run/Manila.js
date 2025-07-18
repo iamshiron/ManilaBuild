@@ -12,7 +12,6 @@ if (Manila.getEnvBool('ENABLE')) {
 }
 
 Manila.onProject(['client', 'core'], p => {
-	print(p)
 	p.setToolChain(ToolChain.Clang)
 })
 

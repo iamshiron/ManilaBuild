@@ -1,6 +1,7 @@
 using System.Dynamic;
 using System.Reflection;
 using Microsoft.ClearScript;
+using Newtonsoft.Json;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;

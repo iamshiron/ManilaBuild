@@ -10,30 +10,36 @@ public class ZipComponent : LanguageComponent {
     public ZipComponent() : base("zip", typeof(ZipBuildConfig)) {
     }
 
-    public override void Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact) {
-        var zipConfig = (ZipBuildConfig) config;
+    public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact) {
+        try {
+            var zipConfig = (ZipBuildConfig) config;
+            ManilaZip.Instance!.Debug($"Artifact Fingerprint: {artifact.GetFingerprint(config)} - SubFolder: {zipConfig.SubFolder}");
 
-        ManilaZip.Instance!.Debug($"Artifact Fingerprint: {artifact.GetFingerprint(config)}");
+            foreach (var (key, set) in project.SourceSets) {
+                var zipPath = Path.Join(ManilaEngine.GetInstance().ArtifactManager.GetArtifactRoot(config, project, artifact));
+                var zipFile = Path.Join(zipPath, $"{key}.zip");
 
-        foreach (var (key, set) in project.SourceSets) {
-            ManilaZip.Instance!.Debug($"Building source set '{key}' for project '{project.Name}' using zip component.");
-            ManilaZip.Instance!.Debug($"Files: {string.Join(", ", set.Files)}");
+                ManilaEngine.GetInstance().ArtifactManager.CacheArtifact(artifact, config, project);
 
-            var zipPath = Path.Join(ManilaEngine.GetInstance().ArtifactManager.GetArtifactRoot(config, project.Name, artifact.Name));
-            var zipFile = Path.Join(zipPath, $"{key}.zip");
+                if (!Directory.Exists(zipPath)) _ = Directory.CreateDirectory(zipPath);
+                if (File.Exists(zipFile)) return new BuildExitCodeCached(zipFile);
 
-            if (!Directory.Exists(zipPath)) _ = Directory.CreateDirectory(zipPath);
-            if (File.Exists(zipFile)) File.Delete(zipFile); // Regenerate always for now til proper incremental build is implemented
 
-            using var zip = ZipFile.Open(zipFile, ZipArchiveMode.Create);
-            foreach (var file in set.Files) {
-                _ = zip.CreateEntryFromFile(
-                    file,
-                    zipConfig.SubFolder is not null ?
-                        Path.Join(zipConfig.SubFolder, Path.GetRelativePath(set.Root, file)) :
-                        Path.GetRelativePath(set.Root, file)
-                );
+                using var zip = ZipFile.Open(zipFile, ZipArchiveMode.Create);
+                foreach (var file in set.Files) {
+                    _ = zip.CreateEntryFromFile(
+                        file,
+                        zipConfig.SubFolder is not null ?
+                            Path.Join(zipConfig.SubFolder, Path.GetRelativePath(set.Root, file)) :
+                            Path.GetRelativePath(set.Root, file)
+                    );
+                }
             }
+
+            return new BuildExitCodeSuccess();
+        } catch (Exception ex) {
+            var e = new ManilaException($"Failed to build zip artifact: {ex.Message}");
+            return new BuildExitCodeFailed(e);
         }
     }
 

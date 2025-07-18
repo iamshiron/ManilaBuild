@@ -1,8 +1,8 @@
 
 using System.Reflection;
-using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
+using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Exceptions;
@@ -15,6 +15,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <summary>
     /// The script engine used by this context.
     /// </summary>
+    [JsonIgnore]
     public readonly ScriptEngine ScriptEngine = new V8ScriptEngine(
         V8ScriptEngineFlags.EnableTaskPromiseConversion
     ) {
@@ -23,6 +24,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <summary>
     /// The engine this context is part of. Currently only used as an alias for the to not have to call GetInstance() all the time.
     /// </summary>
+
+    [JsonIgnore]
     public ManilaEngine Engine { get; private set; } = engine;
     /// <summary>
     /// The path to the script file.
@@ -31,7 +34,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <summary>
     /// The component this context is part of.
     /// </summary>
-    public readonly API.Component Component = component;
+    public readonly Component Component = component;
     /// <summary>
     /// Mostly used for logging
     /// </summary>
@@ -124,11 +127,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <summary>
     /// Gets an environment variable, first checking project-specific variables, then system variables
     /// </summary>
-    public string GetEnvironmentVariable(string key) {
-        if (EnvironmentVariables.TryGetValue(key, out string? value)) {
-            return value;
-        }
-        return Environment.GetEnvironmentVariable(key) ?? string.Empty;
+    public string? GetEnvironmentVariable(string key) {
+        return EnvironmentVariables.TryGetValue(key, out string? value) ? value : null;
     }
 
     /// <summary>

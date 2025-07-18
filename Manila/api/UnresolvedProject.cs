@@ -1,3 +1,5 @@
+
+using Newtonsoft.Json;
 using Shiron.Manila.Exceptions;
 
 namespace Shiron.Manila.API;
@@ -5,10 +7,8 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Represents an unresolved project. Used for the configuration of projects in build scripts, where the project is not yet resolved.
 /// </summary>
-public class UnresolvedProject {
-    public readonly string Identifier;
-
-    public UnresolvedProject(string identifier) { this.Identifier = identifier; }
+public class UnresolvedProject(string identifier) {
+    public readonly string Identifier = identifier;
 
     /// <summary>
     /// Resolve the project from the identifier.

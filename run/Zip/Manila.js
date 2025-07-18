@@ -7,7 +7,7 @@ const config = Manila.getConfig()
 version('1.0.0')
 description('Demo Project Core')
 
-config.setSubFolder('sub')
+config.setSubFolder(Manila.getEnv('MANILA_SUB_FOLDER', 'sub'))
 
 sourceSets({
 	main: Manila.sourceSet(project.getPath().join('main')).include('**/*')
@@ -16,7 +16,7 @@ sourceSets({
 artifacts({
 	main: Manila.artifact(() => {
 		Manila.job('build')
-			.description('Build the Core')
+			.description('Create the Zip File')
 			.execute(() => {
 				Manila.build(workspace, project, config, 'main')
 			})

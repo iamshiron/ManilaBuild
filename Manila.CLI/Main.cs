@@ -79,6 +79,8 @@ public static class ManilaCLI {
 
         var exitCode = CommandApp.Run(args);
         Profiler.SaveToFile(ProfilingDir);
+        ManilaEngine.GetInstance().Dispose();
+
         return exitCode;
     }
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.ClearScript;
+using Newtonsoft.Json;
 using NuGet.Packaging;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.Artifacts;

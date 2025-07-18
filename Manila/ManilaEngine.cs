@@ -87,7 +87,7 @@ public sealed class ManilaEngine {
         WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(RootDir, "Manila.js"));
         DataDir = Path.Join(RootDir, ".manila");
         NuGetManager = new(Path.Join(DataDir, "nuget"));
-        ArtifactManager = new(Path.Join(DataDir, "artifacts"));
+        ArtifactManager = new(Path.Join(DataDir, "artifacts"), Path.Join(DataDir, "cache", "artifacts.json"));
     }
 
     /// <summary>
@@ -281,5 +281,11 @@ public sealed class ManilaEngine {
             job = null;
             return false;
         }
+    }
+
+    public void Dispose() {
+        ArtifactManager.FlushCacheToDisk();
+
+        _instance = null;
     }
 }
