@@ -1,4 +1,4 @@
-﻿using Shiron.Manila.Attributes;
+using Shiron.Manila.Attributes;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Zip.Components;
 
