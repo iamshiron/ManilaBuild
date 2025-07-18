@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Shiron.Manila.Ext;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -5,6 +6,7 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
+[Description("List all available plugins in the current workspace")]
 internal sealed class PluginsCommand : BaseAsyncManilaCommand<PluginsCommand.Settings> {
     public class Settings : DefaultCommandSettings { }
 
@@ -12,14 +14,15 @@ internal sealed class PluginsCommand : BaseAsyncManilaCommand<PluginsCommand.Set
         var extensionManager = ExtensionManager.GetInstance();
         await ManilaCLI.InitExtensions();
 
-        var table = new Table().Border(TableBorder.Rounded);
-        table.AddColumn(new TableColumn(TableColumns.Project)); // Using Project column for Plugin
-        table.AddColumn(new TableColumn(TableColumns.Version));
-        table.AddColumn(new TableColumn(TableColumns.Group));
-        table.AddColumn(new TableColumn(TableColumns.Path));
-        table.AddColumn(new TableColumn(TableColumns.Author));
+        var table = new Table().Border(TableBorder.Rounded)
+            .AddColumn(new TableColumn(TableColumns.Project))
+            .AddColumn(new TableColumn(TableColumns.Version))
+            .AddColumn(new TableColumn(TableColumns.Group))
+            .AddColumn(new TableColumn(TableColumns.Path))
+            .AddColumn(new TableColumn(TableColumns.Author));
+
         foreach (var p in extensionManager.Plugins) {
-            table.AddRow(
+            _ = table.AddRow(
                 string.Format(Format.JobIdentifier, p.Name),
                 p.Version.ToString(),
                 p.Group ?? "",

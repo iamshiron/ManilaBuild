@@ -23,7 +23,7 @@ public sealed class PluginInfo(ManilaPlugin plugin) {
 /// <summary>
 /// Represents a snapshot of a job's information for logging.
 /// </summary>
-public sealed class JobInfo(API.Job job) {
+public sealed class JobInfo(Job job) {
     public string Name { get; init; } = job.Name;
     public string ID { get; init; } = job.GetIdentifier();
     public string ScriptPath { get; init; } = job.Context.ScriptPath;
@@ -179,7 +179,7 @@ public class ProjectInitializedLogEntry(Project project) : BaseLogEntry {
 /// <summary>
 /// Logged when a job is discovered within a component.
 /// </summary>
-public class JobDiscoveredLogEntry(API.Job job, Component component) : BaseLogEntry {
+public class JobDiscoveredLogEntry(Job job, Component component) : BaseLogEntry {
     public override LogLevel Level => LogLevel.System;
     public ComponentInfo Component { get; } = new(component);
     public JobInfo Job { get; } = new(job);
@@ -231,7 +231,7 @@ public class ScriptExecutionFailedLogEntry(string scriptPath, Exception exceptio
 /// <summary>
 /// Logged when a job begins execution.
 /// </summary>
-public class JobExecutionStartedLogEntry(API.Job job, Guid contextID) : BaseLogEntry {
+public class JobExecutionStartedLogEntry(Job job, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
     public JobInfo Job { get; } = new(job);
     public string ContextID { get; } = contextID.ToString();
@@ -240,7 +240,7 @@ public class JobExecutionStartedLogEntry(API.Job job, Guid contextID) : BaseLogE
 /// <summary>
 /// Logged when a job finishes execution.
 /// </summary>
-public class JobExecutionFinishedLogEntry(API.Job job, Guid contextID) : BaseLogEntry {
+public class JobExecutionFinishedLogEntry(Job job, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
     public JobInfo Job { get; } = new(job);
     public string ContextID { get; } = contextID.ToString();
@@ -249,7 +249,7 @@ public class JobExecutionFinishedLogEntry(API.Job job, Guid contextID) : BaseLog
 /// <summary>
 /// Logged when a job fails to execute.
 /// </summary>
-public class JobExecutionFailedLogEntry(API.Job job, Guid contextID, Exception exception) : BaseLogEntry {
+public class JobExecutionFailedLogEntry(Job job, Guid contextID, Exception exception) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
     public JobInfo Job { get; } = new(job);
     public string ContextID { get; } = contextID.ToString();

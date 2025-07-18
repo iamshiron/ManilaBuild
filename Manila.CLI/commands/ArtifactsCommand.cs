@@ -1,10 +1,12 @@
 
+using System.ComponentModel;
 using Shiron.Manila.Exceptions;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
+[Description("Lists all available artifacts in the current workspace")]
 internal sealed class ArtifactsCommand : AsyncCommand<ArtifactsCommand.Settings> {
     public sealed class Settings : DefaultCommandSettings { }
 
@@ -17,11 +19,11 @@ internal sealed class ArtifactsCommand : AsyncCommand<ArtifactsCommand.Settings>
 
         AnsiConsole.Write(new Rule("[bold yellow]Available Artifacts[/]").RuleStyle("grey").DoubleBorder());
 
-        var table = new Table().Border(TableBorder.Rounded);
-        table.AddColumn(new TableColumn("[blue]Artifact[/]"));
-        table.AddColumn(new TableColumn("[cyan]Project[/]"));
-        table.AddColumn(new TableColumn("[green]Description[/]"));
-        table.AddColumn(new TableColumn("[blue]Jobs[/]"));
+        var table = new Table().Border(TableBorder.Rounded)
+            .AddColumn(new TableColumn("[blue]Artifact[/]"))
+            .AddColumn(new TableColumn("[cyan]Project[/]"))
+            .AddColumn(new TableColumn("[green]Description[/]"))
+            .AddColumn(new TableColumn("[blue]Jobs[/]"));
 
         foreach (var p in engine.Workspace.Projects) {
             var project = p.Value;

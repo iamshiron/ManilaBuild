@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 
@@ -141,7 +142,7 @@ public class ExecutionGraph {
     /// <param name="main">The main object to be added or updated in the graph.</param>
     /// <param name="dependencies">A list of objects that the main object directly depends on.</param>
     public void Attach(ExecutableObject main, List<ExecutableObject> dependencies) {
-        Logger.Debug($"Attaching {((API.Job) main).GetIdentifier()}");
+        Logger.Debug($"Attaching {((Job) main).GetIdentifier()}");
 
         var mainNode = GetOrCreateNode(main);
 
@@ -234,13 +235,13 @@ public class ExecutionGraph {
 
     /// <summary>
     /// Finds a node in the graph associated with a specific job identifier.
-    /// Note: This requires the ExecutableObject to be of a specific 'API.Job' type.
+    /// Note: This requires the ExecutableObject to be of a specific 'Job' type.
     /// </summary>
     /// <param name="jobID">The unique identifier of the job to find.</param>
     /// <returns>The corresponding <see cref="ExecutionNode"/>, or null if not found.</returns>
     public ExecutionNode? GetByJob(string jobID) {
         foreach (var o in _nodes.Keys) {
-            if (o is API.Job job) {
+            if (o is Job job) {
                 if (job.GetIdentifier() == jobID) return _nodes[o];
             }
         }

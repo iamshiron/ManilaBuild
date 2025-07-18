@@ -197,7 +197,7 @@ public sealed class ManilaEngine {
         // Add all existing jobs to the graph, hopefully I'll find a better solution for this in the future
         ExecutionGraph.ExecutionLayer[] layers = [];
         using (new ProfileScope("Building Dependency Tree")) {
-            List<API.Job> Jobs = [.. Workspace.Jobs];
+            List<Job> Jobs = [.. Workspace.Jobs];
             foreach (var p in Workspace.Projects.Values) {
                 Jobs.AddRange([.. p.Jobs]);
                 foreach (var a in p.Artifacts.Values) {
@@ -255,7 +255,7 @@ public sealed class ManilaEngine {
         return GetJob(uri) != null;
     }
 
-    public API.Job GetJob(string uri) {
+    public Job GetJob(string uri) {
         var info = RegexUtils.MatchJobs(uri) ?? throw new ManilaException($"Invalid job URI: {uri}");
 
         if (info.Project == null) {
@@ -272,7 +272,7 @@ public sealed class ManilaEngine {
         var t = project.Artifacts[info.Artifact].Jobs.First(t => t.Name == info.Job) ?? throw new ManilaException($"Job {uri} not found!");
         return t;
     }
-    public bool TryGetJob(string uri, out API.Job? job) {
+    public bool TryGetJob(string uri, out Job? job) {
         try {
             var t = GetJob(uri);
             job = t;

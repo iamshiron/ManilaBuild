@@ -6,7 +6,8 @@ using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
-public sealed class RunCommand : BaseAsyncManilaCommand<RunCommand.Settings> {
+[Description("Runs a job in the current workspace")]
+internal sealed class RunCommand : BaseAsyncManilaCommand<RunCommand.Settings> {
     public class Settings : DefaultCommandSettings {
         [CommandArgument(0, "<job>")]
         [Description("The job to run")]

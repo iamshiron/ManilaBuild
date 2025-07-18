@@ -1,3 +1,5 @@
+using Shiron.Manila.API;
+
 namespace Shiron.Manila.Exceptions;
 
 /// <summary>
@@ -18,9 +20,9 @@ public class JobFailedException : BuildException {
     /// <summary>
     /// The job that failed, providing context for the error.
     /// </summary>
-    public readonly API.Job Job;
+    public readonly Job Job;
 
-    public JobFailedException(API.Job job, Exception innerException)
+    public JobFailedException(Job job, Exception innerException)
         : base($"Job '{job.GetIdentifier()}' failed during execution.", innerException) {
         Job = job;
     }

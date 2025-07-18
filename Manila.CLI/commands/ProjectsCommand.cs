@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Shiron.Manila.Exceptions;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -5,6 +6,7 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
+[Description("Lists all available projects in the current workspace")]
 internal sealed class ProjectsCommand : BaseAsyncManilaCommand<ProjectsCommand.Settings> {
     public sealed class Settings : DefaultCommandSettings { }
 
@@ -17,23 +19,23 @@ internal sealed class ProjectsCommand : BaseAsyncManilaCommand<ProjectsCommand.S
 
         AnsiConsole.Write(new Rule(string.Format(Format.Rule, Messages.AvailableProjects)).RuleStyle(BorderStyles.Default).DoubleBorder());
 
-        var table = new Table().Border(TableBorder.Rounded);
-        table.AddColumn(new TableColumn(TableColumns.Project));
-        table.AddColumn(new TableColumn(TableColumns.Description));
-        table.AddColumn(new TableColumn(TableColumns.Version));
-        table.AddColumn(new TableColumn(TableColumns.Artifacts));
+        var table = new Table().Border(TableBorder.Rounded)
+            .AddColumn(new TableColumn(TableColumns.Project))
+            .AddColumn(new TableColumn(TableColumns.Description))
+            .AddColumn(new TableColumn(TableColumns.Version))
+            .AddColumn(new TableColumn(TableColumns.Artifacts));
 
         foreach (var p in engine.Workspace.Projects) {
             var project = p.Value;
-            var artifactsTable = new Table().Border(TableBorder.Rounded);
-            artifactsTable.AddColumn(new TableColumn(TableColumns.Artifact));
-            artifactsTable.AddColumn(new TableColumn(TableColumns.Description));
+            var artifactsTable = new Table().Border(TableBorder.Rounded)
+                .AddColumn(new TableColumn(TableColumns.Artifact))
+                .AddColumn(new TableColumn(TableColumns.Description));
 
             foreach (var (name, artifact) in project.Artifacts) {
-                artifactsTable.AddRow(string.Format(Format.JobIdentifier, name), artifact.Description);
+                _ = artifactsTable.AddRow(string.Format(Format.JobIdentifier, name), artifact.Description);
             }
 
-            table.AddRow(new Markup($"[cyan bold]{project.Name}[/]"), new Markup(project.Description ?? "[grey](none)[/]"), new Markup(project.Version ?? "[grey](none)[/]"), artifactsTable);
+            _ = table.AddRow(new Markup($"[cyan bold]{project.Name}[/]"), new Markup(project.Description ?? "[grey](none)[/]"), new Markup(project.Version ?? "[grey](none)[/]"), artifactsTable);
         }
 
         AnsiConsole.Write(table);
