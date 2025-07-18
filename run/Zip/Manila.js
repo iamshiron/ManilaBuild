@@ -7,6 +7,8 @@ const config = Manila.getConfig()
 version('1.0.0')
 description('Demo Project Core')
 
+config.setSubFolder('sub')
+
 sourceSets({
 	main: Manila.sourceSet(project.getPath().join('main')).include('**/*')
 })
@@ -16,7 +18,7 @@ artifacts({
 		Manila.job('build')
 			.description('Build the Core')
 			.execute(() => {
-				Manila.build(workspace, project, config)
+				Manila.build(workspace, project, config, 'main')
 			})
 	})
 		.from('shiron.manila:zip/zip')

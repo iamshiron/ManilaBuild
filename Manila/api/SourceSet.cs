@@ -77,6 +77,6 @@ public class SourceSet(SourceSetBuilder builder) {
         return lastModified;
     }
     public string Fingerprint() {
-        return HashUtils.CreateFingerprint(Files);
+        return HashUtils.CreateFileSetHash(Files);
     }
 }

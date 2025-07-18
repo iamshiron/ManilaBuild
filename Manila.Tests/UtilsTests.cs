@@ -114,8 +114,8 @@ public class HashUtilsTests {
         var file1 = CreateTestFile("hello");
         var file2 = CreateTestFile("world");
 
-        var fingerprint1 = HashUtils.CreateFingerprint([file1, file2]);
-        var fingerprint2 = HashUtils.CreateFingerprint([file2, file1]);
+        var fingerprint1 = HashUtils.CreateFileSetHash([file1, file2]);
+        var fingerprint2 = HashUtils.CreateFileSetHash([file2, file1]);
 
         Assert.That(fingerprint1, Is.EqualTo(fingerprint2));
     }
@@ -126,8 +126,8 @@ public class HashUtilsTests {
         var file2 = CreateTestFile("world");
         var file3 = CreateTestFile("different");
 
-        var fingerprint1 = HashUtils.CreateFingerprint([file1, file2]);
-        var fingerprint2 = HashUtils.CreateFingerprint([file1, file3]);
+        var fingerprint1 = HashUtils.CreateFileSetHash([file1, file2]);
+        var fingerprint2 = HashUtils.CreateFileSetHash([file1, file3]);
 
         Assert.That(fingerprint1, Is.Not.EqualTo(fingerprint2));
     }

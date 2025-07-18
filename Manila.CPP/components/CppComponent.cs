@@ -1,5 +1,6 @@
 
 using Shiron.Manila.API;
+using Shiron.Manila.Artifacts;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.CPP.Toolchain;
 using Shiron.Manila.CPP.Toolchain.Impl;
@@ -18,7 +19,7 @@ public class CppComponent : LanguageComponent {
     public List<string> IncludeDirs { get; set; } = [];
     public List<string> Links { get; set; } = [];
 
-    public override void Build(Workspace workspace, Project project, BuildConfig config) {
+    public override void Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact) {
         foreach (var dep in project.Dependencies) {
             dep.Resolve(project);
         }

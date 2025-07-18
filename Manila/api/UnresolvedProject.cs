@@ -1,3 +1,5 @@
+using Shiron.Manila.Exceptions;
+
 namespace Shiron.Manila.API;
 
 /// <summary>
@@ -19,7 +21,7 @@ public class UnresolvedProject {
                 return pair.Value;
             }
         }
-        throw new Exception("Project not found: " + Identifier);
+        throw new ManilaException($"Project '{Identifier}' could not be resolved!");
     }
 
     /// <summary>

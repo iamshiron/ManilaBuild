@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Shiron.Manila.API.Builders;
+using Shiron.Manila.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
@@ -20,7 +21,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// <summary>
     /// The current build configuration for this Manila instance.
     /// </summary>
-    public BuildConfig? BuildConfig { get; private set; } = null;
+    public object? BuildConfig { get; private set; } = null;
 
     /// <summary>
     /// The list of job builders in this Manila instance.
@@ -66,7 +67,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// Gets the build configuration or throws if not set.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public BuildConfig getConfig() {
+    public object getConfig() {
         return BuildConfig ?? throw new ScriptingException("Cannot retreive build config before applying a language component!");
     }
 
@@ -83,7 +84,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ArtifactBuilder artifact(dynamic lambda) {
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
-        var builder = new ArtifactBuilder(() => lambda(), this, BuildConfig, getProject().Name);
+        var builder = new ArtifactBuilder(() => lambda(), this, (BuildConfig) BuildConfig, getProject().Name);
         ArtifactBuilders.Add(builder);
         return builder;
     }
@@ -163,8 +164,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
             Logger.Debug("Applying: " + component);
             getProject().ApplyComponent(component);
             if (component is LanguageComponent lc) {
-                var config = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
-                BuildConfig = (BuildConfig) config;
+                BuildConfig = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
             }
         }
     }
@@ -193,9 +193,9 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// Builds the project using its language component.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void build(Workspace workspace, Project project, BuildConfig config) {
+    public void build(Workspace workspace, Project project, BuildConfig config, string artifactID) {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            project.GetLanguageComponent().Build(workspace, project, config);
+            project.GetLanguageComponent().Build(workspace, project, config, project.Artifacts[artifactID]);
         }
     }
 
