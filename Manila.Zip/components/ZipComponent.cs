@@ -19,12 +19,10 @@ public class ZipComponent : LanguageComponent {
             var zipFile = Path.Join(zipPath, $"{key}.zip");
 
             if (!Directory.Exists(zipPath)) _ = Directory.CreateDirectory(zipPath);
+            if (File.Exists(zipFile)) File.Delete(zipFile); // Regenerate always for now til proper incremental build is implemented
 
             using var zip = ZipFile.Open(zipFile, ZipArchiveMode.Create);
-            foreach (var file in set.Files) {
-                ManilaZip.Instance!.Debug($"Adding file '{file}' to zip archive.");
-                _ = zip.CreateEntryFromFile(file, Path.GetRelativePath(set.Root, file));
-            }
+            foreach (var file in set.Files) _ = zip.CreateEntryFromFile(file, Path.GetRelativePath(set.Root, file));
         }
     }
 
