@@ -1,6 +1,8 @@
 
 using Newtonsoft.Json;
 using Shiron.Manila.API;
+using Shiron.Manila.Caching;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 
@@ -10,6 +12,8 @@ public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
     public readonly string ArtifactsDir = artifactsDir;
     public readonly string ArtifactsCacheFile = artifactsCacheFile;
 
+    private Dictionary<string, ArtifactCacheEntry> _artifacts = [];
+
     private static readonly JsonSerializerSettings _jsonSettings = new() {
         Formatting = Formatting.Indented,
         NullValueHandling = NullValueHandling.Include,
@@ -17,8 +21,6 @@ public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
         TypeNameHandling = TypeNameHandling.Objects,
         TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
     };
-
-    private readonly Dictionary<string, Artifact> _artifacts = [];
 
     public string GetArtifactRoot(BuildConfig config, Project project, Artifact artifact) {
         return Path.Join(
@@ -31,10 +33,43 @@ public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
     }
 
     public void CacheArtifact(Artifact artifact, BuildConfig config, Project project) {
-        _artifacts[GetArtifactRoot(config, project, artifact)] = artifact;
+        _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(artifact, config, project);
+    }
+
+    public Artifact AppendCahedData(Artifact artifact, BuildConfig config, Project project) {
+        var root = GetArtifactRoot(config, project, artifact);
+        if (_artifacts.TryGetValue(root, out var entry)) {
+            artifact.LogCache = entry.LogCache;
+        } else {
+            Logger.Warning($"No cached data found for artifact {artifact.Name} in {root}");
+        }
+        return artifact;
+    }
+
+    public bool LoadCache() {
+        try {
+            if (!File.Exists(ArtifactsCacheFile)) return false;
+
+            var json = File.ReadAllText(ArtifactsCacheFile);
+            _artifacts.Clear();
+            _artifacts = JsonConvert.DeserializeObject<Dictionary<string, ArtifactCacheEntry>>(
+                json,
+                _jsonSettings
+            ) ?? new Dictionary<string, ArtifactCacheEntry>();
+
+            return true;
+        } catch (Exception ex) {
+            var e = new ManilaException($"Failed to load artifacts cache from {ArtifactsCacheFile}: {ex.Message}", ex);
+            throw e;
+        }
     }
 
     public void FlushCacheToDisk() {
+        if (_artifacts.Keys.Count == 0) {
+            Logger.Debug("No artifacts to flush to disk, skipping.");
+            return;
+        }
+
         var dir = Path.GetDirectoryName(ArtifactsCacheFile);
         if (dir is not null && !Directory.Exists(dir)) _ = Directory.CreateDirectory(dir);
 
@@ -43,6 +78,26 @@ public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
             JsonConvert.SerializeObject(
                 _artifacts,
                 _jsonSettings
+            )
+        );
+    }
+}
+
+public class ArtifactCacheEntry(string artifactRoot, long createdAt, long lastAccessed, long size, LogCache logCache) {
+    public string ArtifactRoot { get; set; } = artifactRoot;
+    public long CreatedAt { get; set; } = createdAt;
+    public long LastAccessed { get; set; } = lastAccessed;
+    public long Size { get; set; } = size;
+    public LogCache LogCache { get; set; } = logCache;
+
+    public static ArtifactCacheEntry FromArtifact(Artifact artifact, BuildConfig config, Project project) {
+        return new ArtifactCacheEntry(
+            ManilaEngine.GetInstance().ArtifactManager.GetArtifactRoot(config, project, artifact),
+            TimeUtils.Now(),
+            TimeUtils.Now(),
+            -1, // Size not implemented yet
+            artifact.LogCache ?? throw new ManilaException(
+                "Artifact does not have a log cache. Please ensure the artifact is properly executed before caching it."
             )
         );
     }

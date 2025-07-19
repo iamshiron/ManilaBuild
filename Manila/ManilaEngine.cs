@@ -129,9 +129,18 @@ public sealed class ManilaEngine {
                     }
                 }
             }
-
-            Logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - EngineCreatedTime));
         }
+
+        using (new ProfileScope("Loading Artifacts Cache")) {
+            var loadResult = ArtifactManager.LoadCache();
+            if (loadResult) {
+                Logger.Info("Loaded artifacts cache from disk.");
+            } else {
+                Logger.Warning("No artifacts cache found, starting with an empty cache.");
+            }
+        }
+
+        Logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - EngineCreatedTime));
     }
 
     /// <summary>

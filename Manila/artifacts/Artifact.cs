@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Builders;
+using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
@@ -15,7 +16,7 @@ public class Artifact(ArtifactBuilder builder) {
     public readonly UnresolvedProject Project = new UnresolvedProject(builder.ProjectName);
     public readonly RegexUtils.PluginComponentMatch PluginComponent = builder.PluginComponent ?? throw new ManilaException($"Artifact must have a plugin component match!");
 
-    public readonly List<ILogEntry> ArtifactLogs = [];
+    public LogCache? LogCache { get; internal set; } = null;
 
     public string GetFingerprint(BuildConfig config) => HashUtils.HashArtifact(this, config);
 }

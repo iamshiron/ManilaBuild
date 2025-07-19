@@ -11,15 +11,18 @@ public class ZipComponent : LanguageComponent {
     }
 
     public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact) {
+        var instance = ManilaZip.Instance!;
+
         try {
             var zipConfig = (ZipBuildConfig) config;
-            ManilaZip.Instance!.Debug($"Artifact Fingerprint: {artifact.GetFingerprint(config)} - SubFolder: {zipConfig.SubFolder}");
+            instance.Debug($"Artifact Fingerprint: {artifact.GetFingerprint(config)} - SubFolder: {zipConfig.SubFolder}");
 
+            instance.Info($"Building zip artifact for project {project.Name} with artifact {artifact.Name}");
             foreach (var (key, set) in project.SourceSets) {
+                instance.Debug($"Processing source set '{key}' with root '{set.Root}' and {set.Files.Length} files");
+
                 var zipPath = Path.Join(ManilaEngine.GetInstance().ArtifactManager.GetArtifactRoot(config, project, artifact));
                 var zipFile = Path.Join(zipPath, $"{key}.zip");
-
-                ManilaEngine.GetInstance().ArtifactManager.CacheArtifact(artifact, config, project);
 
                 if (!Directory.Exists(zipPath)) _ = Directory.CreateDirectory(zipPath);
                 if (File.Exists(zipFile)) return new BuildExitCodeCached(zipFile);
@@ -34,6 +37,8 @@ public class ZipComponent : LanguageComponent {
                             Path.GetRelativePath(set.Root, file)
                     );
                 }
+
+                instance.Info($"Created zip artifact at {zipFile} with {set.Files.Length} files.");
             }
 
             return new BuildExitCodeSuccess();

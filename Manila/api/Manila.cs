@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.Artifacts;
+using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
@@ -195,17 +196,26 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void build(Workspace workspace, Project project, BuildConfig config, string artifactID) {
         var artifact = project.Artifacts[artifactID];
+        artifact = ManilaEngine.GetInstance().ArtifactManager.AppendCahedData(artifact, config, project);
+
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            var logCache = new LogCache();
+
             using var logInjector = new LogInjector(
-                artifact.ArtifactLogs.Add
+                logCache.Entries.Add
             );
 
             var res = project.GetLanguageComponent().Build(workspace, project, config, artifact);
 
             if (res is BuildExitCodeSuccess) {
                 Logger.Info($"Build successful for {project.Name} with artifact {artifactID}");
+                artifact.LogCache = logCache;
+
+                ManilaEngine.GetInstance().ArtifactManager.CacheArtifact(artifact, config, project);
             } else if (res is BuildExitCodeCached cached) {
                 Logger.Info($"Build cached for {project.Name} with artifact {artifactID} at {cached.CacheKey}");
+                if (artifact.LogCache == null) Logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
+                else artifact.LogCache.Replay();
             } else if (res is BuildExitCodeFailed failed) {
                 Logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
             }
