@@ -130,8 +130,9 @@ public sealed class ManilaEngine {
                     .Where(f => !Path.GetFullPath(f).Equals(Path.GetFullPath("Manila.js")))
                     .ToList();
 
-                var projectTasks = files.Select(RunProjectScript).ToList();
-                await Task.WhenAll(projectTasks);
+                foreach (var file in files) {
+                    await RunProjectScript(file);
+                }
 
                 await Task.Run(() => {
                     foreach (var f in Workspace!.ProjectFilters) {

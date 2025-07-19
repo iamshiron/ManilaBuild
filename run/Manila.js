@@ -2,7 +2,7 @@ const workspace = Manila.getWorkspace()
 const Webhook = Manila.import('shiron.manila:discord/webhook')
 
 const hook = Webhook.create(Manila.getEnv('DISCORD_WEBHOOK_URL'))
-await hook.send('Hello from Manila!')
+//await hook.send('Hello from Manila!')
 
 print('Hello from Manila!')
 if (Manila.getEnvBool('ENABLE')) {

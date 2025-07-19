@@ -17,7 +17,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// The script engine used by this context.
     /// </summary>
     [JsonIgnore]
-    public readonly ScriptEngine ScriptEngine = new V8ScriptEngine(
+    public readonly V8ScriptEngine ScriptEngine = new(
         V8ScriptEngineFlags.EnableTaskPromiseConversion
     ) {
         ExposeHostObjectStaticMembers = true
@@ -49,6 +49,18 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     public API.Manila? ManilaAPI { get; private set; } = null;
 
     public List<Type> EnumComponents { get; } = new();
+
+    public string GetCompiledFilePath() {
+        var scriptDir = Path.GetDirectoryName(ScriptPath);
+        var relativePath = Path.GetRelativePath(Engine.RootDir, scriptDir!);
+        var fileName = $"{Path.GetFileNameWithoutExtension(relativePath)}.bin";
+        return Path.Join(
+            Engine.DataDir,
+            "compiled",
+            relativePath.Replace("/", "_").Replace("\\", "_"),
+            fileName
+        );
+    }
 
     /// <summary>
     /// Initializes the script context.
@@ -104,17 +116,9 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                         continue;
                     }
 
-                    int equalIndex = trimmedLine.IndexOf('=');
-                    if (equalIndex > 0) {
-                        string key = trimmedLine.Substring(0, equalIndex).Trim();
-                        string value = trimmedLine.Substring(equalIndex + 1).Trim();
-
-                        if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
-                            (value.StartsWith("'") && value.EndsWith("'"))) {
-                            value = value.Substring(1, value.Length - 2);
-                        }
-
-                        EnvironmentVariables[key] = value;
+                    var split = trimmedLine.Split('=', 2);
+                    if (split.Length == 2) {
+                        EnvironmentVariables[split[0]] = split[1].Trim('"', '\'');
                     }
                 }
             } catch (Exception ex) {
@@ -138,117 +142,169 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     }
 
     /// <summary>
-    /// Executes the script.
+    /// Executes the script after performing necessary checks and setup.
     /// </summary>
     public async Task ExecuteAsync() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            if (ManilaAPI == null) throw new ManilaException("ScriptEngine needs to be initialized before running a script!");
-
-            var scriptHash = HashUtils.HashFile(ScriptPath);
-            var fileChanged = Engine.FileHashCache.HasChanged(ScriptPath, scriptHash);
-            if (fileChanged) {
-                Logger.System($"Script file '{ScriptPath}' has changed!");
-                Engine.FileHashCache.AddOrUpdate(ScriptPath, scriptHash);
-            } else {
-                Logger.System($"Script file '{ScriptPath}' has not changed!");
+            if (ManilaAPI == null) {
+                throw new ManilaException("ScriptEngine needs to be initialized before running a script!");
             }
 
             var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             Logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
-            try {
-                var scriptContent = File.ReadAllTextAsync(ScriptPath);
 
-                // Load environment variables before executing script
+            try {
                 await LoadEnvironmentVariables();
 
-                // Create a JobCompletionSource to track script completion
                 var jobCompletion = new TaskCompletionSource<bool>();
+                SetupScriptEngine(jobCompletion);
 
-                ScriptEngine.AddHostObject("__Manila_signalCompletion", new Action(() => {
-                    jobCompletion.TrySetResult(true);
-                }));
+                await ExecuteScript();
 
-                ScriptEngine.AddHostObject("__Manila_handleError", new Action<object>(e => {
-                    Exception exceptionToThrow;
-
-                    if (e == null) {
-                        exceptionToThrow = new ScriptingException("Script error: null exception occurred");
-                    } else if (e is Exception directException) {
-                        // If it's already a .NET exception, wrap it in ScriptingException for consistency
-                        exceptionToThrow = new ScriptingException($"Script execution failed: {directException.Message}", directException);
-                    } else {
-                        // Handle JavaScript errors and other objects
-                        string errorMessage = "Unknown script error";
-
-                        try {
-                            // Try to extract meaningful error information from the JavaScript error object
-                            if (e is ScriptObject scriptObj) {
-                                var message = scriptObj.GetProperty("message");
-                                var name = scriptObj.GetProperty("name");
-                                var stack = scriptObj.GetProperty("stack");
-
-                                if (message != null && message != Undefined.Value) {
-                                    errorMessage = message.ToString() ?? "Unknown error";
-                                }
-
-                                if (name != null && name != Undefined.Value) {
-                                    errorMessage = $"{name}: {errorMessage}";
-                                }
-
-                                // Include stack trace if available
-                                if (stack != null && stack != Undefined.Value && !string.IsNullOrEmpty(stack.ToString())) {
-                                    errorMessage += $"\n\nJavaScript Stack Trace:\n{stack}";
-                                }
-                            } else {
-                                errorMessage = e.ToString() ?? "Unknown script error";
-                            }
-                        } catch {
-                            // If we can't extract error info, use the toString representation
-                            errorMessage = e.ToString() ?? "Unknown script error occurred";
-                        }
-
-                        exceptionToThrow = new ScriptingException($"JavaScript error: {errorMessage}");
-                    }
-
-                    jobCompletion.TrySetException(exceptionToThrow);
-                }));
-
-                ScriptEngine.AllowReflection = true;
-                ScriptEngine.EnableAutoHostVariables = true;
-
-                using (new ProfileScope("Executing Script")) {
-                    ScriptEngine.Execute(new DocumentInfo(ScriptPath), $@"
-                        (async function() {{
-                            try {{
-                                {await scriptContent}
-                                __Manila_signalCompletion();
-                            }} catch (e) {{
-                                __Manila_handleError(e);
-                            }}
-                        }})();
-                    ");
-                }
-
-                // Wait for the script to either complete or throw an exception
+                // Await the script's completion signal.
                 _ = await jobCompletion.Task;
 
                 Component.Finalize(ManilaAPI);
-            } catch (ScriptEngineException see) {
-                // Handle V8 script engine exceptions specifically
-                var errorMessage = see.ErrorDetails ?? see.Message;
-                var ex = new ScriptingException($"Script execution failed in '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}': {errorMessage}", see);
-                Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
-                throw ex;
-            } catch (ScriptingException) {
-                // Re-throw ScriptingExceptions as-is (they're already properly formatted)
-                throw;
             } catch (Exception e) {
-                var ex = new ScriptingException($"An error occurred while executing script: '{Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath)}'", e);
-                Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
-                throw ex;
+                HandleExecutionException(e);
+                // The above method re-throws, so this is the end of the line.
             }
+
             Logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
         }
+    }
+
+    /// <summary>
+    /// Checks if the script file has changed, logs the result, and returns its content.
+    /// </summary>
+    /// <returns>The content of the script file.</returns>
+    private bool CheckForScriptChanges(out string hash) {
+        hash = HashUtils.HashFile(ScriptPath);
+        return Engine.FileHashCache.HasChanged(ScriptPath, hash);
+    }
+
+    /// <summary>
+    /// Configures the script engine with host objects for completion and error handling.
+    /// </summary>
+    /// <param name="jobCompletion">The TaskCompletionSource to signal script status.</param>
+    private void SetupScriptEngine(TaskCompletionSource<bool> jobCompletion) {
+        ScriptEngine.AddHostObject("__Manila_signalCompletion", new Action(() => jobCompletion.TrySetResult(true)));
+        ScriptEngine.AddHostObject("__Manila_handleError", new Action<object>(e => HandleJavaScriptError(e, jobCompletion)));
+        ScriptEngine.AllowReflection = true;
+        ScriptEngine.EnableAutoHostVariables = true;
+    }
+
+    /// <summary>
+    /// Handles errors passed from the JavaScript environment, converting them to .NET exceptions.
+    /// </summary>
+    /// <param name="e">The error object from JavaScript.</param>
+    /// <param name="jobCompletion">The TaskCompletionSource to set the exception on.</param>
+    private static void HandleJavaScriptError(object e, TaskCompletionSource<bool> jobCompletion) {
+        Exception exceptionToThrow;
+
+        if (e == null) {
+            exceptionToThrow = new ScriptingException("Script error: null exception occurred");
+        } else if (e is Exception directException) {
+            // Wrap existing .NET exception for consistency.
+            exceptionToThrow = new ScriptingException($"Script execution failed: {directException.Message}", directException);
+        } else {
+            // Attempt to build a detailed error from the JavaScript error object.
+            string errorMessage = e.ToString() ?? "Unknown script error";
+            if (e is ScriptObject scriptObj) {
+                var message = scriptObj.GetProperty("message")?.ToString() ?? "Unknown error";
+                var name = scriptObj.GetProperty("name")?.ToString();
+                var stack = scriptObj.GetProperty("stack")?.ToString();
+
+                errorMessage = !string.IsNullOrEmpty(name) ? $"{name}: {message}" : message;
+                if (!string.IsNullOrEmpty(stack)) {
+                    errorMessage += $"\n\nJavaScript Stack Trace:\n{stack}";
+                }
+            }
+            exceptionToThrow = new ScriptingException($"JavaScript error: {errorMessage}");
+        }
+
+        _ = jobCompletion.TrySetException(exceptionToThrow);
+    }
+
+    /// <summary>
+    /// Compiles the script code and reads the resulting bytecode.
+    /// If the script has not changed since the last compilation, it uses the cached bytecode
+    /// </summary>
+    /// <param name="code">The script code to compile.</param>
+    /// <param name="bytes">The compiled bytecode output.</param>
+    /// <returns>True if compilation was successful or cached bytecode was used, false otherwise.</returns>
+    private bool CompileScriptAndRead(string code, out byte[] bytes) {
+        var documentInfo = new DocumentInfo(ScriptPath);
+        var binaryFilePath = GetCompiledFilePath();
+        var directory = Path.GetDirectoryName(binaryFilePath)!;
+
+        var fileChanged = CheckForScriptChanges(out var fileHash);
+
+        if (!fileChanged && File.Exists(binaryFilePath)) {
+            Logger.Debug($"Using cached compiled script from '{binaryFilePath}'.");
+            bytes = File.ReadAllBytes(binaryFilePath);
+            return true;
+        }
+
+        Engine.FileHashCache.AddOrUpdate(ScriptPath, fileHash);
+        if (!Directory.Exists(directory)) _ = Directory.CreateDirectory(directory);
+
+        _ = ScriptEngine.Compile(documentInfo, code, V8CacheKind.Code, out bytes);
+        if (bytes != null && bytes.Length > 0) {
+            File.WriteAllBytes(binaryFilePath, bytes);
+            Logger.Debug($"Compiled script saved to '{binaryFilePath}'.");
+            return false;
+        } else {
+            Logger.Error($"Failed to compile script '{ScriptPath}'. No bytecode generated.");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Wraps the script content in an async IIFE and executes it.
+    /// </summary>
+    /// <param name="scriptContent">The script code to execute.</param>
+    private async Task ExecuteScript() {
+        using (new ProfileScope("Executing Script")) {
+            var scriptContent = await File.ReadAllTextAsync(ScriptPath);
+            var code = $@"
+                (async function() {{
+                    try {{
+                        {scriptContent}
+                        __Manila_signalCompletion();
+                    }} catch (e) {{
+                        __Manila_handleError(e);
+                    }}
+                }})();";
+
+            if (!CompileScriptAndRead(code, out var bytes)) {
+                Logger.Warning($"Script '{ScriptPath}' could not be compiled or cached. Using raw code execution.");
+            }
+
+            var script = ScriptEngine.Compile(new DocumentInfo(ScriptPath), code, V8CacheKind.Code, bytes, out var accepted);
+            if (!accepted) {
+                Logger.Warning($"Script '{ScriptPath}' was not accepted by the script engine. It may have been modified or is invalid.");
+            } else {
+                Logger.Debug($"Script '{ScriptPath}' loaded successfully.");
+            }
+
+            ScriptEngine.Execute(script);
+        }
+    }
+
+    /// <summary>
+    /// Logs script execution failures and re-throws a formatted exception.
+    /// </summary>
+    /// <param name="e">The exception caught during execution.</param>
+    private void HandleExecutionException(Exception e) {
+        // Re-throw ScriptingExceptions as they are already formatted.
+        if (e is ScriptingException) throw e;
+
+        var relativePath = Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath);
+        var errorMessage = e is ScriptEngineException see ? see.ErrorDetails ?? see.Message : e.Message;
+        var ex = new ScriptingException($"An error occurred in '{relativePath}': {errorMessage}", e);
+        Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
+        throw ex;
     }
 
     /// <summary>
