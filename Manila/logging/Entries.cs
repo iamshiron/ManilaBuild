@@ -745,3 +745,32 @@ public partial class NuGetSubPackageLoadingEntry : BaseLogEntry {
 }
 
 #endregion
+
+#region  Miscellaneous Log Entries
+
+/// <summary>
+/// Represents a log entry for a replayed log entry.
+/// This is used to replay cached log entries with a specific context ID.
+/// </summary>
+/// <param name="entry">The original log entry to replay.</param>
+/// <param name="contextID">The context ID to associate with the replayed log entry.</param>
+/// <remarks>
+/// The <see cref="ParentContextID"/> is always null for replay entries, use <see cref="ContextID"/> instead.
+/// </remarks>
+public class ReplayLogEntry(ILogEntry entry, Guid contextID) : ILogEntry {
+    public ILogEntry Entry { get; } = entry;
+    public Guid ContextID { get; } = contextID;
+
+    /// <inheritdoc />
+    public long Timestamp { get; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    /// <inheritdoc />
+    public LogLevel Level => LogLevel.System;
+
+    /// <summary>
+    /// Parent context ID for this log entry is always null, use <see cref="ContextID"/> instead.
+    /// </summary>
+    public virtual Guid? ParentContextID { get; } = null;
+}
+
+#endregion

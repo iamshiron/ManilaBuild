@@ -297,7 +297,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
         }
     }
 
-    // Job Actions
+    #region Job Actions
+
     /// <summary>
     /// Creates a shell-based job action with cmd.exe.
     /// </summary>
@@ -319,4 +320,6 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
             command.Split(" ")[1..]
         ));
     }
+
+    #endregion
 }
