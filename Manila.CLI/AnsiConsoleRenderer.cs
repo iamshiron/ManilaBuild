@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
+using Shiron.Manila.Caching;
 using Shiron.Manila.Logging;
 using Spectre.Console;
 
@@ -154,6 +155,11 @@ public static class AnsiConsoleRenderer {
                 break;
             case CommandStdErrLogEntry log:
                 HandleCommandStdErrLogEntry(log);
+                break;
+            case ReplayLogEntry log:
+                var logEntry = (BaseLogEntry) log.Entry;
+                logEntry.ParentContextID = log.ContextID;
+                RenderLog(log.Entry);
                 break;
             // Default fallback for any unhandled log types
             default:

@@ -213,9 +213,12 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
 
                 ManilaEngine.GetInstance().ArtifactManager.CacheArtifact(artifact, config, project);
             } else if (res is BuildExitCodeCached cached) {
-                Logger.Info($"Build cached for {project.Name} with artifact {artifactID} at {cached.CacheKey}");
+                Logger.Info($"Loaded cached build for {project.Name} with artifact {artifactID}.");
+
                 if (artifact.LogCache == null) Logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
-                else artifact.LogCache.Replay();
+
+                Logger.Debug($"Current context ID: {LogContext.CurrentContextId}");
+                artifact.LogCache!.Replay(LogContext.CurrentContextId ?? Guid.Empty);
             } else if (res is BuildExitCodeFailed failed) {
                 Logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
             }
