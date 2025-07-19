@@ -48,7 +48,7 @@ public static class ManilaCLI {
 
     public static int Main(string[] args) {
 #if DEBUG
-        Directory.SetCurrentDirectory("E:\\dev\\Manila\\manila\\run");
+        Directory.SetCurrentDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "../../../../run"));
         Profiler.IsEnabled = true;
 #endif
 
