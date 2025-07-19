@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -34,6 +35,27 @@ public static class HashUtils {
             var finalHash = SHA256.HashData(combinedBytes);
 
             return Convert.ToHexStringLower(finalHash);
+        }
+    }
+
+    /// <summary>
+    /// Creates a dictionary of file paths and their corresponding hashes.
+    /// The keys are the file paths relative to the specified root, and the values are the
+    /// SHA256 hashes of the files.
+    /// </summary>
+    /// <param name="files">The collection of file paths to hash.</param>
+    /// <param name="root">The root directory to use for relative paths. If null, absolute paths are used.</param>
+    /// <returns></returns>
+    public static async Task<Dictionary<string, string>> CreateFileSetHashes(IEnumerable<string> files, string? root = null) {
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            var result = new ConcurrentDictionary<string, string>();
+            await Parallel.ForEachAsync(files, async (file, token) => {
+                var filePath = root is not null ? Path.GetRelativePath(root, file) : file;
+                var fileHash = await Task.Run(() => HashFile(file), token);
+                _ = result.TryAdd(filePath, fileHash);
+            });
+
+            return result.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
     }
 

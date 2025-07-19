@@ -8,6 +8,7 @@ using Shiron.Manila.Attributes;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
@@ -142,6 +143,15 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     public async Task ExecuteAsync() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
             if (ManilaAPI == null) throw new ManilaException("ScriptEngine needs to be initialized before running a script!");
+
+            var scriptHash = HashUtils.HashFile(ScriptPath);
+            var fileChanged = Engine.FileHashCache.HasChanged(ScriptPath, scriptHash);
+            if (fileChanged) {
+                Logger.System($"Script file '{ScriptPath}' has changed!");
+                Engine.FileHashCache.AddOrUpdate(ScriptPath, scriptHash);
+            } else {
+                Logger.System($"Script file '{ScriptPath}' has not changed!");
+            }
 
             var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             Logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));

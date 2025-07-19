@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Shiron.Manila.API;
 using Shiron.Manila.Artifacts;
+using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
@@ -74,6 +75,8 @@ public sealed class ManilaEngine {
     /// </summary>
     public NuGetManager NuGetManager { get; }
 
+    public readonly FileHashCache FileHashCache;
+
     /// <summary>
     /// Gets the version of the Manila engine.
     /// </summary>
@@ -88,6 +91,7 @@ public sealed class ManilaEngine {
         DataDir = Path.Join(RootDir, ".manila");
         NuGetManager = new(Path.Join(DataDir, "nuget"));
         ArtifactManager = new(Path.Join(DataDir, "artifacts"), Path.Join(DataDir, "cache", "artifacts.json"));
+        FileHashCache = new(Path.Join(DataDir, "cache", "filehashes.db"), RootDir);
     }
 
     /// <summary>
