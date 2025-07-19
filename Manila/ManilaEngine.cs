@@ -94,9 +94,21 @@ public sealed class ManilaEngine {
     /// Main entry point for the engine. Runs the workspace script and all project scripts.
     /// </summary>
     public async Task Run() {
+        List<Task> tasks = [];
+        List<Task> projectTasks = [];
+
         if (!File.Exists("Manila.js")) {
             Logger.Error("No Manila.js file found in the current directory.");
             return;
+        }
+
+        async Task LoadCacheAndLogResult() {
+            var result = await ArtifactManager.LoadCache();
+            if (result) {
+                Logger.Info("Loaded artifacts cache from disk.");
+            } else {
+                Logger.Warning("No artifacts cache found, starting with an empty cache.");
+            }
         }
 
         Logger.Log(new EngineStartedLogEntry(RootDir, DataDir));
@@ -106,40 +118,39 @@ public sealed class ManilaEngine {
             .Where(f => !Path.GetFullPath(f).Equals(Path.GetFullPath("Manila.js")))
             .ToList();
 
-        using (new ProfileScope("Running Scripts")) {
-            try {
+        async Task RunAllScriptsAndProcessFiltersAsync() {
+            using (new ProfileScope("Running Scripts")) {
                 await RunWorkspaceScript();
-                foreach (var script in files) {
-                    await RunProjectScript(script);
-                }
-            } catch {
-                throw;
-            }
 
-            foreach (var f in Workspace!.ProjectFilters) {
-                foreach (var p in Workspace.Projects.Values) {
-                    if (f.Item1.Predicate(p)) {
-                        foreach (var type in p.Plugins) {
-                            var plugin = ExtensionManager.GetInstance().GetPlugin(type);
-                            foreach (var e in plugin.Enums) {
-                                WorkspaceContext.ApplyEnum(e);
+                var files = Directory.GetFiles(".", "Manila.js", SearchOption.AllDirectories)
+                    .Where(f => !Path.GetFullPath(f).Equals(Path.GetFullPath("Manila.js")))
+                    .ToList();
+
+                var projectTasks = files.Select(RunProjectScript).ToList();
+                await Task.WhenAll(projectTasks);
+
+                await Task.Run(() => {
+                    foreach (var f in Workspace!.ProjectFilters) {
+                        foreach (var p in Workspace.Projects.Values) {
+                            if (f.Item1.Predicate(p)) {
+                                foreach (var type in p.Plugins) {
+                                    var plugin = ExtensionManager.GetInstance().GetPlugin(type);
+                                    foreach (var e in plugin.Enums) {
+                                        WorkspaceContext.ApplyEnum(e);
+                                    }
+                                }
+                                f.Item2.Invoke(p);
                             }
                         }
-                        f.Item2.Invoke(p);
                     }
-                }
+                });
             }
         }
 
-        using (new ProfileScope("Loading Artifacts Cache")) {
-            var loadResult = ArtifactManager.LoadCache();
-            if (loadResult) {
-                Logger.Info("Loaded artifacts cache from disk.");
-            } else {
-                Logger.Warning("No artifacts cache found, starting with an empty cache.");
-            }
-        }
+        tasks.Add(LoadCacheAndLogResult());
+        tasks.Add(RunAllScriptsAndProcessFiltersAsync());
 
+        await Task.WhenAll(tasks);
         Logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - EngineCreatedTime));
     }
 

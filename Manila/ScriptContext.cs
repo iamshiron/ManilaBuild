@@ -74,11 +74,10 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     }
 
     /// <summary>
-    /// Loads environment variables from a .env file if it exists in the project directory
+    /// Asynchronously loads environment variables from a .env file if it exists.
     /// </summary>
-    private void LoadEnvironmentVariables() {
+    private async Task LoadEnvironmentVariables() {
         using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            // Clear any existing variables to ensure clean state
             EnvironmentVariables.Clear();
 
             string? projectDir = Path.GetDirectoryName(ScriptPath);
@@ -96,10 +95,10 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
 
             Logger.Debug($"Loading environment variables from '{envFilePath}'.");
             try {
-                foreach (string line in System.IO.File.ReadAllLines(envFilePath)) {
+                // 3. Use ReadAllLinesAsync for non-blocking file I/O.
+                foreach (string line in await File.ReadAllLinesAsync(envFilePath)) {
                     string trimmedLine = line.Trim();
 
-                    // Skip comments and empty lines
                     if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#") || trimmedLine.StartsWith("//")) {
                         continue;
                     }
@@ -109,7 +108,6 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                         string key = trimmedLine.Substring(0, equalIndex).Trim();
                         string value = trimmedLine.Substring(equalIndex + 1).Trim();
 
-                        // Remove quotes if they exist
                         if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
                             (value.StartsWith("'") && value.EndsWith("'"))) {
                             value = value.Substring(1, value.Length - 2);
@@ -151,7 +149,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 var scriptContent = File.ReadAllTextAsync(ScriptPath);
 
                 // Load environment variables before executing script
-                LoadEnvironmentVariables();
+                await LoadEnvironmentVariables();
 
                 // Create a JobCompletionSource to track script completion
                 var jobCompletion = new TaskCompletionSource<bool>();
@@ -240,24 +238,6 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 throw ex;
             }
             Logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
-        }
-    }
-    /// <summary>
-    /// Executes the workspace script.
-    /// </summary>
-    public void ExecuteWorkspace() {
-        try {
-            // Load environment variables from workspace root
-            LoadEnvironmentVariables();
-
-            ScriptEngine.Execute(File.ReadAllText("Manila.js"));
-        } catch (ScriptEngineException see) {
-            var errorMessage = see.ErrorDetails ?? see.Message;
-            Logger.Error($"Error in workspace script: {errorMessage}");
-            throw new ScriptingException($"Workspace script execution failed: {errorMessage}", see);
-        } catch (Exception e) {
-            Logger.Error($"Error in workspace script: {e.Message}");
-            throw new ScriptingException("Workspace script execution failed", e);
         }
     }
 

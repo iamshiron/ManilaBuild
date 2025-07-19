@@ -1,9 +1,11 @@
 
+using System.Reflection;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Artifacts;
@@ -46,21 +48,23 @@ public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
         return artifact;
     }
 
-    public bool LoadCache() {
-        try {
-            if (!File.Exists(ArtifactsCacheFile)) return false;
+    public async Task<bool> LoadCache() {
+        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+            try {
+                if (!File.Exists(ArtifactsCacheFile)) return false;
 
-            var json = File.ReadAllText(ArtifactsCacheFile);
-            _artifacts.Clear();
-            _artifacts = JsonConvert.DeserializeObject<Dictionary<string, ArtifactCacheEntry>>(
-                json,
-                _jsonSettings
-            ) ?? new Dictionary<string, ArtifactCacheEntry>();
+                var json = await File.ReadAllTextAsync(ArtifactsCacheFile);
+                _artifacts.Clear();
+                _artifacts = JsonConvert.DeserializeObject<Dictionary<string, ArtifactCacheEntry>>(
+                    json,
+                    _jsonSettings
+                ) ?? new Dictionary<string, ArtifactCacheEntry>();
 
-            return true;
-        } catch (Exception ex) {
-            var e = new ManilaException($"Failed to load artifacts cache from {ArtifactsCacheFile}: {ex.Message}", ex);
-            throw e;
+                return true;
+            } catch (Exception ex) {
+                var e = new ManilaException($"Failed to load artifacts cache from {ArtifactsCacheFile}: {ex.Message}", ex);
+                throw e;
+            }
         }
     }
 
