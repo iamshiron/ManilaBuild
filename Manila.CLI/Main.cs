@@ -1,6 +1,8 @@
 using System.Text;
 using Shiron.Manila;
 using Shiron.Manila.API;
+using Shiron.Manila.API.Builders;
+using Shiron.Manila.API.Containers;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.CLI;
 using Shiron.Manila.CLI.Commands;
@@ -52,6 +54,15 @@ public static class ManilaCLI {
         Directory.SetCurrentDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "../../../../run"));
         Profiler.IsEnabled = true;
 #endif
+        var workspaceBuilder = new WorkspaceBuilder("./run");
+        var projectBuilder = new ProjectBuilder("./Client", "Client");
+        workspaceBuilder.AddProject(projectBuilder);
+
+        var workspace = workspaceBuilder.Build();
+
+        Console.WriteLine($"Workspace: {workspace}");
+
+        return 0; // Don't run the main CLI logic for now as I am refactoring the entire build system.
 
         Console.OutputEncoding = Encoding.UTF8;
 
