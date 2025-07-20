@@ -2,9 +2,17 @@ name: Code Quality
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+    - main
+    - feature/*
+    - '!dev'
+    - '!internal/*'
   pull_request:
-    branches: [ main, develop ]
+    branches:
+    - main
+    - feature/*
+    - '!dev'
+    - '!internal/*'
 
 env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
