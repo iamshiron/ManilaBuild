@@ -1,3 +1,4 @@
+using System.Text;
 using Shiron.Manila;
 using Shiron.Manila.API;
 using Shiron.Manila.Artifacts;
@@ -51,6 +52,8 @@ public static class ManilaCLI {
         Directory.SetCurrentDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "../../../../run"));
         Profiler.IsEnabled = true;
 #endif
+
+        Console.OutputEncoding = Encoding.UTF8;
 
         var logOptions = new {
             Structured = args.Contains(CommandOptions.Structured) || args.Contains(CommandOptions.Json),

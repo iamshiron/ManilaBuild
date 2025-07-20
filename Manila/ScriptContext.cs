@@ -32,6 +32,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// The path to the script file.
     /// </summary>
     public string ScriptPath { get; private set; } = scriptPath;
+    public readonly string ScriptHash = HashUtils.HashFile(scriptPath);
+
     /// <summary>
     /// The component this context is part of.
     /// </summary>
@@ -51,13 +53,10 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     public List<Type> EnumComponents { get; } = new();
 
     public string GetCompiledFilePath() {
-        var scriptDir = Path.GetDirectoryName(ScriptPath);
-        var relativePath = Path.GetRelativePath(Engine.RootDir, scriptDir!);
-        var fileName = $"{Path.GetFileNameWithoutExtension(relativePath)}.bin";
+        var fileName = $"{ScriptHash[0..16]}.bin";
         return Path.Join(
             Engine.DataDir,
             "compiled",
-            relativePath.Replace("/", "_").Replace("\\", "_"),
             fileName
         );
     }
@@ -178,9 +177,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// Checks if the script file has changed, logs the result, and returns its content.
     /// </summary>
     /// <returns>The content of the script file.</returns>
-    private bool CheckForScriptChanges(out string hash) {
-        hash = HashUtils.HashFile(ScriptPath);
-        return Engine.FileHashCache.HasChanged(ScriptPath, hash);
+    private bool CheckForScriptChanges() {
+        return Engine.FileHashCache.HasChanged(ScriptPath, ScriptHash);
     }
 
     /// <summary>
@@ -238,7 +236,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         var binaryFilePath = GetCompiledFilePath();
         var directory = Path.GetDirectoryName(binaryFilePath)!;
 
-        var fileChanged = CheckForScriptChanges(out var fileHash);
+        var fileChanged = CheckForScriptChanges();
 
         if (!fileChanged && File.Exists(binaryFilePath)) {
             Logger.Debug($"Using cached compiled script from '{binaryFilePath}'.");
@@ -246,7 +244,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
             return true;
         }
 
-        Engine.FileHashCache.AddOrUpdate(ScriptPath, fileHash);
+        Engine.FileHashCache.AddOrUpdate(ScriptPath, ScriptHash);
         if (!Directory.Exists(directory)) _ = Directory.CreateDirectory(directory);
 
         _ = ScriptEngine.Compile(documentInfo, code, V8CacheKind.Code, out bytes);
