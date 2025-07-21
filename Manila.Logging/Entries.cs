@@ -30,7 +30,7 @@ public abstract class BaseLogEntry : ILogEntry {
     /// <summary>
     /// The ID of the parent logging context, if any.
     /// </summary>
-    public virtual Guid? ParentContextID { get; set; } = LogContext.CurrentContextId;
+    public virtual Guid? ParentContextID { get; set; }
 }
 
 /// <summary>

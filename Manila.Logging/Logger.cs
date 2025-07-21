@@ -8,48 +8,13 @@ namespace Shiron.Manila.Logging;
 /// context stack as immutable. It uses <see cref="AsyncLocal{T}"/> to maintain a separate
 /// context stack for each asynchronous control flow (e.g., an async method or a thread).
 /// </remarks>
-public static class LogContext {
+public class LogContext {
     /// <summary>
     /// Stores the stack of context GUIDs for the current asynchronous control flow.
     /// </summary>
-    private static readonly AsyncLocal<Stack<Guid>> _contextStack = new();
+    private readonly AsyncLocal<Stack<Guid>> _contextStack = new();
 
-    /// <summary>
-    /// A private helper class that restores the previous context stack when disposed.
-    /// This enables a 'using' pattern for safe context management.
-    /// </summary>
-    private sealed class ContextRestorer : IDisposable {
-        /// <summary>
-        /// The context stack that was active before a new context was pushed.
-        /// </summary>
-        private readonly Stack<Guid> _stackToRestore;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ContextRestorer"/> class.
-        /// </summary>
-        /// <param name="stackToRestore">The stack to restore when this instance is disposed.</param>
-        public ContextRestorer(Stack<Guid> stackToRestore) {
-            _stackToRestore = stackToRestore;
-        }
-
-        /// <summary>
-        /// Restores the previous context stack for the current async context.
-        /// </summary>
-        public void Dispose() {
-            _contextStack.Value = _stackToRestore;
-        }
-    }
-
-    /// <summary>
-    /// Gets the Guid of the current logical context.
-    /// Returns null if no context is active.
-    /// </summary>
-    public static Guid? CurrentContextId {
-        get {
-            var stack = _contextStack.Value;
-            return stack?.Count > 0 ? stack.Peek() : null;
-        }
-    }
+    public Guid? CurrentContextID => _contextStack.Value?.Count > 0 ? _contextStack.Value.Peek() : null;
 
     /// <summary>
     /// Pushes a new context ID onto the stack in a thread-safe manner.
@@ -65,23 +30,36 @@ public static class LogContext {
     /// // The context is automatically restored here.
     /// </code>
     /// </example>
-    public static IDisposable PushContext(Guid contextId) {
+    public IDisposable PushContext(Guid contextId) {
         var originalStack = _contextStack.Value;
-
-        // Create a NEW stack, copying the original. This is the crucial step
-        // to prevent threads from sharing a mutable stack.
         var newStack = originalStack == null
             ? new Stack<Guid>()
-            : new Stack<Guid>(originalStack.Reverse()); // Reverse is needed to maintain order
+            : new Stack<Guid>(originalStack.Reverse());
 
-        // Push the new ID onto our new, isolated stack.
         newStack.Push(contextId);
-
-        // Set the current context to our new stack.
         _contextStack.Value = newStack;
+        return new ContextRestorer(this, originalStack ?? new Stack<Guid>());
+    }
 
-        // Return a restorer that knows how to put the original stack back.
-        return new ContextRestorer(originalStack ?? new Stack<Guid>());
+    public IDisposable PushContext(out Guid contextID) {
+        contextID = Guid.NewGuid();
+        return PushContext(contextID);
+    }
+
+    /// <summary>
+    /// A private helper class that restores the previous context stack when disposed.
+    /// This enables a 'using' pattern for safe context management.
+    /// </summary>
+    private sealed class ContextRestorer(LogContext context, Stack<Guid> stackToRestore) : IDisposable {
+        private readonly LogContext _owner = context;
+        private readonly Stack<Guid> _stackToRestore = stackToRestore;
+
+        /// <summary>
+        /// Restores the previous context stack for the current async context.
+        /// </summary>
+        public void Dispose() {
+            _owner._contextStack.Value = _stackToRestore;
+        }
     }
 }
 
@@ -91,17 +69,17 @@ public static class LogContext {
 /// <remarks>
 /// See <c>PluginInfo(Attributes.ManilaPlugin, object[])</c> as an example.
 /// </remarks>
-public static class Logger {
+public class Logger : ILogger {
     /// <summary>
     /// Event that is raised whenever a log entry is created.
     /// Subscribers can handle this event to process log entries, such as writing them to a file or displaying them in the console.
     /// </summary>
-    public static event Action<ILogEntry>? OnLogEntry;
+    public event Action<ILogEntry>? OnLogEntry;
 
     /// <summary>
     /// A dictionary holding the currently active log injectors, keyed by their unique ID.
     /// </summary>
-    private static readonly Dictionary<Guid, LogInjector> _activeInjectors = [];
+    private readonly Dictionary<Guid, LogInjector> _activeInjectors = [];
 
     /// <summary>
     /// Registers a log injector to receive all log entries.
@@ -109,7 +87,7 @@ public static class Logger {
     /// <param name="id">The unique identifier of the injector.</param>
     /// <param name="injector">The log injector instance.</param>
     /// <exception cref="InvalidOperationException">Thrown if an injector with the same ID already exists.</exception>
-    public static void AddInjector(Guid id, LogInjector injector) {
+    public void AddInjector(Guid id, LogInjector injector) {
         if (!_activeInjectors.TryAdd(id, injector)) {
             throw new InvalidOperationException($"An injector with ID {id} already exists.");
         }
@@ -120,7 +98,7 @@ public static class Logger {
     /// </summary>
     /// <param name="id">The unique identifier of the injector to remove.</param>
     /// <exception cref="InvalidOperationException">Thrown if no injector with the specified ID is found.</exception>
-    public static void RemoveInjector(Guid id) {
+    public void RemoveInjector(Guid id) {
         if (!_activeInjectors.Remove(id)) {
             // Note: Depending on requirements, this could fail silently instead of throwing.
             // Throwing makes behavior more explicit.
@@ -132,7 +110,7 @@ public static class Logger {
     /// Logs a log entry by invoking the main <see cref="OnLogEntry"/> event and all active injectors.
     /// </summary>
     /// <param name="entry">The log entry to process.</param>
-    public static void Log(ILogEntry entry) {
+    public void Log(ILogEntry entry) {
         OnLogEntry?.Invoke(entry);
         // Create a copy of values to prevent collection modification issues if an injector modifies the collection.
         foreach (var injector in _activeInjectors.Values.ToList()) {
@@ -144,7 +122,7 @@ public static class Logger {
     /// Logs a message at the Info level.
     /// </summary>
     /// <param name="message">The message to log.</param>
-    public static void Info(string message) {
+    public void Info(string message) {
         Log(new BasicLogEntry(message, LogLevel.Info));
     }
 
@@ -152,7 +130,7 @@ public static class Logger {
     /// Logs a message at the Debug level.
     /// </summary>
     /// <param name="message">The message to log.</param>
-    public static void Debug(string message) {
+    public void Debug(string message) {
         Log(new BasicLogEntry(message, LogLevel.Debug));
     }
 
@@ -160,7 +138,7 @@ public static class Logger {
     /// Logs a message at the Warning level.
     /// </summary>
     /// <param name="message">The message to log.</param>
-    public static void Warning(string message) {
+    public void Warning(string message) {
         Log(new BasicLogEntry(message, LogLevel.Warning));
     }
 
@@ -168,7 +146,7 @@ public static class Logger {
     /// Logs a message at the Error level.
     /// </summary>
     /// <param name="message">The message to log.</param>
-    public static void Error(string message) {
+    public void Error(string message) {
         Log(new BasicLogEntry(message, LogLevel.Error));
     }
 
@@ -176,7 +154,7 @@ public static class Logger {
     /// Logs a message at the Critical level.
     /// </summary>
     /// <param name="message">The message to log.</param>
-    public static void Critical(string message) {
+    public void Critical(string message) {
         Log(new BasicLogEntry(message, LogLevel.Critical));
     }
 
@@ -184,7 +162,7 @@ public static class Logger {
     /// Logs a message at the System level.
     /// </summary>
     /// <param name="message">The message to log.</param>
-    public static void System(string message) {
+    public void System(string message) {
         Log(new BasicLogEntry(message, LogLevel.System));
     }
 }
