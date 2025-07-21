@@ -13,4 +13,10 @@ public interface ILogger {
 
     public void AddInjector(Guid id, LogInjector injector);
     public void RemoveInjector(Guid id);
+
+    public string? LoggerPrefix { get; }
+
+    public LogContext LogContext { get; }
+
+    public event Action<ILogEntry>? OnLogEntry;
 }

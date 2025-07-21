@@ -3,16 +3,138 @@ using System.Reflection;
 using Microsoft.ClearScript;
 using Newtonsoft.Json;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
+public static class ComponentContextApplyer {
+    /// <summary>
+    /// Adds a property that gets exposed to the script context.
+    /// </summary>
+    /// <param name="prop">The property to add.</param>
+    /// <param name="obj">The instance of the class.</param>
+    /// <exception cref="Exception">Thrown when property lacks ScriptProperty attribute.</exception>
+    public static void AddScriptProperty(ILogger logger, IScriptContext context, Component applyTo, PropertyInfo prop, object? obj = null) {
+        obj ??= applyTo;
+
+        var propertyName = prop.Name;
+        var scriptPropertyName = propertyName[0].ToString().ToLower() + propertyName[1..]; // Convert first letter to lowercase for JS naming convention
+        var scriptPropertyGetterName = "get" + propertyName;
+        var scriptPropertySetterName = "set" + propertyName;
+
+        var scriptPropertyInfo = prop.GetCustomAttribute<ScriptProperty>() ?? throw new Exception($"Property '{prop.Name}' is not a script property.");
+        var setMethod = prop.GetSetMethod();
+
+        if (setMethod != null && !scriptPropertyInfo.Immutable) {
+            context.ScriptEngine.AddHostObject(scriptPropertyName, FunctionUtils.ToDelegate(obj, prop.GetSetMethod()!));
+        }
+
+
+        var setterMethods = applyTo.DynamicMethods.TryGetValue(scriptPropertySetterName, out var setterValue) ? setterValue : [];
+        var getterMethods = applyTo.DynamicMethods.TryGetValue(scriptPropertyGetterName, out var getterValue) ? getterValue : [];
+
+        if (setMethod != null && !scriptPropertyInfo.Immutable) setterMethods.Add(FunctionUtils.ToDelegate(obj, setMethod));
+        getterMethods.Add(FunctionUtils.ToDelegate(obj, prop.GetGetMethod()!));
+
+        applyTo.DynamicMethods[scriptPropertySetterName] = setterMethods;
+        applyTo.DynamicMethods[scriptPropertyGetterName] = getterMethods;
+    }
+
+    /// <summary>
+    /// Adds a script function to the component's dynamic methods.
+    /// </summary>
+    /// <param name="prop">The method to add.</param>
+    /// <param name="engine">The script engine.</param>
+    /// <param name="obj">The instance of the class.</param>
+    /// <exception cref="Exception">Thrown when method lacks ScriptFunction attribute.</exception>
+    public static void AddScriptFunction(ILogger logger, Component applyTo, MethodInfo prop, ScriptEngine engine, object? obj = null) {
+        obj ??= applyTo;
+
+        logger.Debug($"Adding function '{prop.Name}' to script context.");
+        _ = prop.GetCustomAttribute<ScriptFunction>() ?? throw new Exception($"Method '{prop.Name}' is not a script function.");
+        var methods = applyTo.DynamicMethods.TryGetValue(prop.Name, out List<Delegate>? value) ? value : [];
+        methods.Add(FunctionUtils.ToDelegate(obj, prop));
+        applyTo.DynamicMethods[prop.Name] = methods;
+
+        engine.AddHostObject(prop.Name, FunctionUtils.ToDelegate(obj, prop));
+
+        logger.Debug($"Added function '{prop.Name}' to script context.");
+    }
+
+    /// <summary>
+    /// Applies a plugin to this component.
+    /// </summary>
+    /// <param name="plugin">The plugin to apply.</param>
+    public static void ApplyPlugin(ILogger logger, ScriptContext context, Component applyTo, ManilaPlugin plugin) {
+        if (context.ManilaAPI == null) throw new ManilaException("ManilaAPI is not initialized in the script context.");
+
+        context.ScriptEngine.AddHostType(plugin.GetType().Name, plugin.GetType());
+
+        if (plugin.Dependencies != null) {
+            foreach (var t in plugin.Dependencies) {
+                if (t == null) continue;
+                applyTo.DependencyTypes.Add(t);
+
+                context.ManilaAPI.AddFunction(
+                    (Activator.CreateInstance(t) as Dependency)?.Type!,
+                    delegate (dynamic[] args) {
+                        if (Activator.CreateInstance(t) is not Dependency dep) {
+                            logger.Warning($"Could not create instance of dependency type '{t}'.");
+                            return null;
+                        }
+                        dep.Create((object[]) args);
+                        return dep;
+                    }
+                );
+            }
+        }
+
+        if (applyTo.Plugins.Contains(plugin.GetType())) {
+            logger.Warning($"Plugin '{plugin}' already applied.");
+            return;
+        }
+
+        applyTo.Plugins.Add(plugin.GetType());
+    }
+
+    /// <summary>
+    /// Applies a plugin component to this component.
+    /// </summary>
+    /// <param name="component">The plugin component to apply.</param>
+    public static void ApplyComponent(ILogger logger, ScriptContext context, Component applyTo, PluginComponent component) {
+        logger.Debug($"Applying component '{component}'.");
+
+        if (applyTo.PluginComponents.ContainsKey(component.GetType())) {
+            logger.Warning($"Component '{component}' already applied.");
+            return;
+        }
+        applyTo.PluginComponents.Add(component.GetType(), component);
+
+        if (component._plugin != null) {
+            foreach (var e in component._plugin.Enums) {
+                context.ApplyEnum(e);
+            }
+
+            ApplyPlugin(logger, context, applyTo, component._plugin);
+        }
+
+        foreach (var prop in component.GetType().GetProperties()) {
+            if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
+            AddScriptProperty(logger, context, applyTo, prop, component);
+        }
+    }
+}
+
 /// <summary>
 /// Represents a component in the build script that groups jobs and plugins.
 /// </summary>
-public class Component(string path) : DynamicObject, IScriptableObject {
+public class Component(ILogger logger, string rootDir, string path) : DynamicObject, IScriptableObject {
+    public readonly string RootDir = rootDir;
+    private readonly ILogger _logger = logger;
+
     /// <summary>
     /// The directory path of this component.
     /// </summary>
@@ -49,7 +171,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     /// </summary>
     /// <returns>The component identifier.</returns>
     public virtual string GetIdentifier() {
-        string relativeDir = System.IO.Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, Path.Handle);
+        string relativeDir = System.IO.Path.GetRelativePath(RootDir, Path.Handle);
         return relativeDir.Replace(System.IO.Path.DirectorySeparatorChar, ':').ToLower();
     }
 
@@ -66,58 +188,6 @@ public class Component(string path) : DynamicObject, IScriptableObject {
     /// <returns>Collection of dynamic member names.</returns>
     public override IEnumerable<string> GetDynamicMemberNames() {
         return DynamicMethods.Keys;
-    }
-    /// <summary>
-    /// Adds a property that gets exposed to the script context.
-    /// </summary>
-    /// <param name="prop">The property to add.</param>
-    /// <param name="obj">The instance of the class.</param>
-    /// <exception cref="Exception">Thrown when property lacks ScriptProperty attribute.</exception>
-    public void AddScriptProperty(PropertyInfo prop, object? obj = null) {
-        if (obj == null) obj = this;
-
-        var propertyName = prop.Name;
-        var scriptPropertyName = propertyName[0].ToString().ToLower() + propertyName[1..]; // Convert first letter to lowercase for JS naming convention
-        var scriptPropertyGetterName = "get" + propertyName;
-        var scriptPropertySetterName = "set" + propertyName;
-
-        var scriptPropertyInfo = prop.GetCustomAttribute<ScriptProperty>() ?? throw new Exception($"Property '{prop.Name}' is not a script property.");
-        var setMethod = prop.GetSetMethod();
-
-        if (setMethod != null && !scriptPropertyInfo.Immutable) {
-            ManilaEngine.GetInstance().CurrentContext!.ScriptEngine.AddHostObject(scriptPropertyName, FunctionUtils.ToDelegate(obj, prop.GetSetMethod()!));
-        }
-
-
-        var setterMethods = DynamicMethods.ContainsKey(scriptPropertySetterName) ? DynamicMethods[scriptPropertySetterName] : [];
-        var getterMethods = DynamicMethods.ContainsKey(scriptPropertyGetterName) ? DynamicMethods[scriptPropertyGetterName] : [];
-
-        if (setMethod != null && !scriptPropertyInfo.Immutable) setterMethods.Add(FunctionUtils.ToDelegate(obj, setMethod));
-        getterMethods.Add(FunctionUtils.ToDelegate(obj, prop.GetGetMethod()!));
-
-        DynamicMethods[scriptPropertySetterName] = setterMethods;
-        DynamicMethods[scriptPropertyGetterName] = getterMethods;
-    }
-
-    /// <summary>
-    /// Adds a script function to the component's dynamic methods.
-    /// </summary>
-    /// <param name="prop">The method to add.</param>
-    /// <param name="engine">The script engine.</param>
-    /// <param name="obj">The instance of the class.</param>
-    /// <exception cref="Exception">Thrown when method lacks ScriptFunction attribute.</exception>
-    public void AddScriptFunction(MethodInfo prop, ScriptEngine engine, object? obj = null) {
-        if (obj == null) obj = this;
-
-        Logger.Debug($"Adding function '{prop.Name}' to script context.");
-        var scriptFunctionInfo = prop.GetCustomAttribute<ScriptFunction>() ?? throw new Exception($"Method '{prop.Name}' is not a script function.");
-        var methods = DynamicMethods.ContainsKey(prop.Name) ? DynamicMethods[prop.Name] : new List<Delegate>();
-        methods.Add(FunctionUtils.ToDelegate(obj, prop));
-        DynamicMethods[prop.Name] = methods;
-
-        engine.AddHostObject(prop.Name, FunctionUtils.ToDelegate(obj, prop));
-
-        Logger.Debug($"Added function '{prop.Name}' to script context.");
     }
 
     /// <summary>
@@ -138,7 +208,7 @@ public class Component(string path) : DynamicObject, IScriptableObject {
                 var methodParams = method.Method.GetParameters();
                 for (int i = 0; i < methodParams.Length; ++i) {
                     var param = methodParams[i];
-                    Logger.Debug($"Parameter: {param.Name}");
+                    _logger.Debug($"Parameter: {param.Name}");
 
                     // Convert enum strings to enum values
                     if (param.ParameterType.IsEnum) {
@@ -157,91 +227,8 @@ public class Component(string path) : DynamicObject, IScriptableObject {
             }
         }
 
-        Logger.Debug($"Method '{binder.Name}' not found.");
+        _logger.Debug($"Method '{binder.Name}' not found.");
         return base.TryInvokeMember(binder, args, out result);
-    }
-
-    /// <summary>
-    /// Applies a plugin component to this component.
-    /// </summary>
-    /// <param name="component">The plugin component to apply.</param>
-    public void ApplyComponent(PluginComponent component) {
-        Logger.Debug($"Applying component '{component}'.");
-
-        if (PluginComponents.ContainsKey(component.GetType())) {
-            Logger.Warning($"Component '{component}' already applied.");
-            return;
-        }
-        PluginComponents.Add(component.GetType(), component);
-
-        if (component._plugin != null) {
-            foreach (var e in component._plugin.Enums) {
-                var currentContext = ManilaEngine.GetInstance().CurrentContext;
-                if (currentContext != null) {
-                    currentContext.ApplyEnum(e);
-                } else {
-                    Logger.Warning("CurrentContext is null. Cannot apply enum.");
-                }
-            }
-
-            ApplyPlugin(component._plugin);
-        }
-
-        foreach (var prop in component.GetType().GetProperties()) {
-            if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
-            AddScriptProperty(prop, component);
-        }
-    }
-
-    /// <summary>
-    /// Applies a plugin to this component.
-    /// </summary>
-    /// <param name="plugin">The plugin to apply.</param>
-    public void ApplyPlugin(ManilaPlugin plugin) {
-        var engineInstance = ManilaEngine.GetInstance();
-        var currentContext = engineInstance.CurrentContext;
-        if (currentContext == null) {
-            Logger.Warning("CurrentContext is null. Cannot apply plugin.");
-            return;
-        }
-        var scriptEngine = currentContext.ScriptEngine;
-        if (scriptEngine == null) {
-            Logger.Warning("ScriptEngine is null. Cannot add host type.");
-            return;
-        }
-
-        scriptEngine.AddHostType(plugin.GetType().Name, plugin.GetType());
-
-        if (plugin.Dependencies != null) {
-            foreach (var t in plugin.Dependencies) {
-                if (t == null) continue;
-                DependencyTypes.Add(t);
-
-                if (currentContext.ManilaAPI == null) {
-                    Logger.Warning("ManilaAPI is null. Cannot add dependency function.");
-                    continue;
-                }
-
-                currentContext.ManilaAPI.AddFunction(
-                    (Activator.CreateInstance(t) as Dependency)?.Type!,
-                    delegate (dynamic[] args) {
-                        if (Activator.CreateInstance(t) is not Dependency dep) {
-                            Logger.Warning($"Could not create instance of dependency type '{t}'.");
-                            return null;
-                        }
-                        dep.Create((object[]) args);
-                        return dep;
-                    }
-                );
-            }
-        }
-
-        if (Plugins.Contains(plugin.GetType())) {
-            Logger.Warning($"Plugin '{plugin}' already applied.");
-            return;
-        }
-
-        Plugins.Add(plugin.GetType());
     }
 
     /// <summary>

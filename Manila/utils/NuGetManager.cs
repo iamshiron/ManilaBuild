@@ -14,6 +14,11 @@ using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.Utils;
 
+public interface INuGetManager {
+    Task<List<string>> DownloadPackageWithDependenciesAsync(string packageId, string version);
+    void PersistCache();
+}
+
 /// <summary>
 /// Represents a cached NuGet package with its dependencies and assembly paths.
 /// </summary>
@@ -25,9 +30,12 @@ public class InstalledPackage {
 /// <summary>
 /// Manages downloading, caching, and resolving NuGet packages and their dependencies.
 /// </summary>
-public class NuGetManager {
+public class NuGetManager : INuGetManager {
     public readonly string PackageDir;
     public readonly string PackageCacheFilePath;
+
+    private readonly Logging.ILogger _logger;
+    private readonly IProfiler _profiler;
 
     // Caches package information. Key: "PackageID@Version", Value: Details about the package.
     private Dictionary<string, InstalledPackage> _installedPackages = [];
@@ -44,8 +52,11 @@ public class NuGetManager {
     /// Initializes a new instance of the <see cref="NuGetManager"/> class.
     /// </summary>
     /// <param name="packageDir">The directory to store downloaded packages.</param>
-    public NuGetManager(string packageDir) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+    public NuGetManager(Logging.ILogger logger, IProfiler profiler, string packageDir) {
+        _logger = logger;
+        _profiler = profiler;
+
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             PackageDir = packageDir;
             PackageCacheFilePath = Path.Combine(PackageDir, "nuget.json");
             Directory.CreateDirectory(PackageDir); // Ensures the directory exists.
@@ -58,7 +69,7 @@ public class NuGetManager {
 
     public void InitNuGetRepository() {
         if (_repository != null) return;
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             _repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
             _dependencyResource = _repository.GetResource<DependencyInfoResource>();
             _findPackageByIdResource = _repository.GetResource<FindPackageByIdResource>();
@@ -74,7 +85,7 @@ public class NuGetManager {
                 _installedPackages = data;
             }
         } catch (Exception e) {
-            Logger.Warning($"Unable to read NuGet package cache at '{PackageCacheFilePath}'. A new cache will be created. Reason: {e.Message}");
+            _logger.Warning($"Unable to read NuGet package cache at '{PackageCacheFilePath}'. A new cache will be created. Reason: {e.Message}");
         }
     }
 
@@ -83,7 +94,7 @@ public class NuGetManager {
             var serializedData = JsonSerializer.Serialize(_installedPackages, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(PackageCacheFilePath, serializedData);
         } catch (Exception e) {
-            Logger.Warning("Unable to write NuGet package cache! " + e.Message);
+            _logger.Warning("Unable to write NuGet package cache! " + e.Message);
         }
     }
 
@@ -94,7 +105,7 @@ public class NuGetManager {
     /// <param name="version">The version of the package to download.</param>
     /// <returns>A list of absolute file paths to the downloaded DLLs.</returns>
     public async Task<List<string>> DownloadPackageWithDependenciesAsync(string packageId, string version) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             string cacheKey = $"{packageId}@{version}";
             if (_installedPackages.TryGetValue(cacheKey, out var cachedPackage)) {
                 // Reconstruct absolute paths from cached relative paths.
@@ -139,7 +150,7 @@ public class NuGetManager {
     }
 
     private async Task WalkDependencyTreeAsync(string packageId, NuGetVersion version, HashSet<SourcePackageDependencyInfo> collectedPackages) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             _basePackages ??= GetInstalledBasePackages();
             if (packageId.StartsWith("System") || packageId.StartsWith("Microsoft") || _basePackages.Contains(packageId)) return;
 
@@ -210,18 +221,18 @@ public class NuGetManager {
         => Assembly.GetEntryAssembly()?.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName
            ?? throw new InvalidOperationException("Could not determine the application's target framework.");
 
-    private static List<string> GetInstalledBasePackages() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+    private List<string> GetInstalledBasePackages() {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             var basePackages = new List<string>();
             var entryAssembly = Assembly.GetEntryAssembly();
             if (entryAssembly == null) {
-                Logger.Warning("Could not get entry assembly. Unable to populate installed packages, loading will be slower.");
+                _logger.Warning("Could not get entry assembly. Unable to populate installed packages, loading will be slower.");
                 return basePackages;
             }
 
             var depsFilePath = Path.Combine(AppContext.BaseDirectory, $"{entryAssembly.GetName().Name}.deps.json");
             if (!File.Exists(depsFilePath)) {
-                Logger.Warning("Could not find .deps.json file. Unable to populate installed packages, loading will be slower.");
+                _logger.Warning("Could not find .deps.json file. Unable to populate installed packages, loading will be slower.");
                 return basePackages;
             }
 
@@ -234,7 +245,7 @@ public class NuGetManager {
                 }
             }
 
-            Logger.Debug($"Found {basePackages.Count} installed base packages.");
+            _logger.Debug($"Found {basePackages.Count} installed base packages.");
             return basePackages;
         }
     }
@@ -243,16 +254,19 @@ public class NuGetManager {
 /// <summary>
 /// A custom AssemblyLoadContext for loading plugin assemblies and their dependencies.
 /// </summary>
-public class PluginLoadContext(string pluginPath) : AssemblyLoadContext {
+public class PluginLoadContext(Logging.ILogger logger, IProfiler profiler, string pluginPath) : AssemblyLoadContext {
     private readonly AssemblyDependencyResolver _resolver = new(pluginPath);
     private readonly Dictionary<string, string> _dependencyMap = [];
+
+    private readonly Logging.ILogger _logger = logger;
+    private readonly IProfiler _profiler = profiler;
 
     /// <summary>
     /// Adds a NuGet dependency path to the context's internal resolution map.
     /// </summary>
     /// <param name="path">The full path to the dependency DLL.</param>
     public void AddDependency(string path) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             string assemblyName = Path.GetFileNameWithoutExtension(path);
             _dependencyMap.TryAdd(assemblyName, path);
         }
@@ -264,7 +278,7 @@ public class PluginLoadContext(string pluginPath) : AssemblyLoadContext {
     /// <param name="assemblyName">The name of the assembly to load.</param>
     /// <returns>The loaded Assembly, or null if it could not be found.</returns>
     public Assembly? TryLoad(AssemblyName assemblyName) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             // First, try to resolve using the plugin's own dependency resolver.
             string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
             if (assemblyPath != null) {
@@ -281,7 +295,7 @@ public class PluginLoadContext(string pluginPath) : AssemblyLoadContext {
     }
 
     protected override Assembly? Load(AssemblyName assemblyName) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             // Defer system and core Microsoft assemblies to the default AssemblyLoadContext.
             if (assemblyName.Name != null && (assemblyName.Name.StartsWith("System.") || assemblyName.Name.StartsWith("Microsoft."))) {
                 return null;
@@ -305,13 +319,11 @@ public static class PluginContextManager {
     /// </summary>
     /// <param name="context">The PluginLoadContext to add.</param>
     public static void AddContext(PluginLoadContext context) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            _contexts.Add(context);
+        _contexts.Add(context);
 
-            if (!_isHandlerRegistered) {
-                AssemblyLoadContext.Default.Resolving += OnDefaultContextResolving;
-                _isHandlerRegistered = true;
-            }
+        if (!_isHandlerRegistered) {
+            AssemblyLoadContext.Default.Resolving += OnDefaultContextResolving;
+            _isHandlerRegistered = true;
         }
     }
 
@@ -320,15 +332,12 @@ public static class PluginContextManager {
     /// This allows assemblies loaded in one plugin's context to be found by others.
     /// </summary>
     private static Assembly? OnDefaultContextResolving(AssemblyLoadContext context, AssemblyName name) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            // Iterate through all known plugin contexts to find the requested assembly.
-            foreach (var pluginContext in _contexts) {
-                var assembly = pluginContext.TryLoad(name);
-                if (assembly != null) {
-                    return assembly;
-                }
+        foreach (var pluginContext in _contexts) {
+            var assembly = pluginContext.TryLoad(name);
+            if (assembly != null) {
+                return assembly;
             }
-            return null;
         }
+        return null;
     }
 }

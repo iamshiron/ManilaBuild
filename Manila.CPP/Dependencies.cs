@@ -4,11 +4,9 @@ using Shiron.Manila.CPP.Components;
 
 namespace Shiron.Manila.CPP;
 
-public class DependencyLink : Dependency {
+public class DependencyLink(Workspace workspace) : Dependency("link") {
     public string Path { get; private set; } = string.Empty;
-
-    public DependencyLink() : base("link") {
-    }
+    private readonly Workspace _workspace = workspace;
 
     public override void Create(params object[] args) {
         if (args.Length != 1) throw new Exception("Link dependency requires one argument");
@@ -21,17 +19,15 @@ public class DependencyLink : Dependency {
     }
 }
 
-public class DependencyProject : Dependency {
+public class DependencyProject(Workspace workspace) : Dependency("project") {
     public UnresolvedProject Project { get; private set; } = null!;
     public string BuildJob { get; private set; } = string.Empty;
-
-    public DependencyProject() : base("project") {
-    }
+    private readonly Workspace _workspace = workspace;
 
     public override void Create(params object[] args) {
         if (args.Length != 2) throw new Exception("Project dependency requires two arguments");
         if (args[0] is not string || args[1] is not string) throw new Exception("Project dependency requires 2 string arguments");
-        this.Project = new UnresolvedProject((string) args[0]);
+        this.Project = new UnresolvedProject(_workspace, (string) args[0]);
         this.BuildJob = (string) args[1];
     }
     public override void Resolve(Project dependent) {

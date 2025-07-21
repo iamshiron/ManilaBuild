@@ -9,6 +9,7 @@ using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
+using Shiron.Manila.Registries;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
@@ -16,8 +17,15 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Primary API class exposing global Manila functions.
 /// </summary>
-public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
+public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobRegistry, IArtifactManager artifactManager, IExtensionManager extensionManager, ScriptContext context, Project? project, Workspace workspace) : ExposedDynamicObject {
     private readonly ScriptContext _context = context;
+    private readonly ILogger _logger = logger;
+    private readonly IProfiler _profiler = profiler;
+    private readonly Project? _project = project;
+    private readonly Workspace _workspace = workspace;
+    private readonly IJobRegistry _jobRegistry = jobRegistry;
+    private readonly IArtifactManager _artifactManager = artifactManager;
+    private readonly IExtensionManager _extensionManager = extensionManager;
 
     /// <summary>
     /// The current build configuration for this Manila instance.
@@ -44,8 +52,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public Project getProject() {
-        if (ManilaEngine.GetInstance().CurrentProject == null) throw new ContextException(Exceptions.Context.WORKSPACE, Exceptions.Context.PROJECT);
-        return ManilaEngine.GetInstance().CurrentProject!;
+        return _project ?? throw new ContextException(Context.WORKSPACE, Context.PROJECT);
     }
 
     /// <summary>
@@ -53,7 +60,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public UnresolvedProject getProject(string name) {
-        return new UnresolvedProject(name);
+        return new UnresolvedProject(_workspace, name);
     }
 
     /// <summary>
@@ -61,7 +68,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public Workspace getWorkspace() {
-        return ManilaEngine.GetInstance().Workspace;
+        return _workspace;
     }
 
     /// <summary>
@@ -85,7 +92,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ArtifactBuilder artifact(dynamic lambda) {
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
-        var builder = new ArtifactBuilder(() => lambda(), this, (BuildConfig) BuildConfig, getProject().Name);
+        var builder = new ArtifactBuilder(_workspace, () => lambda(), this, (BuildConfig) BuildConfig, getProject().Name);
         ArtifactBuilders.Add(builder);
         return builder;
     }
@@ -104,18 +111,18 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public JobBuilder job(string name) {
         if (CurrentArtifactBuilder != null) {
-            var jobBuilder = new JobBuilder(name, _context, getProject(), CurrentArtifactBuilder);
+            var jobBuilder = new JobBuilder(_logger, _jobRegistry, name, _context, getProject(), CurrentArtifactBuilder);
             CurrentArtifactBuilder.JobBuilders.Add(jobBuilder);
             return jobBuilder;
         }
 
         try {
-            var builder = new JobBuilder(name, _context, getProject(), null);
+            var builder = new JobBuilder(_logger, _jobRegistry, name, _context, getProject(), null);
             JobBuilders.Add(builder);
             return builder;
         } catch (ContextException e) {
-            if (e.Is != Exceptions.Context.WORKSPACE) throw;
-            var builder = new JobBuilder(name, _context, getWorkspace(), null);
+            if (e.Is != Context.WORKSPACE) throw;
+            var builder = new JobBuilder(_logger, _jobRegistry, name, _context, getWorkspace(), null);
             JobBuilders.Add(builder);
             return builder;
         }
@@ -142,7 +149,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(string pluginComponentKey) {
-        var component = ExtensionManager.GetInstance().GetPluginComponent(pluginComponentKey);
+        var component = _extensionManager.GetPluginComponent(pluginComponentKey);
         apply(component);
     }
 
@@ -152,7 +159,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(ScriptObject obj) {
         var version = obj.GetProperty("version");
-        var component = ExtensionManager.GetInstance().GetPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
+        var component = _extensionManager.GetPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
         apply(component);
     }
 
@@ -161,9 +168,11 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(PluginComponent component) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            Logger.Debug("Applying: " + component);
-            getProject().ApplyComponent(component);
+        if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
+
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            _logger.Debug("Applying: " + component);
+            ComponentContextApplyer.ApplyComponent(_logger, _context, _project, component);
             if (component is LanguageComponent lc) {
                 BuildConfig = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
             }
@@ -175,8 +184,8 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void onProject(object o, dynamic a) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            var filter = ProjectFilter.From(o);
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            var filter = ProjectFilter.From(_logger, o);
             getWorkspace().ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
         }
     }
@@ -186,7 +195,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public async Task runJob(string key) {
-        var job = ManilaEngine.GetInstance().GetJob(key) ?? throw new Exception("Job not found: " + key);
+        var job = _jobRegistry.GetJob(key) ?? throw new Exception("Job not found: " + key);
         await job.Execute();
     }
 
@@ -196,31 +205,32 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void build(Workspace workspace, Project project, BuildConfig config, string artifactID) {
         var artifact = project.Artifacts[artifactID];
-        artifact = ManilaEngine.GetInstance().ArtifactManager.AppendCahedData(artifact, config, project);
+        artifact = _artifactManager.AppendCahedData(artifact, config, project);
 
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            var logCache = new LogCache();
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            var logCache = new LogCache(_logger);
 
             using var logInjector = new LogInjector(
+                _logger,
                 logCache.Entries.Add
             );
 
-            var res = project.GetLanguageComponent().Build(workspace, project, config, artifact);
+            var res = project.GetLanguageComponent().Build(workspace, project, config, artifact, _artifactManager);
 
             if (res is BuildExitCodeSuccess) {
-                Logger.Info($"Build successful for {project.Name} with artifact {artifactID}");
+                _logger.Info($"Build successful for {project.Name} with artifact {artifactID}");
                 artifact.LogCache = logCache;
 
-                ManilaEngine.GetInstance().ArtifactManager.CacheArtifact(artifact, config, project);
+                _artifactManager.CacheArtifact(artifact, config, project);
             } else if (res is BuildExitCodeCached cached) {
-                Logger.Info($"Loaded cached build for {project.Name} with artifact {artifactID}.");
+                _logger.Info($"Loaded cached build for {project.Name} with artifact {artifactID}.");
 
-                if (artifact.LogCache == null) Logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
+                if (artifact.LogCache == null) _logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
 
-                Logger.Debug($"Current context ID: {LogContext.CurrentContextId}");
-                artifact.LogCache!.Replay(LogContext.CurrentContextId ?? Guid.Empty);
+                _logger.Debug($"Current context ID: {_logger.LogContext.CurrentContextID}");
+                artifact.LogCache!.Replay(_logger.LogContext.CurrentContextID ?? Guid.Empty);
             } else if (res is BuildExitCodeFailed failed) {
-                Logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
+                _logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
             }
         }
     }
@@ -238,7 +248,7 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void run(Project project) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             project.GetLanguageComponent().Run(project);
         }
     }
@@ -286,9 +296,9 @@ public sealed class Manila(ScriptContext context) : ExposedDynamicObject {
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public object import(string key) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            var t = Activator.CreateInstance(ExtensionManager.GetInstance().GetAPIType(key));
-            Logger.Debug($"Importing {key} as {t}");
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            var t = Activator.CreateInstance(_extensionManager.GetAPIType(key));
+            _logger.Debug($"Importing {key} as {t}");
 
             if (t == null)
                 throw new Exception($"Failed to import API type for key: {key}");

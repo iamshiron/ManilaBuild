@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Registries;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
@@ -21,7 +22,6 @@ public class JobScriptAction(ScriptObject obj) : IJobAction {
                 await task;
             }
         } catch (Exception e) {
-            Logger.Error("Error executing job script action: " + e.Message);
             throw new ManilaException("Error executing job script action", e);
         }
     }
@@ -34,13 +34,14 @@ public class JobShellAction(ShellUtils.CommandInfo info) : IJobAction {
         await Task.Yield();
     }
 }
-public class PrintAction(string message, string scriptPath, Guid scriptContextID) : IJobAction {
+public class PrintAction(ILogger logger, string message, string scriptPath, Guid scriptContextID) : IJobAction {
+    private readonly ILogger _logger = logger;
     private readonly string _message = message;
     private readonly string _scriptPath = scriptPath;
     private readonly Guid _scriptContextID = scriptContextID;
 
     public async Task Execute() {
-        Logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextID));
+        _logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextID));
         await Task.Yield();
     }
 }
@@ -48,7 +49,11 @@ public class PrintAction(string message, string scriptPath, Guid scriptContextID
 /// <summary>
 /// Represents a job in the build script.
 /// </summary>
-public class Job(JobBuilder builder) : ExecutableObject {
+public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) : ExecutableObject {
+    private readonly ILogger _logger = logger;
+    public readonly LogContext LogContext = new();
+    private readonly IJobRegistry _jobRegistry = jobRegistry;
+
     public readonly string Name = builder.Name;
     public readonly List<string> Dependencies = builder.Dependencies;
     public readonly IJobAction[] Actions = builder.Actions;
@@ -76,8 +81,8 @@ public class Job(JobBuilder builder) : ExecutableObject {
     public List<string> GetExecutionOrder() {
         List<string> result = [];
         foreach (string dependency in Dependencies) {
-            Job? dependentJob = ManilaEngine.GetInstance().GetJob(dependency);
-            if (dependentJob == null) { Logger.Warning("Job not found: " + dependency); continue; }
+            Job? dependentJob = _jobRegistry.GetJob(dependency);
+            if (dependentJob == null) { _logger.Warning("Job not found: " + dependency); continue; }
             List<string> dependencyOrder = dependentJob.GetExecutionOrder();
             foreach (string depJob in dependencyOrder) {
                 if (!result.Contains(depJob)) {
@@ -98,15 +103,15 @@ public class Job(JobBuilder builder) : ExecutableObject {
     }
 
     protected override async Task Run() {
-        Logger.Log(new JobExecutionStartedLogEntry(this, ExecutableID));
+        _logger.Log(new JobExecutionStartedLogEntry(this, ExecutableID));
         using (LogContext.PushContext(ExecutableID)) {
             try {
                 foreach (var a in Actions) await a.Execute();
             } catch (Exception e) {
-                Logger.Log(new JobExecutionFailedLogEntry(this, ExecutableID, e));
+                _logger.Log(new JobExecutionFailedLogEntry(this, ExecutableID, e));
                 throw;
             }
-            Logger.Log(new JobExecutionFinishedLogEntry(this, ExecutableID));
+            _logger.Log(new JobExecutionFinishedLogEntry(this, ExecutableID));
         }
     }
     public override string GetID() {

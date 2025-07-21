@@ -6,27 +6,30 @@ using Microsoft.ClearScript;
 using NUnit.Framework;
 using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Tests;
 
 [TestFixture]
 public class ProjectFilterTests {
+    public static readonly ILogger Logger = new Mock.MockLogger();
+
     [Test]
     public void From_String_CreatesProjectFilterName() {
-        var filter = ProjectFilter.From("my-project");
+        var filter = ProjectFilter.From(Logger, "my-project");
         Assert.That(filter, Is.InstanceOf<ProjectFilterName>());
     }
 
     [Test]
     public void From_WildcardString_CreatesProjectFilterAll() {
-        var filter = ProjectFilter.From("*");
+        var filter = ProjectFilter.From(Logger, "*");
         Assert.That(filter, Is.InstanceOf<ProjectFilterAll>());
     }
 
     [Test]
     public void From_ListOfObjects_CreatesProjectFilterArray() {
-        var filter = ProjectFilter.From(new List<object> { "proj1", "proj2" });
+        var filter = ProjectFilter.From(Logger, new List<object> { "proj1", "proj2" });
         Assert.That(filter, Is.InstanceOf<ProjectFilterArray>());
     }
 
@@ -34,9 +37,9 @@ public class ProjectFilterTests {
     public void ProjectFilterRegex_Predicate_MatchesCorrectly() {
         var regex = new Regex("^core-.*");
         var filter = new ProjectFilterRegex(regex);
-        var workspace = new Workspace(".");
-        var project1 = new Project("core-lib", ".", workspace);
-        var project2 = new Project("client-app", ".", workspace);
+        var workspace = new Workspace(Logger, ".");
+        var project1 = new Project(Logger, "core-lib", "./core-lib", ".", workspace);
+        var project2 = new Project(Logger, "client-app", "./client-app", ".", workspace);
 
         using (Assert.EnterMultipleScope()) {
             Assert.That(filter.Predicate(project1), Is.True);

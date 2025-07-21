@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -11,8 +12,11 @@ internal sealed class PluginsCommand : BaseAsyncManilaCommand<PluginsCommand.Set
     public class Settings : DefaultCommandSettings { }
 
     protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
-        var extensionManager = ExtensionManager.GetInstance();
-        await ManilaCLI.InitExtensions();
+        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
+            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
+
+        var extensionManager = ManilaCLI.ManilaEngine.ExtensionManager;
+        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, ManilaCLI.ManilaEngine);
 
         var table = new Table().Border(TableBorder.Rounded)
             .AddColumn(new TableColumn(TableColumns.Project))

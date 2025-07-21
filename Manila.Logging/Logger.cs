@@ -69,7 +69,7 @@ public class LogContext {
 /// <remarks>
 /// See <c>PluginInfo(Attributes.ManilaPlugin, object[])</c> as an example.
 /// </remarks>
-public class Logger : ILogger {
+public class Logger(string? loggerPrefix) : ILogger {
     /// <summary>
     /// Event that is raised whenever a log entry is created.
     /// Subscribers can handle this event to process log entries, such as writing them to a file or displaying them in the console.
@@ -80,6 +80,9 @@ public class Logger : ILogger {
     /// A dictionary holding the currently active log injectors, keyed by their unique ID.
     /// </summary>
     private readonly Dictionary<Guid, LogInjector> _activeInjectors = [];
+    public LogContext LogContext { get; } = new();
+
+    public string? LoggerPrefix => loggerPrefix;
 
     /// <summary>
     /// Registers a log injector to receive all log entries.
@@ -123,7 +126,7 @@ public class Logger : ILogger {
     /// </summary>
     /// <param name="message">The message to log.</param>
     public void Info(string message) {
-        Log(new BasicLogEntry(message, LogLevel.Info));
+        Log(new BasicLogEntry(message, LogLevel.Info, loggerPrefix));
     }
 
     /// <summary>
@@ -131,7 +134,7 @@ public class Logger : ILogger {
     /// </summary>
     /// <param name="message">The message to log.</param>
     public void Debug(string message) {
-        Log(new BasicLogEntry(message, LogLevel.Debug));
+        Log(new BasicLogEntry(message, LogLevel.Debug, loggerPrefix));
     }
 
     /// <summary>
@@ -139,7 +142,7 @@ public class Logger : ILogger {
     /// </summary>
     /// <param name="message">The message to log.</param>
     public void Warning(string message) {
-        Log(new BasicLogEntry(message, LogLevel.Warning));
+        Log(new BasicLogEntry(message, LogLevel.Warning, loggerPrefix));
     }
 
     /// <summary>
@@ -147,7 +150,7 @@ public class Logger : ILogger {
     /// </summary>
     /// <param name="message">The message to log.</param>
     public void Error(string message) {
-        Log(new BasicLogEntry(message, LogLevel.Error));
+        Log(new BasicLogEntry(message, LogLevel.Error, loggerPrefix));
     }
 
     /// <summary>
@@ -155,7 +158,7 @@ public class Logger : ILogger {
     /// </summary>
     /// <param name="message">The message to log.</param>
     public void Critical(string message) {
-        Log(new BasicLogEntry(message, LogLevel.Critical));
+        Log(new BasicLogEntry(message, LogLevel.Critical, loggerPrefix));
     }
 
     /// <summary>
@@ -163,6 +166,6 @@ public class Logger : ILogger {
     /// </summary>
     /// <param name="message">The message to log.</param>
     public void System(string message) {
-        Log(new BasicLogEntry(message, LogLevel.System));
+        Log(new BasicLogEntry(message, LogLevel.System, loggerPrefix));
     }
 }

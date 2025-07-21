@@ -18,6 +18,8 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public string? File { get; internal set; } = null;
     public readonly Dictionary<string, Type> APIClasses = [];
 
+    private readonly ILogger _logger = new Logger(name);
+
     /// <summary>
     /// Called upon initialization of the plugin.
     /// </summary>
@@ -31,27 +33,27 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// Prints a debug severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Debug(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Debug)); }
+    public void Debug(params object[] args) { _logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Debug)); }
     /// <summary>
     /// Prints a information severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Info(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Info)); }
+    public void Info(params object[] args) { _logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Info)); }
     /// <summary>
     /// Prints a warning severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Warn(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Warning)); }
+    public void Warn(params object[] args) { _logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Warning)); }
     /// <summary>
     /// Prints a error severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Error(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Error)); }
+    public void Error(params object[] args) { _logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Error)); }
     /// <summary>
     /// Prints a critical severity message.
     /// </summary>
     /// <param name="args">The message</param>
-    public void Critical(params object[] args) { Logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Critical)); }
+    public void Critical(params object[] args) { _logger.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Critical)); }
 
     /// <summary>
     /// Registers a component to the plugin.
@@ -112,6 +114,6 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// </summary>
     /// <returns>The directory the plugin is allowed to write/read to</returns>
     public string GetDataDir() {
-        return Path.Join(ManilaEngine.GetInstance().DataDir, "plugins", $"{Group}.{Name}");
+        return Path.Join(".manila", "plugins", $"{Group}.{Name}");
     }
 }

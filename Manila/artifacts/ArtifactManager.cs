@@ -10,7 +10,18 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Artifacts;
 
-public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
+public interface IArtifactManager {
+    string GetArtifactRoot(BuildConfig config, Project project, Artifact artifact);
+    void CacheArtifact(Artifact artifact, BuildConfig config, Project project);
+    Artifact AppendCahedData(Artifact artifact, BuildConfig config, Project project);
+    Task<bool> LoadCache();
+    void FlushCacheToDisk();
+}
+
+public class ArtifactManager(ILogger logger, IProfiler profiler, string artifactsDir, string artifactsCacheFile) : IArtifactManager {
+    private readonly ILogger _logger = logger;
+    private readonly IProfiler _profiler = profiler;
+
     public readonly string ArtifactsDir = artifactsDir;
     public readonly string ArtifactsCacheFile = artifactsCacheFile;
 
@@ -35,7 +46,7 @@ public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
     }
 
     public void CacheArtifact(Artifact artifact, BuildConfig config, Project project) {
-        _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(artifact, config, project);
+        _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
     }
 
     public Artifact AppendCahedData(Artifact artifact, BuildConfig config, Project project) {
@@ -43,13 +54,13 @@ public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
         if (_artifacts.TryGetValue(root, out var entry)) {
             artifact.LogCache = entry.LogCache;
         } else {
-            Logger.Warning($"No cached data found for artifact {artifact.Name} in {root}");
+            _logger.Warning($"No cached data found for artifact {artifact.Name} in {root}");
         }
         return artifact;
     }
 
     public async Task<bool> LoadCache() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             try {
                 if (!File.Exists(ArtifactsCacheFile)) return false;
 
@@ -70,7 +81,7 @@ public class ArtifactManager(string artifactsDir, string artifactsCacheFile) {
 
     public void FlushCacheToDisk() {
         if (_artifacts.Keys.Count == 0) {
-            Logger.Debug("No artifacts to flush to disk, skipping.");
+            _logger.Debug("No artifacts to flush to disk, skipping.");
             return;
         }
 
@@ -94,9 +105,9 @@ public class ArtifactCacheEntry(string artifactRoot, long createdAt, long lastAc
     public long Size { get; set; } = size;
     public LogCache LogCache { get; set; } = logCache;
 
-    public static ArtifactCacheEntry FromArtifact(Artifact artifact, BuildConfig config, Project project) {
+    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, Artifact artifact, BuildConfig config, Project project) {
         return new ArtifactCacheEntry(
-            ManilaEngine.GetInstance().ArtifactManager.GetArtifactRoot(config, project, artifact),
+            artifactManager.GetArtifactRoot(config, project, artifact),
             TimeUtils.Now(),
             TimeUtils.Now(),
             -1, // Size not implemented yet

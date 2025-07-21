@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.ClearScript.V8;
 using Shiron.Manila.API;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.Caching;
@@ -7,21 +8,13 @@ using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
+using Shiron.Manila.Registries;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
 public sealed class ManilaEngine {
     private static ManilaEngine? _instance;
-
-    /// <summary>
-    /// Gets the singleton instance of the ManilaEngine.
-    /// </summary>
-    public static ManilaEngine GetInstance() {
-        // Use null-coalescing assignment for a concise, thread-safe (in modern .NET) singleton initialization.
-        _instance ??= new ManilaEngine();
-        return _instance;
-    }
 
     #region Properties
 
@@ -66,14 +59,16 @@ public sealed class ManilaEngine {
     /// <summary>
     /// Gets the execution graph for managing job dependencies.
     /// </summary>
-    public ExecutionGraph ExecutionGraph { get; } = new();
-
-    public ArtifactManager ArtifactManager { get; }
+    public ExecutionGraph ExecutionGraph { get; }
 
     /// <summary>
     /// Gets the NuGet package manager.
     /// </summary>
     public NuGetManager NuGetManager { get; }
+
+    public readonly IJobRegistry JobRegisry = new JobRegistry();
+    public readonly IArtifactManager ArtifactManager;
+    public readonly IExtensionManager ExtensionManager;
 
     public readonly FileHashCache FileHashCache;
 
@@ -82,16 +77,33 @@ public sealed class ManilaEngine {
     /// </summary>
     public static readonly string VERSION = "0.0.1";
 
+    private readonly ILogger _logger;
+    private readonly IProfiler _profiler;
+
     #endregion
 
-    private ManilaEngine() {
+    private static V8ScriptEngine CreateScriptEngine() {
+        return new(
+            V8ScriptEngineFlags.EnableTaskPromiseConversion
+        ) {
+            ExposeHostObjectStaticMembers = true,
+        };
+    }
+
+    public ManilaEngine(ILogger logger, IProfiler profiler) {
+        _logger = logger;
+        _profiler = profiler;
+
         RootDir = Directory.GetCurrentDirectory();
-        Workspace = new(RootDir);
-        WorkspaceContext = new ScriptContext(this, Workspace, Path.Join(RootDir, "Manila.js"));
         DataDir = Path.Join(RootDir, ".manila");
-        NuGetManager = new(Path.Join(DataDir, "nuget"));
-        ArtifactManager = new(Path.Join(DataDir, "artifacts"), Path.Join(DataDir, "cache", "artifacts.json"));
+
+        NuGetManager = new(_logger, _profiler, Path.Join(DataDir, "nuget"));
+        ExtensionManager = new ExtensionManager(_logger, _profiler, NuGetManager);
+        ArtifactManager = new ArtifactManager(_logger, _profiler, Path.Join(DataDir, "artifacts"), Path.Join(DataDir, "cache", "artifacts.json"));
+        WorkspaceContext = new(_logger, profiler, CreateScriptEngine(), RootDir, Path.Join(RootDir, "Manila.js"));
+        Workspace = new(logger, RootDir);
         FileHashCache = new(Path.Join(DataDir, "cache", "filehashes.db"), RootDir);
+        ExecutionGraph = new(_logger, _profiler);
     }
 
     /// <summary>
@@ -102,20 +114,20 @@ public sealed class ManilaEngine {
         List<Task> projectTasks = [];
 
         if (!File.Exists("Manila.js")) {
-            Logger.Error("No Manila.js file found in the current directory.");
+            _logger.Error("No Manila.js file found in the current directory.");
             return;
         }
 
         async Task LoadCacheAndLogResult() {
             var result = await ArtifactManager.LoadCache();
             if (result) {
-                Logger.Info("Loaded artifacts cache from disk.");
+                _logger.Info("Loaded artifacts cache from disk.");
             } else {
-                Logger.Warning("No artifacts cache found, starting with an empty cache.");
+                _logger.Warning("No artifacts cache found, starting with an empty cache.");
             }
         }
 
-        Logger.Log(new EngineStartedLogEntry(RootDir, DataDir));
+        _logger.Log(new EngineStartedLogEntry(RootDir, DataDir));
 
         var workspaceScript = Path.Join(RootDir, "Manila.js");
         var files = Directory.GetFiles(".", "Manila.js", SearchOption.AllDirectories)
@@ -123,7 +135,7 @@ public sealed class ManilaEngine {
             .ToList();
 
         async Task RunAllScriptsAndProcessFiltersAsync() {
-            using (new ProfileScope("Running Scripts")) {
+            using (new ProfileScope(_profiler, "Running Scripts")) {
                 await RunWorkspaceScript();
 
                 var files = Directory.GetFiles(".", "Manila.js", SearchOption.AllDirectories)
@@ -139,7 +151,7 @@ public sealed class ManilaEngine {
                         foreach (var p in Workspace.Projects.Values) {
                             if (f.Item1.Predicate(p)) {
                                 foreach (var type in p.Plugins) {
-                                    var plugin = ExtensionManager.GetInstance().GetPlugin(type);
+                                    var plugin = ExtensionManager.GetPlugin(type);
                                     foreach (var e in plugin.Enums) {
                                         WorkspaceContext.ApplyEnum(e);
                                     }
@@ -156,7 +168,7 @@ public sealed class ManilaEngine {
         tasks.Add(RunAllScriptsAndProcessFiltersAsync());
 
         await Task.WhenAll(tasks);
-        Logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - EngineCreatedTime));
+        _logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - EngineCreatedTime));
     }
 
     /// <summary>
@@ -164,29 +176,30 @@ public sealed class ManilaEngine {
     /// </summary>
     /// <param name="path">The relative path to the project script from the root directory.</param>
     public async Task RunProjectScript(string path) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path));
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            var projectRoot = Path.GetDirectoryName(Path.Join(Directory.GetCurrentDirectory(), path)) ?? throw new ManilaException($"Failed to determine project root for script: {path}");
+            var projectName = Path.GetRelativePath(Directory.GetCurrentDirectory(), projectRoot).ToLower().Replace(Path.DirectorySeparatorChar, ':');
             var scriptPath = Path.Join(Directory.GetCurrentDirectory(), path);
-            var safeProjectRoot = projectRoot ?? Directory.GetCurrentDirectory();
-            var projectName = Path.GetRelativePath(Directory.GetCurrentDirectory(), safeProjectRoot).ToLower().Replace(Path.DirectorySeparatorChar, ':');
 
-            Logger.Log(new ProjectDiscoveredLogEntry(projectRoot!, scriptPath));
+            _logger.Log(new ProjectDiscoveredLogEntry(projectRoot, scriptPath));
 
-            CurrentProject = new Project(projectName, projectRoot!, Workspace);
+            CurrentProject = new(_logger, projectName, projectRoot, RootDir, Workspace);
             Workspace!.Projects.Add(projectName, CurrentProject);
-            CurrentContext = new ScriptContext(this, CurrentProject, Path.Join(RootDir, path));
+            CurrentContext = new(_logger, _profiler, CreateScriptEngine(), RootDir, Path.Join(RootDir, path));
 
             CurrentContext.ApplyEnum<EPlatform>();
             CurrentContext.ApplyEnum<EArchitecture>();
 
-            CurrentContext.Init();
+            CurrentContext.Init(new(
+                _logger, _profiler, JobRegisry, ArtifactManager, ExtensionManager, CurrentContext, CurrentProject, Workspace
+            ), CurrentProject);
             try {
-                await CurrentContext.ExecuteAsync();
+                await CurrentContext.ExecuteAsync(FileHashCache, CurrentProject);
             } catch {
                 throw;
             }
 
-            Logger.Log(new ProjectInitializedLogEntry(CurrentProject));
+            _logger.Log(new ProjectInitializedLogEntry(CurrentProject));
 
             CurrentProject = null;
             CurrentContext = null;
@@ -196,15 +209,19 @@ public sealed class ManilaEngine {
     /// Executes the workspace script (Manila.js in the root directory).
     /// </summary>
     public async Task RunWorkspaceScript() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            Logger.Debug("Running workspace script: " + WorkspaceContext.ScriptPath);
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            _logger.Debug("Running workspace script: " + WorkspaceContext.ScriptPath);
 
-            WorkspaceContext.ApplyEnum<EPlatform>();
             WorkspaceContext.ApplyEnum<EArchitecture>();
+            WorkspaceContext.ApplyEnum<EPlatform>();
 
-            WorkspaceContext.Init();
+            WorkspaceContext.Init(new(
+                _logger, _profiler, JobRegisry, ArtifactManager, ExtensionManager, WorkspaceContext, CurrentProject, Workspace
+            ), Workspace);
             try {
-                await WorkspaceContext.ExecuteAsync();
+                await WorkspaceContext.ExecuteAsync(
+                    FileHashCache, Workspace
+                );
             } catch {
                 throw;
             }
@@ -216,12 +233,12 @@ public sealed class ManilaEngine {
     /// </summary>
     /// <param name="jobID">The ID of the job to execute.</param>
     public void ExecuteBuildLogic(string jobID) {
-        var job = GetJob(jobID);
-        Logger.Debug($"Found job: {job}");
+        var job = JobRegisry.GetJob(jobID);
+        _logger.Debug($"Found job: {job}");
 
         // Add all existing jobs to the graph, hopefully I'll find a better solution for this in the future
         ExecutionGraph.ExecutionLayer[] layers = [];
-        using (new ProfileScope("Building Dependency Tree")) {
+        using (new ProfileScope(_profiler, "Building Dependency Tree")) {
             List<Job> Jobs = [.. Workspace.Jobs];
             foreach (var p in Workspace.Projects.Values) {
                 Jobs.AddRange([.. p.Jobs]);
@@ -233,7 +250,7 @@ public sealed class ManilaEngine {
             foreach (var t in Jobs) {
                 List<ExecutableObject> dependencies = [];
                 foreach (var d in t.Dependencies) {
-                    dependencies.Add(GetJob(d));
+                    dependencies.Add(JobRegisry.GetJob(d) ?? throw new ManilaException($"Dependency '{d}' not found for job '{t.Name}'"));
                 }
                 ExecutionGraph.Attach(t, dependencies);
             }
@@ -241,19 +258,19 @@ public sealed class ManilaEngine {
             layers = ExecutionGraph.GetExecutionLayers(jobID);
         }
 
-        Logger.Log(new BuildLayersLogEntry(layers));
+        _logger.Log(new BuildLayersLogEntry(layers));
 
         long startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        Logger.Log(new BuildStartedLogEntry());
+        _logger.Log(new BuildStartedLogEntry());
 
-        using (new ProfileScope("Executing Execution Layers")) {
+        using (new ProfileScope(_profiler, "Executing Execution Layers")) {
             try {
                 int layerIndex = 0;
                 foreach (var layer in layers) {
-                    using (new ProfileScope($"Executing Layer {layerIndex}")) {
+                    using (new ProfileScope(_profiler, $"Executing Layer {layerIndex}")) {
                         Guid layerContextID = Guid.NewGuid();
-                        Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
-                        using (LogContext.PushContext(layerContextID)) {
+                        _logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
+                        using (_logger.LogContext.PushContext(layerContextID)) {
                             List<Task> layerJobs = [];
 
                             foreach (var o in layer.Items) {
@@ -261,50 +278,18 @@ public sealed class ManilaEngine {
                             }
 
                             Task.WhenAll(layerJobs).GetAwaiter().GetResult();
-                            Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
+                            _logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
                         }
 
                         layerIndex++;
                     }
                 }
-                Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
+                _logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
             } catch (Exception e) {
                 var ex = new BuildException(e.Message, e);
-                Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
+                _logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
                 throw ex;
             }
-        }
-    }
-
-    public bool HasJob(string uri) {
-        return GetJob(uri) != null;
-    }
-
-    public Job GetJob(string uri) {
-        var info = RegexUtils.MatchJobs(uri) ?? throw new ManilaException($"Invalid job URI: {uri}");
-
-        if (info.Project == null) {
-            var temp = Workspace.Jobs.Find(m => m.Name == info.Job) ?? throw new ManilaException($"Job {uri} not found!");
-            return temp;
-        }
-
-        var project = Workspace.Projects[info.Project];
-        if (info.Artifact == null) {
-            var temp = project.Jobs.Find(m => m.Name == info.Job) ?? throw new ManilaException($"Job {uri} not found!");
-            return temp;
-        }
-
-        var t = project.Artifacts[info.Artifact].Jobs.First(t => t.Name == info.Job) ?? throw new ManilaException($"Job {uri} not found!");
-        return t;
-    }
-    public bool TryGetJob(string uri, out Job? job) {
-        try {
-            var t = GetJob(uri);
-            job = t;
-            return t != null;
-        } catch {
-            job = null;
-            return false;
         }
     }
 

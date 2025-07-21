@@ -7,12 +7,9 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Represents a workspace containing projects.
 /// </summary>
-public class Workspace : Component {
+public class Workspace(ILogger logger, string location) : Component(logger, location, location) { // The workspace always lies within the root directory
     public Dictionary<string, Project> Projects { get; } = new();
     public List<Tuple<ProjectFilter, Action<Project>>> ProjectFilters { get; } = new();
-
-    public Workspace(string location) : base(location) {
-    }
 
     public override string GetIdentifier() {
         return "";

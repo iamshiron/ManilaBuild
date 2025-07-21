@@ -8,7 +8,7 @@ namespace Shiron.Manila.API.Builders;
 /// <summary>
 /// Builder for creating artifacts within a Manila build configuration.
 /// </summary>
-public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig buildConfig, string projectName) : IBuildable<Artifact> {
+public sealed class ArtifactBuilder(Workspace workspace, Action lambda, Manila manilaAPI, BuildConfig buildConfig, string projectName) : IBuildable<Artifact> {
     /// <summary>
     /// The build configuration associated with this artifact.
     /// </summary>
@@ -48,6 +48,8 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
     /// The name of the artifact.
     /// </summary>
     public string? Name = null;
+
+    private readonly Workspace _workspace = workspace;
 
     /// <summary>
     /// Sets the description for this artifact.
@@ -90,6 +92,6 @@ public sealed class ArtifactBuilder(Action lambda, Manila manilaAPI, BuildConfig
         ManilaAPI.CurrentArtifactBuilder = this;
         Lambda.Invoke();
         ManilaAPI.CurrentArtifactBuilder = null;
-        return new(this);
+        return new(_workspace, this);
     }
 }

@@ -11,9 +11,12 @@ internal sealed class JobsCommand : BaseAsyncManilaCommand<JobsCommand.Settings>
     public sealed class Settings : DefaultCommandSettings { }
 
     protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
-        var engine = ManilaEngine.GetInstance();
+        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
+            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
 
-        await ManilaCLI.InitExtensions();
+        var engine = ManilaCLI.ManilaEngine;
+
+        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, engine);
         await engine.Run();
         if (engine.Workspace == null) throw new ManilaException(Messages.NoWorkspace);
 

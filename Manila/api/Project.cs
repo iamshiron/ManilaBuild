@@ -13,7 +13,7 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Represents a project in the build script.
 /// </summary>
-public class Project(string name, string location, Workspace workspace) : Component(location) {
+public class Project(ILogger logger, string name, string projectRoot, string root, Workspace workspace) : Component(logger, root, projectRoot) {
     /// <summary>
     /// The unique name of the project.
     /// </summary>
@@ -67,6 +67,7 @@ public class Project(string name, string location, Workspace workspace) : Compon
     /// The workspace containing this project.
     /// </summary>
     public Workspace Workspace { get; private set; } = workspace;
+    private readonly ILogger _logger = logger;
 
     /// <summary>
     /// Configures source sets for the project from a collection of builders.
@@ -132,7 +133,7 @@ public class Project(string name, string location, Workspace workspace) : Compon
         }
         foreach (var (name, builder) in _sourceSetBuilders) {
             SourceSets[name] = builder.Build();
-            Logger.Debug($"{Name} - {name} - SHA256: {SourceSets[name].Fingerprint()}");
+            _logger.Debug($"{Name} - {name} - SHA256: {SourceSets[name].Fingerprint()}");
         }
     }
 }

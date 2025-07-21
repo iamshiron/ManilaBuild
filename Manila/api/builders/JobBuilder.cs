@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.ClearScript;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Registries;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API.Builders;
@@ -9,7 +10,10 @@ namespace Shiron.Manila.API.Builders;
 /// <summary>
 /// Builder for creating jobs within a Manila build configuration.
 /// </summary>
-public sealed class JobBuilder(string name, ScriptContext context, Component component, ArtifactBuilder? artifactBuilder) : IBuildable<Job> {
+public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string name, ScriptContext context, Component component, ArtifactBuilder? artifactBuilder) : IBuildable<Job> {
+    private readonly ILogger _logger = logger;
+    private readonly IJobRegistry _jobRegistry = jobRegistry;
+
     /// <summary>
     /// The name of the job.
     /// </summary>
@@ -85,12 +89,12 @@ public sealed class JobBuilder(string name, ScriptContext context, Component com
     /// <returns>Job instance for chaining calls</returns>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public JobBuilder execute(object o) {
-        Logger.System($"Adding action to job {Name} in ({o.GetType().FullName})");
+        _logger.System($"Adding action to job {Name} in ({o.GetType().FullName})");
         if (o is IJobAction action) {
-            Logger.Debug($"Found job action of type {action.GetType().FullName}");
+            _logger.Debug($"Found job action of type {action.GetType().FullName}");
             Actions = [action];
         } else if (o is IList<object> list) {
-            Logger.Debug($"Found {list.Count} chained actions!");
+            _logger.Debug($"Found {list.Count} chained actions!");
             Actions = list.Cast<IJobAction>().ToArray();
         } else {
             var obj = (ScriptObject) o;
@@ -125,6 +129,6 @@ public sealed class JobBuilder(string name, ScriptContext context, Component com
     /// </summary>
     /// <returns>The built job instance.</returns>
     public Job Build() {
-        return new(this);
+        return new(_logger, _jobRegistry, this);
     }
 }

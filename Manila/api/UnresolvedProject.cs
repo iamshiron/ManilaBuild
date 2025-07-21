@@ -7,8 +7,9 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Represents an unresolved project. Used for the configuration of projects in build scripts, where the project is not yet resolved.
 /// </summary>
-public class UnresolvedProject(string identifier) {
+public class UnresolvedProject(Workspace workspace, string identifier) {
     public readonly string Identifier = identifier;
+    public readonly Workspace Workspace = workspace;
 
     /// <summary>
     /// Resolve the project from the identifier.
@@ -16,7 +17,7 @@ public class UnresolvedProject(string identifier) {
     /// <returns>The resolved project</returns>
     /// <exception cref="Exception">Project either does not exist or is unknown to the context</exception>
     public Project Resolve() {
-        foreach (var pair in ManilaEngine.GetInstance().Workspace.Projects) {
+        foreach (var pair in Workspace.Projects) {
             if (pair.Value.GetIdentifier() == Identifier) {
                 return pair.Value;
             }

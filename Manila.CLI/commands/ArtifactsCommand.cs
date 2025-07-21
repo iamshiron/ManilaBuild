@@ -11,9 +11,11 @@ internal sealed class ArtifactsCommand : AsyncCommand<ArtifactsCommand.Settings>
     public sealed class Settings : DefaultCommandSettings { }
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings) {
-        var engine = ManilaEngine.GetInstance();
+        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
+            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
 
-        await ManilaCLI.InitExtensions();
+        var engine = ManilaCLI.ManilaEngine;
+        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, engine);
         await engine.Run();
         if (engine.Workspace == null) throw new ManilaException("Not inside a workspace");
 
@@ -29,15 +31,15 @@ internal sealed class ArtifactsCommand : AsyncCommand<ArtifactsCommand.Settings>
             var project = p.Value;
 
             foreach (var (name, artifact) in project.Artifacts) {
-                var artifactsTable = new Table();
-                artifactsTable.AddColumn(new TableColumn("[cyan]Job[/]"));
-                artifactsTable.AddColumn(new TableColumn("[green]Description[/]"));
+                var artifactsTable = new Table()
+                    .AddColumn(new TableColumn("[cyan]Job[/]"))
+                    .AddColumn(new TableColumn("[green]Description[/]"));
 
                 foreach (var job in artifact.Jobs) {
-                    artifactsTable.AddRow($"[cyan bold]{job.Name}[/]", job.Description);
+                    _ = artifactsTable.AddRow($"[cyan bold]{job.Name}[/]", job.Description);
                 }
 
-                table.AddRow(
+                _ = table.AddRow(
                     new Markup($"[bold cyan]{project.Name}[/]"),
                     new Markup($"[bold blue]{name}[/]"),
                     new Markup(artifact.Description ?? ""),

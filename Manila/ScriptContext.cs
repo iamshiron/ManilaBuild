@@ -5,6 +5,7 @@ using Microsoft.ClearScript.V8;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.Attributes;
+using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
@@ -12,32 +13,77 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
-public sealed class ScriptContext(ManilaEngine engine, API.Component component, string scriptPath) {
+public interface IScriptContext {
+    /// <summary>
+    /// A list of enum types that have been applied to the script engine.
+    /// </summary>
+    List<Type> EnumComponents { get; }
+
+    V8ScriptEngine ScriptEngine { get; }
+
+    /// <summary>
+    /// Gets the full path for the compiled script file.
+    /// </summary>
+    /// <returns>The path to the compiled file.</returns>
+    string GetCompiledFilePath();
+
+    /// <summary>
+    /// Initializes the script context, setting up the script engine and APIs.
+    /// </summary>
+    void Init(API.Manila manilaAPI, Component component);
+
+    /// <summary>
+    /// Gets an environment variable, checking project-specific variables first.
+    /// </summary>
+    /// <param name="key">The key of the environment variable.</param>
+    /// <returns>The value of the environment variable, or null if not found.</returns>
+    string? GetEnvironmentVariable(string key);
+
+    /// <summary>
+    /// Sets a project-specific environment variable.
+    /// </summary>
+    /// <param name="key">The key of the environment variable.</param>
+    /// <param name="value">The value to set.</param>
+    void SetEnvironmentVariable(string key, string value);
+
+    /// <summary>
+    /// Asynchronously executes the script associated with this context.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous execution operation.</returns>
+    Task ExecuteAsync(FileHashCache cache, Component component);
+
+    /// <summary>
+    /// Applies an enum type to the script engine, making it available in the script.
+    /// </summary>
+    /// <typeparam name="T">The enum type to apply.</typeparam>
+    void ApplyEnum<T>();
+
+    /// <summary>
+    /// Applies an enum type to the script engine, making it available in the script.
+    /// </summary>
+    /// <param name="t">The enum type to apply.</param>
+    void ApplyEnum(Type t);
+}
+
+public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEngine scriptEngine, string rootDir, string scriptPath) : IScriptContext {
+    private readonly ILogger _logger = logger;
+    private readonly IProfiler _profiler = profiler;
+
+    private readonly string _rootDir = rootDir;
+    private readonly string _dataDir = Path.Join(rootDir, ".manila");
+
     /// <summary>
     /// The script engine used by this context.
     /// </summary>
     [JsonIgnore]
-    public readonly V8ScriptEngine ScriptEngine = new(
-        V8ScriptEngineFlags.EnableTaskPromiseConversion
-    ) {
-        ExposeHostObjectStaticMembers = true,
-    };
-    /// <summary>
-    /// The engine this context is part of. Currently only used as an alias for the to not have to call GetInstance() all the time.
-    /// </summary>
+    public V8ScriptEngine ScriptEngine { get => scriptEngine; }
 
-    [JsonIgnore]
-    public ManilaEngine Engine { get; private set; } = engine;
     /// <summary>
     /// The path to the script file.
     /// </summary>
     public string ScriptPath { get; private set; } = scriptPath;
     public readonly string ScriptHash = HashUtils.HashFile(scriptPath);
 
-    /// <summary>
-    /// The component this context is part of.
-    /// </summary>
-    public readonly Component Component = component;
     /// <summary>
     /// Mostly used for logging
     /// </summary>
@@ -48,14 +94,14 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// </summary>
     private Dictionary<string, string> EnvironmentVariables { get; } = new();
 
-    public API.Manila? ManilaAPI { get; private set; } = null;
+    public List<Type> EnumComponents { get; } = [];
 
-    public List<Type> EnumComponents { get; } = new();
+    public API.Manila? ManilaAPI { get; private set; } = null;
 
     public string GetCompiledFilePath() {
         var fileName = $"{ScriptHash[0..16]}.bin";
         return Path.Join(
-            Engine.DataDir,
+            _dataDir,
             "compiled",
             fileName
         );
@@ -64,23 +110,24 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <summary>
     /// Initializes the script context.
     /// </summary>
-    public void Init() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            Logger.Debug($"Initializing script context for '{ScriptPath}'");
+    public void Init(API.Manila manilaAPI, Component component) {
+        ManilaAPI = manilaAPI;
 
-            ManilaAPI = new API.Manila(this);
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            _logger.Debug($"Initializing script context for '{ScriptPath}'");
+
             ScriptEngine.AddHostObject("Manila", ManilaAPI);
             ScriptEngine.AddHostObject("print", (params object[] args) => {
-                Logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args), ContextID));
+                _logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args), ContextID));
             });
 
-            foreach (var prop in Component.GetType().GetProperties()) {
+            foreach (var prop in ScriptEngine.GetType().GetProperties()) {
                 if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
-                Component.AddScriptProperty(prop);
+                ComponentContextApplyer.AddScriptProperty(_logger, this, component, prop);
             }
-            foreach (var func in Component.GetType().GetMethods()) {
+            foreach (var func in component.GetType().GetMethods()) {
                 if (func.GetCustomAttribute<ScriptFunction>() == null) continue;
-                Component.AddScriptFunction(func, ScriptEngine);
+                ComponentContextApplyer.AddScriptFunction(_logger, component, func, ScriptEngine);
             }
         }
     }
@@ -89,23 +136,23 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// Asynchronously loads environment variables from a .env file if it exists.
     /// </summary>
     private async Task LoadEnvironmentVariables() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             EnvironmentVariables.Clear();
 
             string? projectDir = Path.GetDirectoryName(ScriptPath);
             if (projectDir == null) {
-                Logger.Warning($"Could not determine project directory for '{ScriptPath}'.");
+                _logger.Warning($"Could not determine project directory for '{ScriptPath}'.");
                 return;
             }
 
             string envFilePath = Path.Combine(projectDir, ".env");
 
             if (!File.Exists(envFilePath)) {
-                Logger.Debug($"No .env file found for '{ScriptPath}'.");
+                _logger.Debug($"No .env file found for '{ScriptPath}'.");
                 return;
             }
 
-            Logger.Debug($"Loading environment variables from '{envFilePath}'.");
+            _logger.Debug($"Loading environment variables from '{envFilePath}'.");
             try {
                 // 3. Use ReadAllLinesAsync for non-blocking file I/O.
                 foreach (string line in await File.ReadAllLinesAsync(envFilePath)) {
@@ -121,7 +168,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                     }
                 }
             } catch (Exception ex) {
-                Logger.Warning($"Error loading environment variables: {ex.Message}");
+                _logger.Warning($"Error loading environment variables: {ex.Message}");
             }
         }
     }
@@ -143,14 +190,12 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <summary>
     /// Executes the script after performing necessary checks and setup.
     /// </summary>
-    public async Task ExecuteAsync() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
-            if (ManilaAPI == null) {
-                throw new ManilaException("ScriptEngine needs to be initialized before running a script!");
-            }
+    public async Task ExecuteAsync(FileHashCache cache, Component component) {
+        if (ManilaAPI == null) throw new ManilaException("ManilaAPI is not initialized. Call Init() before executing the script.");
 
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            Logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
+            _logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
 
             try {
                 await LoadEnvironmentVariables();
@@ -158,18 +203,18 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                 var jobCompletion = new TaskCompletionSource<bool>();
                 SetupScriptEngine(jobCompletion);
 
-                await ExecuteScript();
+                await ExecuteScript(cache);
 
                 // Await the script's completion signal.
                 _ = await jobCompletion.Task;
 
-                Component.Finalize(ManilaAPI);
+                component.Finalize(ManilaAPI);
             } catch (Exception e) {
                 HandleExecutionException(e);
                 // The above method re-throws, so this is the end of the line.
             }
 
-            Logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
+            _logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
         }
     }
 
@@ -177,8 +222,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// Checks if the script file has changed, logs the result, and returns its content.
     /// </summary>
     /// <returns>The content of the script file.</returns>
-    private bool CheckForScriptChanges() {
-        return Engine.FileHashCache.HasChanged(ScriptPath, ScriptHash);
+    private bool CheckForScriptChanges(FileHashCache cache) {
+        return cache.HasChanged(ScriptPath, ScriptHash);
     }
 
     /// <summary>
@@ -231,29 +276,29 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// <param name="code">The script code to compile.</param>
     /// <param name="bytes">The compiled bytecode output.</param>
     /// <returns>True if compilation was successful or cached bytecode was used, false otherwise.</returns>
-    private bool CompileScriptAndRead(string code, out byte[] bytes) {
+    private bool CompileScriptAndRead(FileHashCache cahce, string code, out byte[] bytes) {
         var documentInfo = new DocumentInfo(ScriptPath);
         var binaryFilePath = GetCompiledFilePath();
         var directory = Path.GetDirectoryName(binaryFilePath)!;
 
-        var fileChanged = CheckForScriptChanges();
+        var fileChanged = CheckForScriptChanges(cahce);
 
         if (!fileChanged && File.Exists(binaryFilePath)) {
-            Logger.Debug($"Using cached compiled script from '{binaryFilePath}'.");
+            _logger.Debug($"Using cached compiled script from '{binaryFilePath}'.");
             bytes = File.ReadAllBytes(binaryFilePath);
             return true;
         }
 
-        Engine.FileHashCache.AddOrUpdate(ScriptPath, ScriptHash);
+        cahce.AddOrUpdate(ScriptPath, ScriptHash);
         if (!Directory.Exists(directory)) _ = Directory.CreateDirectory(directory);
 
         _ = ScriptEngine.Compile(documentInfo, code, V8CacheKind.Code, out bytes);
         if (bytes != null && bytes.Length > 0) {
             File.WriteAllBytes(binaryFilePath, bytes);
-            Logger.Debug($"Compiled script saved to '{binaryFilePath}'.");
+            _logger.Debug($"Compiled script saved to '{binaryFilePath}'.");
             return false;
         } else {
-            Logger.Error($"Failed to compile script '{ScriptPath}'. No bytecode generated.");
+            _logger.Error($"Failed to compile script '{ScriptPath}'. No bytecode generated.");
             return false;
         }
     }
@@ -262,8 +307,8 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
     /// Wraps the script content in an async IIFE and executes it.
     /// </summary>
     /// <param name="scriptContent">The script code to execute.</param>
-    private async Task ExecuteScript() {
-        using (new ProfileScope("Executing Script")) {
+    private async Task ExecuteScript(FileHashCache cache) {
+        using (new ProfileScope(_profiler, "Executing Script")) {
             var scriptContent = await File.ReadAllTextAsync(ScriptPath);
             var code = $@"
                 (async function() {{
@@ -275,15 +320,15 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
                     }}
                 }})();";
 
-            if (!CompileScriptAndRead(code, out var bytes)) {
-                Logger.Warning($"Script '{ScriptPath}' could not be compiled or cached. Using raw code execution.");
+            if (!CompileScriptAndRead(cache, code, out var bytes)) {
+                _logger.Warning($"Script '{ScriptPath}' could not be compiled or cached. Using raw code execution.");
             }
 
             var script = ScriptEngine.Compile(new DocumentInfo(ScriptPath), code, V8CacheKind.Code, bytes, out var accepted);
             if (!accepted) {
-                Logger.Warning($"Script '{ScriptPath}' was not accepted by the script engine. It may have been modified or is invalid.");
+                _logger.Warning($"Script '{ScriptPath}' was not accepted by the script engine. It may have been modified or is invalid.");
             } else {
-                Logger.Debug($"Script '{ScriptPath}' loaded successfully.");
+                _logger.Debug($"Script '{ScriptPath}' loaded successfully.");
             }
 
             ScriptEngine.Execute(script);
@@ -298,10 +343,10 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         // Re-throw ScriptingExceptions as they are already formatted.
         if (e is ScriptingException) throw e;
 
-        var relativePath = Path.GetRelativePath(ManilaEngine.GetInstance().RootDir, ScriptPath);
+        var relativePath = Path.GetRelativePath(_rootDir, ScriptPath);
         var errorMessage = e is ScriptEngineException see ? see.ErrorDetails ?? see.Message : e.Message;
         var ex = new ScriptingException($"An error occurred in '{relativePath}': {errorMessage}", e);
-        Logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
+        _logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
         throw ex;
     }
 
@@ -321,7 +366,7 @@ public sealed class ScriptContext(ManilaEngine engine, API.Component component, 
         if (t.GetType().GetCustomAttributes<ScriptEnum>() == null) throw new Exception($"Object '{t}' is not a script enum.");
 
         if (EnumComponents.Contains(t)) {
-            Logger.Warning($"Enum '{t}' already applied.");
+            _logger.Warning($"Enum '{t}' already applied.");
             return;
         }
 

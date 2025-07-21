@@ -22,8 +22,8 @@ public abstract class ProjectFilter {
     /// <param name="o">The input object to convert to a filter.</param>
     /// <returns>A ProjectFilter instance based on the input type.</returns>
     /// <exception cref="ManilaException">Thrown when the input cannot be converted to a valid filter.</exception>
-    public static ProjectFilter From(object o) {
-        Logger.Debug("From " + o.GetType());
+    public static ProjectFilter From(ILogger logger, object o) {
+        logger.Debug("From " + o.GetType());
 
         if (o is string) {
             var s = (string) o;
@@ -32,10 +32,10 @@ public abstract class ProjectFilter {
         }
 
         if (o is IList<object> list) {
-            Logger.Debug("Array");
+            logger.Debug("Array");
 
             var filters = new ProjectFilter[list.Count];
-            for (var i = 0; i < list.Count; i++) filters[i] = From(list[i]);
+            for (var i = 0; i < list.Count; i++) filters[i] = From(logger, list[i]);
             return new ProjectFilterArray(filters);
         }
 
@@ -43,9 +43,9 @@ public abstract class ProjectFilter {
             foreach (var key in obj.PropertyNames) {
                 try {
                     var value = obj.GetProperty(key);
-                    Logger.Debug($"Property: {key}, Value: {value}, Type: {value?.GetType()}");
+                    logger.Debug($"Property: {key}, Value: {value}, Type: {value?.GetType()}");
                 } catch (Exception ex) {
-                    Logger.Debug($"Error accessing property {key}: {ex.Message}");
+                    logger.Debug($"Error accessing property {key}: {ex.Message}");
                 }
             }
 
@@ -55,7 +55,7 @@ public abstract class ProjectFilter {
                 string pattern = objString.Substring(1, lastSlashIndex - 1);
                 string flags = lastSlashIndex < objString.Length - 1 ? objString.Substring(lastSlashIndex + 1) : "";
 
-                Logger.Debug($"Detected regex pattern: '{pattern}', flags: '{flags}'");
+                logger.Debug($"Detected regex pattern: '{pattern}', flags: '{flags}'");
                 return new ProjectFilterRegex(new Regex(pattern));
             }
 
@@ -65,11 +65,11 @@ public abstract class ProjectFilter {
                 if (constructorName == "RegExp") {
                     string pattern = dyn.source;
                     string flags = dyn.flags;
-                    Logger.Debug($"Detected RegExp object with pattern: '{pattern}', flags: '{flags}'");
+                    logger.Debug($"Detected RegExp object with pattern: '{pattern}', flags: '{flags}'");
                     return new ProjectFilterRegex(new Regex(pattern));
                 }
             } catch (Exception ex) {
-                Logger.Debug($"Error checking constructor: {ex.Message}");
+                logger.Debug($"Error checking constructor: {ex.Message}");
             }
         }
 

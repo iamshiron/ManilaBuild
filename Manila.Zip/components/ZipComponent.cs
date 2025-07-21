@@ -10,9 +10,9 @@ public class ZipComponent : LanguageComponent {
     public ZipComponent() : base("zip", typeof(ZipBuildConfig)) {
     }
 
-    public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact) {
+    public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact, IArtifactManager artifactManager) {
         var instance = ManilaZip.Instance!;
-        var artifactRoot = ManilaEngine.GetInstance().ArtifactManager.GetArtifactRoot(config, project, artifact);
+        var artifactRoot = artifactManager.GetArtifactRoot(config, project, artifact);
 
         if (Directory.Exists(artifactRoot)) {
             return new BuildExitCodeCached(artifactRoot);

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.Utils;
 
@@ -74,7 +75,10 @@ public class NoOpExecutableObject : ExecutableObject {
 /// Represents a directed acyclic graph of executable objects, capable of resolving
 /// complex dependency chains and calculating parallel execution layers.
 /// </summary>
-public class ExecutionGraph {
+public class ExecutionGraph(ILogger logger, IProfiler profiler) {
+    private readonly ILogger _logger = logger;
+    private readonly IProfiler _profiler = profiler;
+
     /// <summary>
     /// Represents a node within the <see cref="ExecutionGraph"/>, containing an <see cref="ExecutableObject"/>
     /// and its relationships to other nodes.
@@ -142,7 +146,7 @@ public class ExecutionGraph {
     /// <param name="main">The main object to be added or updated in the graph.</param>
     /// <param name="dependencies">A list of objects that the main object directly depends on.</param>
     public void Attach(ExecutableObject main, List<ExecutableObject> dependencies) {
-        Logger.Debug($"Attaching {((Job) main).GetIdentifier()}");
+        _logger.Debug($"Attaching {((Job) main).GetIdentifier()}");
 
         var mainNode = GetOrCreateNode(main);
 
@@ -177,25 +181,23 @@ public class ExecutionGraph {
     /// </summary>
     /// <returns>A formatted string visualizing the graph.</returns>
     public override string ToString() {
-        var sb = new StringBuilder();
-        sb.AppendLine("Execution Graph:");
-        sb.AppendLine("--------------------");
+        var sb = new StringBuilder()
+            .AppendLine("Execution Graph:")
+            .AppendLine("--------------------");
 
         if (_nodes.Count == 0) {
-            sb.AppendLine("Graph is empty.");
-            return sb.ToString();
+            return sb.AppendLine("Graph is Empty").ToString();
         }
 
         foreach (var node in _nodes.Values) {
-            sb.AppendLine($"Node: {node}");
+            _ = sb.AppendLine($"Node: {node}")
+                .Append("  Parents: ")
+                .AppendLine(node.Parents.Count == 0 ? "None" : string.Join(", ", node.Parents))
 
-            sb.Append("  Parents: ");
-            sb.AppendLine(node.Parents.Count == 0 ? "None" : string.Join(", ", node.Parents));
+                .Append("  Children: ")
+                .AppendLine(node.Children.Count == 0 ? "None" : string.Join(", ", node.Children))
 
-            sb.Append("  Children: ");
-            sb.AppendLine(node.Children.Count == 0 ? "None" : string.Join(", ", node.Children));
-
-            sb.AppendLine("--------------------");
+                .AppendLine("--------------------");
         }
 
         return sb.ToString();
@@ -207,8 +209,8 @@ public class ExecutionGraph {
     /// </summary>
     /// <returns>A string formatted for use with Mermaid.js.</returns>
     public string ToMermaid() {
-        var sb = new StringBuilder();
-        sb.AppendLine("graph TD"); // TD = Top Down
+        var sb = new StringBuilder()
+            .AppendLine("graph TD"); // TD = Top Down
 
         if (_nodes.Count == 0) {
             return sb.ToString();
@@ -218,14 +220,14 @@ public class ExecutionGraph {
 
         foreach (var childNode in _nodes.Values) {
             if (childNode.Parents.Count == 0 && childNode.Children.Count == 0) {
-                sb.AppendLine($"  id{childNode.ExecutableObject.GetHashCode()}[\"{childNode.ExecutableObject}\"]");
+                _ = sb.AppendLine($"  id{childNode.ExecutableObject.GetHashCode()}[\"{childNode.ExecutableObject}\"]");
                 continue;
             }
 
             foreach (var parentNode in childNode.Parents) {
                 string link = $"id{parentNode.ExecutableObject.GetHashCode()} --> id{childNode.ExecutableObject.GetHashCode()}";
                 if (definedLinks.Add(link)) {
-                    sb.AppendLine($"  id{parentNode.ExecutableObject.GetHashCode()}[\"{parentNode.ExecutableObject}\"] --> id{childNode.ExecutableObject.GetHashCode()}[\"{childNode.ExecutableObject}\"]");
+                    _ = sb.AppendLine($"  id{parentNode.ExecutableObject.GetHashCode()}[\"{parentNode.ExecutableObject}\"] --> id{childNode.ExecutableObject.GetHashCode()}[\"{childNode.ExecutableObject}\"]");
                 }
             }
         }
@@ -267,8 +269,8 @@ public class ExecutionGraph {
         var directChildrenMap = subgraphNodes.ToDictionary(n => n, n => new List<ExecutionNode>());
         foreach (var node in subgraphNodes) {
             foreach (var parent in node.Parents) {
-                if (directChildrenMap.ContainsKey(parent)) {
-                    directChildrenMap[parent].Add(node);
+                if (directChildrenMap.TryGetValue(parent, out List<ExecutionNode>? value)) {
+                    value.Add(node);
                 }
             }
         }

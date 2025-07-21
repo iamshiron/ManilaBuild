@@ -37,9 +37,12 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
     };
 
     protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
-        var engine = ManilaEngine.GetInstance();
+        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
+            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
 
-        await ManilaCLI.InitExtensions();
+        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, ManilaCLI.ManilaEngine);
+        var engine = ManilaCLI.ManilaEngine;
+
         await engine.Run();
         if (engine.Workspace == null) throw new ManilaException(Messages.NoWorkspace);
 
@@ -275,7 +278,10 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
     }
 
     private static object GetPluginsData(ManilaEngine engine, Settings settings) {
-        var mgr = ExtensionManager.GetInstance();
+        if (ManilaCLI.ManilaEngine == null)
+            throw new ManilaException("Manila engine is not initialized.");
+
+        var mgr = ManilaCLI.ManilaEngine.ExtensionManager;
         var list = new List<object>();
         foreach (var plugin in mgr.Plugins) {
             var pluginData = new {

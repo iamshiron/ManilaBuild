@@ -3,17 +3,34 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Logging;
-using Shiron.Manila.Profiling; // Assuming ProfileScope is in this namespace
+using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Ext;
+
+public interface IExtensionManager {
+    void Init(string pluginDir);
+    Task LoadPlugins();
+    void InitPlugins();
+    void ReleasePlugins();
+    T GetPlugin<T>() where T : ManilaPlugin;
+    ManilaPlugin GetPlugin(Type type);
+    ManilaPlugin GetPlugin(string group, string name, string? version = null);
+    PluginComponent GetPluginComponent(string group, string name, string component, string? version = null);
+    ManilaPlugin GetPlugin(string key);
+    PluginComponent GetPluginComponent(string key);
+    Type GetAPIType(string key);
+
+    public List<ManilaPlugin> Plugins { get; }
+}
+
 /// <summary>
 /// Manages the loading, retrieval, and lifecycle of plugins. This is a global singleton.
 /// </summary>
-public class ExtensionManager {
-    private ExtensionManager() { }
-
-    private static readonly ExtensionManager _instance = new();
+public class ExtensionManager(ILogger logger, IProfiler profiler, INuGetManager nuGetManager) : IExtensionManager {
+    private readonly ILogger _logger = logger;
+    private readonly IProfiler _profiler = profiler;
+    private readonly INuGetManager _nuGetManager = nuGetManager;
 
     /// <summary>
     /// The default group assigned to plugins that do not specify one.
@@ -40,11 +57,6 @@ public class ExtensionManager {
     /// </summary>
     public static readonly Regex NugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d-]+)", RegexOptions.Compiled);
 
-    public static ExtensionManager GetInstance() {
-        // This is a simple getter for a static readonly instance, profiling overhead is not beneficial here.
-        return _instance;
-    }
-
     public string? PluginDir { get; private set; }
     public List<ManilaPlugin> Plugins { get; } = [];
 
@@ -61,20 +73,19 @@ public class ExtensionManager {
     /// Discovers and loads all plugins from the specified plugin directory.
     /// </summary>
     public async Task LoadPlugins() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             if (PluginDir == null) throw new Exception("Plugin directory not set. Call Init() first.");
 
-            Logger.Log(new LoadingPluginsLogEntry(PluginDir, Guid.NewGuid()));
+            _logger.Log(new LoadingPluginsLogEntry(PluginDir, Guid.NewGuid()));
 
             if (!Directory.Exists(PluginDir)) {
-                Logger.Warning($"Plugin directory does not exist: {PluginDir}. Skipping plugin loading.");
+                _logger.Warning($"Plugin directory does not exist: {PluginDir}. Skipping plugin loading.");
                 return;
             }
 
-            var nugetManager = ManilaEngine.GetInstance().NuGetManager;
             foreach (var file in Directory.GetFiles(PluginDir, "*.dll")) {
-                using (new ProfileScope($"LoadPluginFile: {Path.GetFileName(file)}")) { // Profile each plugin file loading
-                    var loadContext = new PluginLoadContext(file);
+                using (new ProfileScope(_profiler, $"LoadPluginFile: {Path.GetFileName(file)}")) { // Profile each plugin file loading
+                    var loadContext = new PluginLoadContext(_logger, _profiler, file);
                     PluginContextManager.AddContext(loadContext);
                     var assembly = Assembly.LoadFile(Path.GetFullPath(file));
 
@@ -84,37 +95,37 @@ public class ExtensionManager {
                         var plugin = (ManilaPlugin?) Activator.CreateInstance(type) ?? throw new Exception($"Failed to create instance of plugin {type} from {file}.");
                         plugin.File = file;
                         Plugins.Add(plugin);
-                        Logger.Log(new LoadingPluginLogEntry(plugin, Guid.NewGuid()));
+                        _logger.Log(new LoadingPluginLogEntry(plugin, Guid.NewGuid()));
 
                         // Handle NuGet dependencies
                         foreach (var dep in plugin.NugetDependencies) {
-                            using (new ProfileScope($"ResolveNugetDependency: {dep} for {plugin.Name}")) { // Profile NuGet dependency resolution
+                            using (new ProfileScope(_profiler, $"ResolveNugetDependency: {dep} for {plugin.Name}")) { // Profile NuGet dependency resolution
                                 var match = NugetDependencyPattern.Match(dep);
                                 if (!match.Success) throw new Exception($"Invalid NuGet dependency format: '{dep}' in plugin {plugin.Name}.");
 
                                 var package = match.Groups["package"].Value;
                                 var version = match.Groups["version"].Value;
 
-                                Logger.Info($"Plugin {plugin.Name} requires dependency: {package}@{version}");
+                                _logger.Info($"Plugin {plugin.Name} requires dependency: {package}@{version}");
                                 var nugetContextID = Guid.NewGuid();
-                                Logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin, nugetContextID));
+                                _logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin, nugetContextID));
 
                                 List<string> nugetPackages = [];
-                                using (new ProfileScope("Download Dependencies")) {
-                                    nugetPackages = await nugetManager.DownloadPackageWithDependenciesAsync(package, version);
+                                using (new ProfileScope(_profiler, "Download Dependencies")) {
+                                    nugetPackages = await _nuGetManager.DownloadPackageWithDependenciesAsync(package, version);
                                 }
 
-                                using (new ProfileScope("Load Assemblies")) {
+                                using (new ProfileScope(_profiler, "Load Assemblies")) {
                                     foreach (var assemblyPath in nugetPackages) {
-                                        Logger.Log(new NuGetSubPackageLoadingEntry(assemblyPath, nugetContextID));
+                                        _logger.Log(new NuGetSubPackageLoadingEntry(assemblyPath, nugetContextID));
                                         loadContext.AddDependency(assemblyPath);
                                     }
                                 }
-                                Logger.Info($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
+                                _logger.Info($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
                             }
                         }
 
-                        Logger.Debug($"Loaded {plugin.GetType().FullName}!");
+                        _logger.Debug($"Loaded {plugin.GetType().FullName}!");
                         // Inject plugin instance into static properties marked with [PluginInstance]
                         foreach (var prop in type.GetProperties()) {
                             if (prop.GetCustomAttribute<PluginInstance>() != null)
@@ -123,7 +134,7 @@ public class ExtensionManager {
                     }
                 }
             }
-            nugetManager.PersistCache();
+            _nuGetManager.PersistCache();
         }
     }
 
@@ -131,9 +142,9 @@ public class ExtensionManager {
     /// Calls the Init() method on all loaded plugins.
     /// </summary>
     public void InitPlugins() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             foreach (var plugin in Plugins) {
-                using (new ProfileScope($"InitPlugin: {plugin.Name}")) { // Profile each plugin's Init
+                using (new ProfileScope(_profiler, $"InitPlugin: {plugin.Name}")) { // Profile each plugin's Init
                     plugin.Init();
                 }
             }
@@ -144,9 +155,9 @@ public class ExtensionManager {
     /// Calls the Release() method on all loaded plugins.
     /// </summary>
     public void ReleasePlugins() {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             foreach (var plugin in Plugins) {
-                using (new ProfileScope($"ReleasePlugin: {plugin.Name}")) { // Profile each plugin's Release
+                using (new ProfileScope(_profiler, $"ReleasePlugin: {plugin.Name}")) { // Profile each plugin's Release
                     plugin.Release();
                 }
             }
@@ -160,13 +171,13 @@ public class ExtensionManager {
     /// <returns>The plugin instance.</returns>
     /// <exception cref="Exception">Thrown if the plugin is not found.</exception>
     public T GetPlugin<T>() where T : ManilaPlugin {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             return (T) GetPlugin(typeof(T));
         }
     }
 
     public ManilaPlugin GetPlugin(Type type) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             foreach (var plugin in Plugins) {
                 if (plugin.GetType() == type) return plugin;
             }
@@ -175,7 +186,7 @@ public class ExtensionManager {
     }
 
     public ManilaPlugin GetPlugin(string group, string name, string? version = null) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             if (version == string.Empty) version = null;
             foreach (var plugin in Plugins) {
                 if (plugin.Group == group && plugin.Name == name && (version == null || plugin.Version == version)) {
@@ -187,7 +198,7 @@ public class ExtensionManager {
     }
 
     public PluginComponent GetPluginComponent(string group, string name, string component, string? version = null) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             // This calls GetPlugin, which is already profiled.
             // The GetComponent call itself is internal to ManilaPlugin and its complexity is managed there.
             return GetPlugin(group, name, version).GetComponent(component);
@@ -201,7 +212,7 @@ public class ExtensionManager {
     /// <returns>The plugin instance.</returns>
     /// <exception cref="Exception">Thrown if the key is invalid or plugin is not found.</exception>
     public ManilaPlugin GetPlugin(string key) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             var match = PluginPattern.Match(key);
             if (!match.Success) throw new Exception("Invalid plugin key: " + key);
             // This calls another GetPlugin overload, which is already profiled.
@@ -216,7 +227,7 @@ public class ExtensionManager {
     /// <returns>The component instance.</returns>
     /// <exception cref="Exception">Thrown if the key is invalid or component is not found.</exception>
     public PluginComponent GetPluginComponent(string key) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             var match = ComponentPattern.Match(key);
             if (!match.Success) throw new Exception("Invalid component key: " + key);
             // This calls GetPluginComponent, which is already profiled.
@@ -231,7 +242,7 @@ public class ExtensionManager {
     /// <returns>The API type.</returns>
     /// <exception cref="Exception">Thrown if the key is invalid or the class is not found.</exception>
     public Type GetAPIType(string key) {
-        using (new ProfileScope(MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             var match = APIClassPattern.Match(key);
             if (!match.Success) throw new Exception("Invalid API class key: " + key);
             // This calls GetPlugin, which is already profiled.

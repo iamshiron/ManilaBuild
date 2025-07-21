@@ -33,6 +33,7 @@ public static class AnsiConsoleRenderer {
     private static bool _stackTrace = false;
 
     private static readonly ConcurrentDictionary<string, TreeNode> _executionNodes = [];
+    private static ILogger? _logger;
 
     private static readonly object _lock = new();
 
@@ -41,11 +42,12 @@ public static class AnsiConsoleRenderer {
     /// </summary>
     /// <param name="quiet">If true, only logs with level Error or higher.</param>
     /// <param name="structured">If true, outputs raw JSON instead of rendering.</param>
-    public static void Init(bool quiet, bool verbose, bool structured, bool stackTrace) {
+    public static void Init(ILogger logger, bool quiet, bool verbose, bool structured, bool stackTrace) {
         if (quiet && structured) throw new Exception("Cannot use quiet logging while structured logging is enabled!");
 
         _verbose = verbose;
         _stackTrace = stackTrace;
+        _logger = logger;
 
         var jsonSerializerSettings = new JsonSerializerSettings {
             ContractResolver = new CamelCasePropertyNamesContractResolver(),
@@ -55,7 +57,7 @@ public static class AnsiConsoleRenderer {
             NullValueHandling = NullValueHandling.Ignore
         };
 
-        Logger.OnLogEntry += entry => {
+        _logger.OnLogEntry += entry => {
             if (structured) {
                 Console.WriteLine(JsonConvert.SerializeObject(entry, jsonSerializerSettings));
                 return;
@@ -71,7 +73,7 @@ public static class AnsiConsoleRenderer {
             }
         };
 
-        if (structured && verbose) { Logger.Warning("Ignoring 'verbose' flag is the logger is running in structured mode!"); Logger.Info("Logger always logs everything when running on structured mode!"); }
+        if (structured && verbose) { _logger?.Warning("Ignoring 'verbose' flag is the logger is running in structured mode!"); _logger?.Info("Logger always logs everything when running on structured mode!"); }
     }
 
     /// <summary>
@@ -245,19 +247,19 @@ public static class AnsiConsoleRenderer {
         PushLog($"[[[grey]{entry.Plugin.Name}[/]/[{_logLevelColorMappings[entry.Level]}]{entry.Level}[/]]]: {entry.Message}", entry.ParentContextID.ToString());
     }
     private static void HandleEngineStartedLogEntry(EngineStartedLogEntry entry) {
-        Logger.Info("ManilaEngine started!");
+        _logger?.Info("ManilaEngine started!");
     }
     private static void HandleBuildLayersLogEntry(BuildLayersLogEntry entry) {
-        Logger.Info($"Building using [yellow]{entry.Layers.Length}[/] layers!");
+        _logger?.Info($"Building using [yellow]{entry.Layers.Length}[/] layers!");
     }
     private static void HandleBuildLayerCompletedLogEntry(BuildLayerCompletedLogEntry entry) {
         PushLog($"[green]{Emoji.Known.Package} Layer [yellow]{entry.LayerIndex}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
     }
     private static void HandleProjectsInitializedLogEntry(ProjectsInitializedLogEntry entry) {
-        Logger.Info($"Initialization took [yellow]{entry.Duration}[/]ms!");
+        _logger?.Info($"Initialization took [yellow]{entry.Duration}[/]ms!");
     }
     private static void HandleScriptExecutionStartedLogEntry(ScriptExecutionStartedLogEntry entry) {
-        Logger.Debug($"Running script {entry.ScriptPath}");
+        _logger?.Debug($"Running script {entry.ScriptPath}");
     }
     private static void HandleScriptLogEntry(ScriptLogEntry entry) {
         PushLog($"[yellow]>[/] {entry.Message}", entry.ParentContextID.ToString(), entry.ContextID);
@@ -273,13 +275,13 @@ public static class AnsiConsoleRenderer {
         _buildCompletion?.TrySetResult(true);
     }
     private static void HandleProjectDiscoveredLogEntry(ProjectDiscoveredLogEntry entry) {
-        Logger.System($"Found project in {entry.Root}");
+        _logger?.System($"Found project in {entry.Root}");
     }
     private static void HandleProjectInitializedLogEntry(ProjectInitializedLogEntry entry) {
-        Logger.System($"Project {entry.Project.Name} initialized!");
+        _logger?.System($"Project {entry.Project.Name} initialized!");
     }
     private static void HandleJobDiscoveredLogEntry(JobDiscoveredLogEntry entry) {
-        Logger.System($"Discovered job {entry.Job.Name} for {entry.Component.Root} in {entry.Component.Root}");
+        _logger?.System($"Discovered job {entry.Job.Name} for {entry.Component.Root} in {entry.Component.Root}");
     }
     private static void HandleCommandExecutionLogEntry(CommandExecutionLogEntry entry) {
         PushLog($"[green]$>[/] [grey]{Path.GetFileName(entry.Executable)} {Markup.Escape(string.Join(" ", entry.Args))}[/]", entry.ParentContextID.ToString(), entry.ContextID);

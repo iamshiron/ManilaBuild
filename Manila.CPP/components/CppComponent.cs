@@ -10,16 +10,13 @@ namespace Shiron.Manila.CPP.Components;
 /// <summary>
 /// Represents a C++ project.
 /// </summary>
-public class CppComponent : LanguageComponent {
-    public CppComponent(string name) : base(name, typeof(CPPBuildConfig)) {
-    }
-
+public class CppComponent(string name) : LanguageComponent(name, typeof(CPPBuildConfig)) {
     [ScriptProperty]
     public EToolChain? ToolChain { get; set; }
     public List<string> IncludeDirs { get; set; } = [];
     public List<string> Links { get; set; } = [];
 
-    public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact) {
+    public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact, IArtifactManager artifactManager) {
         foreach (var dep in project.Dependencies) {
             dep.Resolve(project);
         }

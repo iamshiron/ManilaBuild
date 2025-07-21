@@ -47,8 +47,8 @@ public static class ShellUtils {
     /// <param name="args">The command arguments.</param>
     /// <param name="workingDir">Optional working directory where the command will be executed. If null, the current directory is used.</param>
     /// <returns>The exit code of the process.</returns>
-    public static int Run(string command, string[]? args = null, string? workingDir = null) {
-        return Run(new(command, args, workingDir));
+    public static int Run(string command, string[]? args = null, string? workingDir = null, ILogger? logger = null) {
+        return Run(new(command, args, workingDir), logger);
     }
 
     /// <summary>
@@ -61,8 +61,8 @@ public static class ShellUtils {
     /// <param name="args">The command arguments.</param>
     /// <param name="workingDir">Optional working directory where the command will be executed. If null, the current directory is used.</param>
     /// <returns>The exit code of the process.</returns>
-    public static int RunSuppressed(string command, string[]? args, string? workingDir = null) {
-        return Run(new(command, args, workingDir, true, true));
+    public static int RunSuppressed(string command, string[]? args, string? workingDir = null, ILogger? logger = null) {
+        return Run(new(command, args, workingDir, true, true), logger);
     }
 
     /// <summary>
@@ -75,12 +75,12 @@ public static class ShellUtils {
     /// </remarks>
     /// <param name="info">An object containing all configuration for the command execution.</param>
     /// <returns>The exit code of the process.</returns>
-    public static int Run(CommandInfo info) {
+    public static int Run(CommandInfo info, ILogger? logger = null) {
         var workingDir = info.WorkingDir ?? Directory.GetCurrentDirectory();
         var contextID = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        Logger.Log(new CommandExecutionLogEntry(contextID, info.Command, info.Args, workingDir));
+        logger?.Log(new CommandExecutionLogEntry(contextID, info.Command, info.Args, workingDir));
 
         var startInfo = new ProcessStartInfo() {
             FileName = info.Command,
@@ -104,13 +104,13 @@ public static class ShellUtils {
         process.OutputDataReceived += (sender, e) => {
             if (e.Data == null) return;
             _ = stdOutBuilder.AppendLine(e.Data);
-            if (!info.Suppress) Logger.Log(new CommandStdOutLogEntry(contextID, e.Data, info.Quiet));
+            if (!info.Suppress) logger?.Log(new CommandStdOutLogEntry(contextID, e.Data, info.Quiet));
         };
 
         process.ErrorDataReceived += (sender, e) => {
             if (e.Data == null) return;
             _ = stdErrBuilder.AppendLine(e.Data);
-            if (!info.Suppress) Logger.Log(new CommandStdErrLogEntry(contextID, e.Data, info.Quiet));
+            if (!info.Suppress) logger?.Log(new CommandStdErrLogEntry(contextID, e.Data, info.Quiet));
         };
 
         _ = process.Start();
@@ -119,11 +119,11 @@ public static class ShellUtils {
         process.WaitForExit();
 
         if (process.ExitCode == 0) {
-            Logger.Log(new CommandExecutionFinishedLogEntry(
+            logger?.Log(new CommandExecutionFinishedLogEntry(
                 contextID, stdOutBuilder.ToString(), stdErrBuilder.ToString(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, process.ExitCode
             ));
         } else {
-            Logger.Log(new CommandExecutionFailedLogEntry(
+            logger?.Log(new CommandExecutionFailedLogEntry(
                 contextID, stdOutBuilder.ToString(), stdErrBuilder.ToString(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, process.ExitCode
             ));
         }

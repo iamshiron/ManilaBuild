@@ -6,9 +6,9 @@ using Shiron.Manila.API.Builders;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.CLI;
 using Shiron.Manila.CLI.Commands;
-using Shiron.Manila.CLI.Exceptions;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
+using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 using Spectre.Console;
@@ -23,13 +23,17 @@ public static class ManilaCLI {
     public static string ProfilingDir => Path.Combine(Directory.GetCurrentDirectory(), Directories.Profiles);
     public static CommandApp<DefaultCommand> CommandApp = new CommandApp<DefaultCommand>();
 
-    public static void SetupInitialComponents(DefaultCommandSettings settings) {
-        AnsiConsoleRenderer.Init(settings.Quiet, settings.Verbose, settings.Structured, settings.StackTrace);
+    public static ManilaEngine? ManilaEngine { get; private set; }
+    public static IProfiler? Profiler { get; private set; }
+    public static ILogger? Logger { get; private set; }
+
+    public static void SetupInitialComponents(ILogger logger, DefaultCommandSettings settings) {
+        AnsiConsoleRenderer.Init(logger, settings.Quiet, settings.Verbose, settings.Structured, settings.StackTrace);
     }
 
-    public static async Task InitExtensions() {
-        using (new ProfileScope("Initializing Plugins")) {
-            var extensionManager = ExtensionManager.GetInstance();
+    public static async Task InitExtensions(IProfiler profiler, ManilaEngine engine) {
+        using (new ProfileScope(profiler, "Initializing Plugins")) {
+            var extensionManager = engine.ExtensionManager;
             extensionManager.Init($"./{Directories.Plugins}");
             await extensionManager.LoadPlugins();
             extensionManager.InitPlugins();
@@ -41,7 +45,7 @@ public static class ManilaCLI {
         if (engine.Workspace == null) throw new Exception("Workspace not found!");
     }
 
-    public static int RunJob(ManilaEngine engine, ExtensionManager extensionManager, DefaultCommandSettings settings, string job) {
+    public static int RunJob(ManilaEngine engine, IExtensionManager extensionManager, DefaultCommandSettings settings, string job) {
         return ErrorHandler.SafeExecute(() => {
             engine.ExecuteBuildLogic(job);
             extensionManager.ReleasePlugins();
@@ -52,9 +56,13 @@ public static class ManilaCLI {
     public static int Main(string[] args) {
 #if DEBUG
         Directory.SetCurrentDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "../../../../run"));
-        Profiler.IsEnabled = true;
 #endif
         Console.OutputEncoding = Encoding.UTF8;
+
+        Logger = new Logger(null);
+        Profiler = new Profiler(Logger);
+
+        ManilaEngine = new(Logger, Profiler);
 
         var logOptions = new {
             Structured = args.Contains(CommandOptions.Structured) || args.Contains(CommandOptions.Json),
@@ -83,7 +91,7 @@ public static class ManilaCLI {
 
         var exitCode = CommandApp.Run(args);
         Profiler.SaveToFile(ProfilingDir);
-        ManilaEngine.GetInstance().Dispose();
+        ManilaEngine?.Dispose();
 
         return exitCode;
     }

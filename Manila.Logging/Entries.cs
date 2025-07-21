@@ -36,7 +36,8 @@ public abstract class BaseLogEntry : ILogEntry {
 /// <summary>
 /// A basic log entry with a simple message.
 /// </summary>
-public class BasicLogEntry(string message, LogLevel level) : BaseLogEntry {
+public class BasicLogEntry(string message, LogLevel level, string? loggerPrefix = null) : BaseLogEntry {
     public override LogLevel Level { get; } = level;
     public string Message { get; } = message;
+    public string? LoggerPrefix { get; } = loggerPrefix;
 }

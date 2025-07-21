@@ -94,7 +94,6 @@ public abstract class ExposedDynamicObject : DynamicObject, IScriptableObject {
                 var methodParams = method.Method.GetParameters();
                 for (int i = 0; i < methodParams.Length; ++i) {
                     var param = methodParams[i];
-                    Logger.Debug($"Parameter: {param.Name}");
 
                     // Convert enum strings to enum values
                     if (param.ParameterType.IsEnum) {
@@ -119,7 +118,6 @@ public abstract class ExposedDynamicObject : DynamicObject, IScriptableObject {
             }
         }
 
-        Logger.Debug($"Method '{binder.Name}' not found.");
         return base.TryInvokeMember(binder, args, out result);
     }
 
