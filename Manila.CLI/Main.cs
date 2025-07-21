@@ -3,7 +3,6 @@ using System.Text;
 using Shiron.Manila;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Builders;
-using Shiron.Manila.API.Containers;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.CLI;
 using Shiron.Manila.CLI.Commands;
@@ -55,47 +54,37 @@ public static class ManilaCLI {
         Directory.SetCurrentDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "../../../../run"));
         Profiler.IsEnabled = true;
 #endif
-        var workspaceBuilder = new WorkspaceBuilder("./run");
-        var projectBuilder = new ProjectBuilder("./Client", "Client");
-        workspaceBuilder.AddProject(projectBuilder);
+        Console.OutputEncoding = Encoding.UTF8;
 
-        var workspace = workspaceBuilder.Build();
+        var logOptions = new {
+            Structured = args.Contains(CommandOptions.Structured) || args.Contains(CommandOptions.Json),
+            Verbose = args.Contains(CommandOptions.Verbose),
+            Quiet = args.Contains(CommandOptions.Quiet),
+            StackTrace = args.Contains(CommandOptions.StackTrace)
+        };
 
-        Console.WriteLine($"Workspace: {workspace}");
+        if (!(args.Contains(CommandOptions.Quiet) || args.Contains(CommandOptions.QuietShort))) {
+            foreach (string line in Banner.Lines.Take(Banner.Lines.Length - 1)) {
+                AnsiConsole.MarkupLine(line);
+            }
+            AnsiConsole.MarkupLine(string.Format(Banner.Lines.Last(), ManilaEngine.VERSION) + "\n");
+        }
 
-        return 0; // Don't run the main CLI logic for now as I am refactoring the entire build system.
+        CommandApp.Configure(c => {
+            c.SetApplicationName("manila");
+            c.SetApplicationVersion(ManilaEngine.VERSION);
+            c.AddCommand<PluginsCommand>("plugins");
+            c.AddCommand<JobsCommand>("jobs");
+            c.AddCommand<RunCommand>("run");
+            c.AddCommand<ArtifactsCommand>("artifacts");
+            c.AddCommand<ProjectsCommand>("projects");
+            c.AddCommand<ApiCommand>("api");
+        });
 
-        //Console.OutputEncoding = Encoding.UTF8;
-        //
-        //var logOptions = new {
-        //    Structured = args.Contains(CommandOptions.Structured) || args.Contains(CommandOptions.Json),
-        //    Verbose = args.Contains(CommandOptions.Verbose),
-        //    Quiet = args.Contains(CommandOptions.Quiet),
-        //    StackTrace = args.Contains(CommandOptions.StackTrace)
-        //};
-        //
-        //if (!(args.Contains(CommandOptions.Quiet) || args.Contains(CommandOptions.QuietShort))) {
-        //    foreach (string line in Banner.Lines.Take(Banner.Lines.Length - 1)) {
-        //        AnsiConsole.MarkupLine(line);
-        //    }
-        //    AnsiConsole.MarkupLine(string.Format(Banner.Lines.Last(), ManilaEngine.VERSION) + "\n");
-        //}
-        //
-        //CommandApp.Configure(c => {
-        //    c.SetApplicationName("manila");
-        //    c.SetApplicationVersion(ManilaEngine.VERSION);
-        //    c.AddCommand<PluginsCommand>("plugins");
-        //    c.AddCommand<JobsCommand>("jobs");
-        //    c.AddCommand<RunCommand>("run");
-        //    c.AddCommand<ArtifactsCommand>("artifacts");
-        //    c.AddCommand<ProjectsCommand>("projects");
-        //    c.AddCommand<ApiCommand>("api");
-        //});
-        //
-        //var exitCode = CommandApp.Run(args);
-        //Profiler.SaveToFile(ProfilingDir);
-        //ManilaEngine.GetInstance().Dispose();
-        //
-        //return exitCode;
+        var exitCode = CommandApp.Run(args);
+        Profiler.SaveToFile(ProfilingDir);
+        ManilaEngine.GetInstance().Dispose();
+
+        return exitCode;
     }
 }
