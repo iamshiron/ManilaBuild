@@ -1,4 +1,5 @@
 
+using System.Diagnostics.CodeAnalysis;
 using Shiron.Manila.Logging;
 
 namespace Shiron.Manila.Mock;
@@ -8,7 +9,10 @@ public class MockLogger : ILogger {
 
     public LogContext LogContext => new();
 
-    public event Action<ILogEntry>? OnLogEntry;
+#pragma warning disable CS0414
+    // The field 'MockLogger.OnLogEntry' is assigned but its value is never used
+    public event Action<ILogEntry>? OnLogEntry = null;
+#pragma warning restore CS0414
 
     public void AddInjector(Guid id, LogInjector injector) => throw new NotImplementedException();
 
@@ -23,5 +27,4 @@ public class MockLogger : ILogger {
         Console.WriteLine($"[{entry.Level}] {entry}");
     }
     public void RemoveInjector(Guid id) => throw new NotImplementedException();
-
 }

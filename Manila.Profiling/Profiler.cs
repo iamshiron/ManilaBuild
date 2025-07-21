@@ -108,21 +108,14 @@ public class Profiler(ILogger logger) : IProfiler {
 
 public readonly struct ProfileCategory : IDisposable {
     private readonly string? _previousCategory;
-    private readonly bool _profilerEnabled;
 
     public ProfileCategory(string categoryName) {
-        if (_profilerEnabled) {
-            _previousCategory = Profiler._currentCategory.Value;
-            Profiler._currentCategory.Value = categoryName;
-        } else {
-            _previousCategory = null;
-        }
+        _previousCategory = Profiler._currentCategory.Value;
+        Profiler._currentCategory.Value = categoryName;
     }
 
     public readonly void Dispose() {
-        if (_profilerEnabled) {
-            Profiler._currentCategory.Value = _previousCategory;
-        }
+        Profiler._currentCategory.Value = _previousCategory;
     }
 }
 
@@ -131,7 +124,6 @@ public readonly struct ProfileScope : IDisposable {
     private readonly string _name;
     private readonly long _startTimestampMicroseconds;
     private readonly Dictionary<string, object>? _args;
-    private readonly bool _profilerEnabled;
 
     public ProfileScope(IProfiler profiler, Dictionary<string, object>? args = null, [CallerMemberName] string name = "") {
         _profiler = profiler;
@@ -155,11 +147,9 @@ public readonly struct ProfileScope : IDisposable {
     }
 
     public readonly void Dispose() {
-        if (_profilerEnabled) {
-            long endTimestampMicroseconds = Utils.TimeNow();
-            long durationMicroseconds = endTimestampMicroseconds - _startTimestampMicroseconds;
+        long endTimestampMicroseconds = Utils.TimeNow();
+        long durationMicroseconds = endTimestampMicroseconds - _startTimestampMicroseconds;
 
-            _profiler.RecordCompleteEvent(_name, _startTimestampMicroseconds, durationMicroseconds, _args);
-        }
+        _profiler.RecordCompleteEvent(_name, _startTimestampMicroseconds, durationMicroseconds, _args);
     }
 }

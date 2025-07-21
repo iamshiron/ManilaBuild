@@ -14,8 +14,6 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila;
 
 public sealed class ManilaEngine {
-    private static ManilaEngine? _instance;
-
     #region Properties
 
     /// <summary>
@@ -295,7 +293,5 @@ public sealed class ManilaEngine {
 
     public void Dispose() {
         ArtifactManager.FlushCacheToDisk();
-
-        _instance = null;
     }
 }
