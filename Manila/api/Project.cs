@@ -51,12 +51,12 @@ public class Project(ILogger logger, string name, string projectRoot, string roo
     /// <summary>
     /// Internal builders for creating artifacts during finalization.
     /// </summary>
-    private readonly Dictionary<string, ArtifactBuilder> _artifactBuilders = [];
+    public readonly Dictionary<string, ArtifactBuilder> ArtifactBuilders = [];
 
     /// <summary>
     /// Internal builders for creating source sets during finalization.
     /// </summary>
-    private readonly Dictionary<string, SourceSetBuilder> _sourceSetBuilders = [];
+    public readonly Dictionary<string, SourceSetBuilder> SourceSetBuilders = [];
 
     /// <summary>
     /// List of project dependencies.
@@ -68,51 +68,6 @@ public class Project(ILogger logger, string name, string projectRoot, string roo
     /// </summary>
     public Workspace Workspace { get; private set; } = workspace;
     private readonly ILogger _logger = logger;
-
-    /// <summary>
-    /// Configures source sets for the project from a collection of builders.
-    /// </summary>
-    /// <param name="obj">Dictionary containing source set names and their builders.</param>
-    [ScriptFunction]
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void sourceSets(object obj) {
-        foreach (var pair in (IDictionary<string, object>) obj) {
-            if (SourceSets.ContainsKey(pair.Key)) throw new Exception($"SourceSet '{pair.Key}' already exists.");
-            _sourceSetBuilders.Add(pair.Key, (SourceSetBuilder) pair.Value);
-        }
-    }
-
-    /// <summary>
-    /// Adds dependencies to the project from a script object.
-    /// </summary>
-    /// <param name="obj">Script object containing dependency definitions.</param>
-    [ScriptFunction]
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void dependencies(object obj) {
-        ScriptObject sobj = (ScriptObject) obj;
-        foreach (var n in sobj.PropertyIndices) {
-            if (sobj[n] is Dependency dep) {
-                Dependencies.Add(dep);
-            } else {
-                throw new InvalidCastException($"Property '{n}' is not a Dependency.");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Configures artifacts for the project from a collection of builders.
-    /// </summary>
-    /// <param name="obj">Dictionary containing artifact names and their builders.</param>
-    [ScriptFunction]
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void artifacts(object obj) {
-        foreach (var pair in (IDictionary<string, object>) obj) {
-            if (_artifactBuilders.ContainsKey(pair.Key)) throw new Exception($"Artifact '{pair.Key}' already exists.");
-            var builder = (ArtifactBuilder) pair.Value;
-            builder.Name = pair.Key;
-            _artifactBuilders[pair.Key] = builder;
-        }
-    }
 
     /// <summary>
     /// Returns a string representation of the project.
@@ -128,10 +83,10 @@ public class Project(ILogger logger, string name, string projectRoot, string roo
     public override void Finalize(Manila manilaAPI) {
         base.Finalize(manilaAPI);
 
-        foreach (var (name, builder) in _artifactBuilders) {
+        foreach (var (name, builder) in ArtifactBuilders) {
             Artifacts[name] = builder.Build();
         }
-        foreach (var (name, builder) in _sourceSetBuilders) {
+        foreach (var (name, builder) in SourceSetBuilders) {
             SourceSets[name] = builder.Build();
             _logger.Debug($"{Name} - {name} - SHA256: {SourceSets[name].Fingerprint()}");
         }

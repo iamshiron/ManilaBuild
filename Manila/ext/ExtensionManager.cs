@@ -93,6 +93,8 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, INuGetManager 
                         if (!type.IsSubclassOf(typeof(ManilaPlugin)) || type.IsAbstract) continue;
 
                         var plugin = (ManilaPlugin?) Activator.CreateInstance(type) ?? throw new Exception($"Failed to create instance of plugin {type} from {file}.");
+                        plugin.SetLogger(_logger);
+
                         plugin.File = file;
                         Plugins.Add(plugin);
                         _logger.Log(new LoadingPluginLogEntry(plugin, Guid.NewGuid()));

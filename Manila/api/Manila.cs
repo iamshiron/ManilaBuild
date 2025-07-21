@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.ClearScript;
+using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.Caching;
@@ -51,8 +52,10 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// Gets the current Manila project or throws if none exists.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public Project getProject() {
-        return _project ?? throw new ContextException(Context.WORKSPACE, Context.PROJECT);
+    public ProjectScriptBridge getProject() {
+        return _project == null
+            ? throw new ContextException(Context.WORKSPACE, Context.PROJECT)
+            : new ProjectScriptBridge(_logger, _profiler, _project);
     }
 
     /// <summary>
@@ -91,8 +94,9 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ArtifactBuilder artifact(dynamic lambda) {
+        if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
-        var builder = new ArtifactBuilder(_workspace, () => lambda(), this, (BuildConfig) BuildConfig, getProject().Name);
+        var builder = new ArtifactBuilder(_workspace, () => lambda(), this, (BuildConfig) BuildConfig, _project.Name);
         ArtifactBuilders.Add(builder);
         return builder;
     }
@@ -110,14 +114,16 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public JobBuilder job(string name) {
+        var applyTo = _project ?? (Component) _workspace;
+
         if (CurrentArtifactBuilder != null) {
-            var jobBuilder = new JobBuilder(_logger, _jobRegistry, name, _context, getProject(), CurrentArtifactBuilder);
+            var jobBuilder = new JobBuilder(_logger, _jobRegistry, name, _context, applyTo, CurrentArtifactBuilder);
             CurrentArtifactBuilder.JobBuilders.Add(jobBuilder);
             return jobBuilder;
         }
 
         try {
-            var builder = new JobBuilder(_logger, _jobRegistry, name, _context, getProject(), null);
+            var builder = new JobBuilder(_logger, _jobRegistry, name, _context, applyTo, null);
             JobBuilders.Add(builder);
             return builder;
         } catch (ContextException e) {
@@ -172,7 +178,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
 
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             _logger.Debug("Applying: " + component);
-            ComponentContextApplyer.ApplyComponent(_logger, _context, _project, component);
+            ComponentContextApplyer.ApplyComponent(_logger, _context, _project, _workspace, component);
             if (component is LanguageComponent lc) {
                 BuildConfig = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
             }
@@ -203,12 +209,13 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// Builds the project using its language component.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void build(Workspace workspace, Project project, BuildConfig config, string artifactID) {
+    public void build(Workspace workspace, ProjectScriptBridge projectBridge, BuildConfig config, string artifactID) {
+        var project = projectBridge._handle;
         var artifact = project.Artifacts[artifactID];
         artifact = _artifactManager.AppendCahedData(artifact, config, project);
 
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            var logCache = new LogCache(_logger);
+            var logCache = new LogCache();
 
             using var logInjector = new LogInjector(
                 _logger,
@@ -225,10 +232,13 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
             } else if (res is BuildExitCodeCached cached) {
                 _logger.Info($"Loaded cached build for {project.Name} with artifact {artifactID}.");
 
-                if (artifact.LogCache == null) _logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
+                if (artifact.LogCache is null) {
+                    _logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
+                    return;
+                }
 
                 _logger.Debug($"Current context ID: {_logger.LogContext.CurrentContextID}");
-                artifact.LogCache!.Replay(_logger.LogContext.CurrentContextID ?? Guid.Empty);
+                artifact.LogCache.Replay(_logger, _logger.LogContext.CurrentContextID ?? Guid.Empty);
             } else if (res is BuildExitCodeFailed failed) {
                 _logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
             }

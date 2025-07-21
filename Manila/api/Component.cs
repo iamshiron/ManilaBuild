@@ -68,7 +68,7 @@ public static class ComponentContextApplyer {
     /// Applies a plugin to this component.
     /// </summary>
     /// <param name="plugin">The plugin to apply.</param>
-    public static void ApplyPlugin(ILogger logger, ScriptContext context, Component applyTo, ManilaPlugin plugin) {
+    public static void ApplyPlugin(ILogger logger, ScriptContext context, Component applyTo, Workspace workspace, ManilaPlugin plugin) {
         if (context.ManilaAPI == null) throw new ManilaException("ManilaAPI is not initialized in the script context.");
 
         context.ScriptEngine.AddHostType(plugin.GetType().Name, plugin.GetType());
@@ -79,7 +79,7 @@ public static class ComponentContextApplyer {
                 applyTo.DependencyTypes.Add(t);
 
                 context.ManilaAPI.AddFunction(
-                    (Activator.CreateInstance(t) as Dependency)?.Type!,
+                    (Activator.CreateInstance(t, [workspace]) as Dependency)?.Type!,
                     delegate (dynamic[] args) {
                         if (Activator.CreateInstance(t) is not Dependency dep) {
                             logger.Warning($"Could not create instance of dependency type '{t}'.");
@@ -104,7 +104,7 @@ public static class ComponentContextApplyer {
     /// Applies a plugin component to this component.
     /// </summary>
     /// <param name="component">The plugin component to apply.</param>
-    public static void ApplyComponent(ILogger logger, ScriptContext context, Component applyTo, PluginComponent component) {
+    public static void ApplyComponent(ILogger logger, ScriptContext context, Component applyTo, Workspace workspace, PluginComponent component) {
         logger.Debug($"Applying component '{component}'.");
 
         if (applyTo.PluginComponents.ContainsKey(component.GetType())) {
@@ -118,7 +118,7 @@ public static class ComponentContextApplyer {
                 context.ApplyEnum(e);
             }
 
-            ApplyPlugin(logger, context, applyTo, component._plugin);
+            ApplyPlugin(logger, context, applyTo, workspace, component._plugin);
         }
 
         foreach (var prop in component.GetType().GetProperties()) {

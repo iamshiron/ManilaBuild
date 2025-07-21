@@ -4,15 +4,15 @@ const workspace = Manila.getWorkspace()
 Manila.apply('shiron.manila:cpp@1.0.0:console')
 const config = Manila.getConfig()
 
-version('1.0.0')
-description('Demo Project Core')
+project.Version('1.0.0')
+project.Description('Demo Project Core')
 
-sourceSets({
-	main: Manila.sourceSet(project.getPath().join('src/main')).include('**/*.cpp'),
-	test: Manila.sourceSet(project.getPath().join('src/test')).include('**/*.cpp')
+project.SourceSets({
+	main: Manila.sourceSet(project.GetPath().join('src/main')).include('**/*.cpp'),
+	test: Manila.sourceSet(project.GetPath().join('src/test')).include('**/*.cpp')
 })
 
-artifacts({
+project.Artifacts({
 	main: Manila.artifact(() => {
 		Manila.job('clean')
 			.description('Clean the client')

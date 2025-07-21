@@ -7,7 +7,7 @@ public abstract class Dependency {
     public readonly string Type;
 
     public Dependency(string type) {
-        this.Type = type;
+        Type = type;
     }
 
     public abstract void Create(params object[] args);

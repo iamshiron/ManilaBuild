@@ -129,6 +129,8 @@ public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string 
     /// </summary>
     /// <returns>The built job instance.</returns>
     public Job Build() {
-        return new(_logger, _jobRegistry, this);
+        var job = new Job(_logger, _jobRegistry, this);
+        _jobRegistry.RegisterJob(job);
+        return job;
     }
 }
