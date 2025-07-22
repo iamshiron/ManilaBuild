@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -7,19 +8,13 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available projects in the current workspace")]
-internal sealed class ProjectsCommand : BaseAsyncManilaCommand<ProjectsCommand.Settings> {
+internal sealed class ProjectsCommand(ServiceContainer services, Workspace workspace) : BaseManilaCommand<ProjectsCommand.Settings> {
+    private readonly ServiceContainer _services = services;
+    private readonly Workspace _workspace = workspace;
+
     public sealed class Settings : DefaultCommandSettings { }
 
-    protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
-        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
-            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
-
-        var engine = ManilaCLI.ManilaEngine;
-
-        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, engine);
-        await engine.Run();
-        if (engine.Workspace == null) throw new ManilaException(Messages.NoWorkspace);
-
+    protected override int ExecuteCommand(CommandContext context, Settings settings) {
         AnsiConsole.Write(new Rule(string.Format(Format.Rule, Messages.AvailableProjects)).RuleStyle(BorderStyles.Default).DoubleBorder());
 
         var table = new Table().Border(TableBorder.Rounded)
@@ -28,7 +23,7 @@ internal sealed class ProjectsCommand : BaseAsyncManilaCommand<ProjectsCommand.S
             .AddColumn(new TableColumn(TableColumns.Version))
             .AddColumn(new TableColumn(TableColumns.Artifacts));
 
-        foreach (var p in engine.Workspace.Projects) {
+        foreach (var p in _workspace.Projects) {
             var project = p.Value;
             var artifactsTable = new Table().Border(TableBorder.Rounded)
                 .AddColumn(new TableColumn(TableColumns.Artifact))

@@ -10,6 +10,9 @@ public interface IJobRegistry {
     Job? GetJob(string uri);
     bool TryGetJob(string name, out Job? job);
     bool HasJob(string name);
+
+    IEnumerable<Job> Jobs { get; }
+    IEnumerable<string> JobKeys { get; }
 }
 
 public class JobRegistry : IJobRegistry {
@@ -24,15 +27,12 @@ public class JobRegistry : IJobRegistry {
         _jobs[uri] = job;
     }
 
-    public Job? GetJob(string uri) {
-        return _jobs.TryGetValue(uri, out var job) ? job : null;
-    }
+    public Job? GetJob(string uri) => _jobs.TryGetValue(uri, out var job) ? job : null;
 
-    public bool TryGetJob(string name, out Job? job) {
-        return _jobs.TryGetValue(name, out job);
-    }
+    public bool TryGetJob(string name, out Job? job) => _jobs.TryGetValue(name, out job);
 
-    public bool HasJob(string name) {
-        return _jobs.ContainsKey(name);
-    }
+    public bool HasJob(string name) => _jobs.ContainsKey(name);
+
+    public IEnumerable<Job> Jobs => _jobs.Values;
+    public IEnumerable<string> JobKeys => _jobs.Keys;
 }

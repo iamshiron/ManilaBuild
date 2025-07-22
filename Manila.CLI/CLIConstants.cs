@@ -85,11 +85,4 @@ public static class CLIConstants {
             @"[blue]|_|  |_|\__,_|_| |_|_|_|\__,_|[/] [magenta]v{0}[/]"
         ];
     }
-
-    // Directory paths
-    public static class Directories {
-        public static readonly string Plugins = ".manila/plugins";
-        public static readonly string Nuget = ".manila/nuget";
-        public static readonly string Profiles = ".manila/profiles";
-    }
 }

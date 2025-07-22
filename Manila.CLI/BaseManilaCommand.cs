@@ -9,7 +9,6 @@ namespace Shiron.Manila.CLI;
 /// <typeparam name="TSettings">The settings type for the command</typeparam>
 public abstract class BaseManilaCommand<TSettings> : Command<TSettings>
     where TSettings : DefaultCommandSettings {
-
     /// <summary>
     /// Final execute method that wraps the command execution with error handling.
     /// Override ExecuteCommand instead of this method.

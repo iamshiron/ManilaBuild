@@ -106,7 +106,7 @@ public class ArtifactCacheEntry(string artifactRoot, long createdAt, long lastAc
     public LogCache LogCache { get; set; } = logCache;
 
     public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, Artifact artifact, BuildConfig config, Project project) {
-        return new ArtifactCacheEntry(
+        return new(
             artifactManager.GetArtifactRoot(config, project, artifact),
             TimeUtils.Now(),
             TimeUtils.Now(),

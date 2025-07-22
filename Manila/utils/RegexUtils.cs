@@ -23,14 +23,14 @@ public static partial class RegexUtils {
         public string Format() {
             var builder = new StringBuilder();
             if (Project != null) {
-                builder.Append(Project);
+                _ = builder.Append(Project);
                 if (Artifact != null) {
-                    builder.Append('/').Append(Artifact);
+                    _ = builder.Append('/').Append(Artifact);
                 }
-                builder.Append(':');
+                _ = builder.Append(':');
             }
-            builder.Append(Job);
-            return builder.ToString();
+            _ = builder.Append(Job);
+            return builder.ToString().ToLower();
         }
 
         /// <summary>

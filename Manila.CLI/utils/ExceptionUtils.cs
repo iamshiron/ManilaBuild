@@ -1,12 +1,7 @@
-using System;
+
 using Spectre.Console;
 
-namespace Shiron.Manila.CLI;
-
-/// <summary>
-/// A static utility class containing helper methods.
-/// </summary>
-public static class Utils {
+public static class ExceptionUtils {
     /// <summary>
     /// Attempts to write a formatted exception to the console using Spectre.Console.
     /// </summary>

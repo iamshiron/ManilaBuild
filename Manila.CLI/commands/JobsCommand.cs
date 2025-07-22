@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -7,28 +8,22 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available jobs in the current workspace")]
-internal sealed class JobsCommand : BaseAsyncManilaCommand<JobsCommand.Settings> {
+internal sealed class JobsCommand(ServiceContainer container, Workspace workspace) : BaseManilaCommand<JobsCommand.Settings> {
+    private readonly ServiceContainer _services = container;
+    private readonly Workspace _workspace = workspace;
+
     public sealed class Settings : DefaultCommandSettings { }
 
-    protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
-        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
-            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
-
-        var engine = ManilaCLI.ManilaEngine;
-
-        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, engine);
-        await engine.Run();
-        if (engine.Workspace == null) throw new ManilaException(Messages.NoWorkspace);
-
+    protected override int ExecuteCommand(CommandContext context, Settings settings) {
         AnsiConsole.Write(new Rule(string.Format(Format.Rule, Messages.AvailableJobs)).RuleStyle(BorderStyles.Default).DoubleBorder());
 
-        if (engine.Workspace.Jobs.Count > 0) {
+        if (_workspace.Jobs.Count > 0) {
             var workspaceTable = new Table().Border(TableBorder.Rounded)
                 .AddColumn(new TableColumn(TableColumns.Job))
                 .AddColumn(new TableColumn(TableColumns.Description))
                 .AddColumn(new TableColumn(TableColumns.Dependencies));
 
-            foreach (var t in engine.Workspace.Jobs) {
+            foreach (var t in _workspace.Jobs) {
                 _ = workspaceTable.AddRow(
                     string.Format(Format.JobIdentifier, t.GetIdentifier()),
                     t.Description ?? "",
@@ -39,7 +34,7 @@ internal sealed class JobsCommand : BaseAsyncManilaCommand<JobsCommand.Settings>
             AnsiConsole.Write(workspaceTable);
         }
 
-        foreach (var p in engine.Workspace.Projects) {
+        foreach (var p in _workspace.Projects) {
             var project = p.Value;
 
             // Only show project table if it has jobs

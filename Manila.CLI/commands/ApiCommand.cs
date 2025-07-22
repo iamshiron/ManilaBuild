@@ -3,6 +3,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
+using Shiron.Manila.API;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
@@ -12,7 +13,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("API commands for retrieving information as JSON output")]
-internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
+internal sealed class ApiCommand(ManilaEngine engine, ServiceContainer services, Workspace workspace) : BaseManilaCommand<ApiCommand.Settings> {
+    private readonly ServiceContainer _services = services;
+    private readonly ManilaEngine _engine = engine;
+    private readonly Workspace _workspace = workspace;
+
     public sealed class Settings : DefaultCommandSettings {
         [Description("API subcommand: jobs, artifacts, projects, workspace, plugins")]
         [CommandArgument(0, "[subcommand]")]
@@ -36,25 +41,16 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         ReferenceLoopHandling = ReferenceLoopHandling.Ignore
     };
 
-    protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
-        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
-            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
-
-        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, ManilaCLI.ManilaEngine);
-        var engine = ManilaCLI.ManilaEngine;
-
-        await engine.Run();
-        if (engine.Workspace == null) throw new ManilaException(Messages.NoWorkspace);
-
+    protected override int ExecuteCommand(CommandContext context, Settings settings) {
         var cmd = settings.Subcommand?.ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(cmd) || !ApiSubcommands.All.Contains(cmd))
             throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Valid subcommands: {string.Join(", ", ApiSubcommands.All)}");
         var result = cmd switch {
-            "jobs" => GetJobsData(engine, settings),
-            "artifacts" => GetArtifactsData(engine, settings),
-            "projects" => GetProjectsData(engine, settings),
-            "workspace" => GetWorkspaceData(engine, settings),
-            "plugins" => GetPluginsData(engine, settings),
+            "jobs" => GetJobsData(_workspace, settings),
+            "artifacts" => GetArtifactsData(_workspace, settings),
+            "projects" => GetProjectsData(_workspace, settings),
+            "workspace" => GetWorkspaceData(_workspace, settings),
+            "plugins" => GetPluginsData(_services.ExtensionManager, settings),
             _ => throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Available: {string.Join(", ", ApiSubcommands.All)}")
         };
 
@@ -64,11 +60,11 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         return ExitCodes.SUCCESS;
     }
 
-    private static object GetJobsData(ManilaEngine engine, Settings settings) {
+    private static object GetJobsData(Workspace workspace, Settings settings) {
         var jobs = new List<object>();
 
         // Workspace jobs
-        foreach (var job in engine.Workspace!.Jobs) {
+        foreach (var job in workspace.Jobs) {
             if (settings.Project != null) continue; // Skip workspace jobs if filtering by project
 
             var jobData = new {
@@ -102,7 +98,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         }
 
         // Project jobs
-        foreach (var (projectName, project) in engine.Workspace.Projects) {
+        foreach (var (projectName, project) in workspace.Projects) {
             if (settings.Project != null && settings.Project != projectName) continue;
 
             // Project-level jobs
@@ -178,10 +174,10 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         };
     }
 
-    private static object GetArtifactsData(ManilaEngine engine, Settings settings) {
+    private static object GetArtifactsData(Workspace workspace, Settings settings) {
         var artifacts = new List<object>();
 
-        foreach (var (projectName, project) in engine.Workspace!.Projects) {
+        foreach (var (projectName, project) in workspace.Projects) {
             if (settings.Project != null && settings.Project != projectName) continue;
 
             foreach (var (artifactName, artifact) in project.Artifacts) {
@@ -221,10 +217,10 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         };
     }
 
-    private static object GetProjectsData(ManilaEngine engine, Settings settings) {
+    private static object GetProjectsData(Workspace workspace, Settings settings) {
         var projects = new List<object>();
 
-        foreach (var (projectName, project) in engine.Workspace!.Projects) {
+        foreach (var (projectName, project) in workspace.Projects) {
             if (settings.Project != null && settings.Project != projectName) continue;
 
             var projectData = new {
@@ -277,11 +273,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         };
     }
 
-    private static object GetPluginsData(ManilaEngine engine, Settings settings) {
-        if (ManilaCLI.ManilaEngine == null)
-            throw new ManilaException("Manila engine is not initialized.");
-
-        var mgr = ManilaCLI.ManilaEngine.ExtensionManager;
+    private static object GetPluginsData(IExtensionManager mgr, Settings settings) {
         var list = new List<object>();
         foreach (var plugin in mgr.Plugins) {
             var pluginData = new {
@@ -304,9 +296,7 @@ internal sealed class ApiCommand : BaseAsyncManilaCommand<ApiCommand.Settings> {
         return new { plugins = list.ToArray(), count = list.Count };
     }
 
-    private static object GetWorkspaceData(ManilaEngine engine, Settings settings) {
-        var workspace = engine.Workspace!;
-
+    private static object GetWorkspaceData(Workspace workspace, Settings settings) {
         var workspaceData = new {
             location = workspace.Path.Handle,
             identifier = workspace.GetIdentifier(),

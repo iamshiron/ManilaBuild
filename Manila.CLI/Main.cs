@@ -1,15 +1,23 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Threading.Tasks;
+using Microsoft.ClearScript.V8;
+using Microsoft.Extensions.DependencyInjection;
+using NuGet.Packaging.Signing;
 using Shiron.Manila;
 using Shiron.Manila.API;
+using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.Artifacts;
+using Shiron.Manila.Caching;
 using Shiron.Manila.CLI;
 using Shiron.Manila.CLI.Commands;
+using Shiron.Manila.CLI.Utils;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
+using Shiron.Manila.Registries;
 using Shiron.Manila.Utils;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -18,58 +26,75 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI;
 
 public static class ManilaCLI {
-    public static string PluginDir => Path.Combine(Directory.GetCurrentDirectory(), Directories.Plugins);
-    public static string NugetDir => Path.Combine(Directory.GetCurrentDirectory(), Directories.Nuget);
-    public static string ProfilingDir => Path.Combine(Directory.GetCurrentDirectory(), Directories.Profiles);
-    public static CommandApp<DefaultCommand> CommandApp = new CommandApp<DefaultCommand>();
+    public static CommandApp<DefaultCommand>? CommandApp { get; private set; }
+    public static IDirectories? Directories { get; private set; }
 
-    public static ManilaEngine? ManilaEngine { get; private set; }
-    public static IProfiler? Profiler { get; private set; }
-    public static ILogger? Logger { get; private set; }
-
-    public static void SetupInitialComponents(ILogger logger, DefaultCommandSettings settings) {
-        AnsiConsoleRenderer.Init(logger, settings.Quiet, settings.Verbose, settings.Structured, settings.StackTrace);
+    public static void SetupBaseComponents(ILogger logger, LogOptions logOptions) {
+        AnsiConsoleRenderer.Init(logger, logOptions);
     }
 
-    public static async Task InitExtensions(IProfiler profiler, ManilaEngine engine) {
-        using (new ProfileScope(profiler, "Initializing Plugins")) {
-            var extensionManager = engine.ExtensionManager;
-            extensionManager.Init($"./{Directories.Plugins}");
-            await extensionManager.LoadPlugins();
-            extensionManager.InitPlugins();
+    private static async Task InitExtensions(ServiceContainer services) {
+        if (Directories == null) {
+            throw new InvalidOperationException("Directories are not initialized.");
+        }
+
+        using (new ProfileScope(services.Profiler, "Initializing Plugins")) {
+            await services.ExtensionManager.LoadPlugins();
+            services.ExtensionManager.InitPlugins();
         }
     }
 
-    public static async Task StartEngine(ManilaEngine engine) {
-        await engine.Run();
-        if (engine.Workspace == null) throw new Exception("Workspace not found!");
+    private static V8ScriptEngine CreateScriptEngine() {
+        return new(
+            V8ScriptEngineFlags.EnableTaskPromiseConversion
+        ) {
+            ExposeHostObjectStaticMembers = true,
+        };
     }
 
-    public static int RunJob(ManilaEngine engine, IExtensionManager extensionManager, DefaultCommandSettings settings, string job) {
+    public static int RunJob(ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
+        var graph = engine.CreateExecutionGraph(workspace);
+
         return ErrorHandler.SafeExecute(() => {
-            engine.ExecuteBuildLogic(job);
-            extensionManager.ReleasePlugins();
+            engine.ExecuteBuildLogic(graph, job);
             return ExitCodes.SUCCESS;
         }, settings);
     }
 
-    public static int Main(string[] args) {
+    public static async Task<int> Main(string[] args) {
 #if DEBUG
         Directory.SetCurrentDirectory(Path.Join(AppDomain.CurrentDomain.BaseDirectory, "../../../../run"));
 #endif
         Console.OutputEncoding = Encoding.UTF8;
 
-        Logger = new Logger(null);
-        Profiler = new Profiler(Logger);
+        LogOptions logOptions = new LogOptions(
+            args.Contains(CommandOptions.Quiet) || args.Contains(CommandOptions.QuietShort),
+            args.Contains(CommandOptions.Verbose),
+            args.Contains(CommandOptions.Structured) || args.Contains(CommandOptions.Json),
+            args.Contains(CommandOptions.StackTrace)
+        );
 
-        ManilaEngine = new(Logger, Profiler);
+        Directories = new Directories();
 
-        var logOptions = new {
-            Structured = args.Contains(CommandOptions.Structured) || args.Contains(CommandOptions.Json),
-            Verbose = args.Contains(CommandOptions.Verbose),
-            Quiet = args.Contains(CommandOptions.Quiet),
-            StackTrace = args.Contains(CommandOptions.StackTrace)
-        };
+        var logger = new Logger(null);
+        var profiler = new Profiler(logger);
+        var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
+        var services = new ServiceCollection();
+
+        var serviceContainer = new ServiceContainer(
+            logger,
+            profiler,
+            new JobRegistry(),
+            new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
+            new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
+            nugetManager,
+            new FileHashCache(Path.Join(Directories.DataDir, "cache", "filehashes.db"), Directories.RootDir)
+        );
+
+        await serviceContainer.ArtifactManager.LoadCache();
+
+        var manilaEngine = new ManilaEngine(serviceContainer, Directories);
+        SetupBaseComponents(logger, logOptions);
 
         if (!(args.Contains(CommandOptions.Quiet) || args.Contains(CommandOptions.QuietShort))) {
             foreach (string line in Banner.Lines.Take(Banner.Lines.Length - 1)) {
@@ -77,6 +102,37 @@ public static class ManilaCLI {
             }
             AnsiConsole.MarkupLine(string.Format(Banner.Lines.Last(), ManilaEngine.VERSION) + "\n");
         }
+
+        await InitExtensions(serviceContainer);
+
+        // Run engine and initialize projects
+        var workspace = await manilaEngine.RunWorkspaceScript(new(
+            serviceContainer.Logger, serviceContainer.Profiler,
+            CreateScriptEngine(),
+            Directories.RootDir, Path.Join(Directories.RootDir, "Manila.js")
+        ));
+
+        var workspaceBridge = new WorkspaceScriptBridge(serviceContainer.Logger, serviceContainer.Profiler, workspace);
+
+        foreach (var script in manilaEngine.DiscoverProjectScripts()) {
+            var projet = await manilaEngine.RunProjectScript(new(
+                serviceContainer.Logger, serviceContainer.Profiler,
+                CreateScriptEngine(),
+                Directories.RootDir, script
+            ), workspace, workspaceBridge);
+        }
+
+        _ = services.AddSingleton(serviceContainer)
+            .AddSingleton(manilaEngine)
+            .AddSingleton(workspace);
+        _ = services.AddTransient<RunCommand>()
+            .AddTransient<PluginsCommand>()
+            .AddTransient<JobsCommand>()
+            .AddTransient<ArtifactsCommand>()
+            .AddTransient<ProjectsCommand>()
+            .AddTransient<ApiCommand>();
+
+        CommandApp = new CommandApp<DefaultCommand>(new TypeRegistrar(services));
 
         CommandApp.Configure(c => {
             c.SetApplicationName("manila");
@@ -90,8 +146,10 @@ public static class ManilaCLI {
         });
 
         var exitCode = CommandApp.Run(args);
-        Profiler.SaveToFile(ProfilingDir);
-        ManilaEngine?.Dispose();
+        serviceContainer.ExtensionManager.ReleasePlugins();
+
+        profiler.SaveToFile(Directories.Profiles);
+        manilaEngine.Dispose();
 
         return exitCode;
     }

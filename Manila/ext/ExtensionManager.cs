@@ -9,7 +9,6 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila.Ext;
 
 public interface IExtensionManager {
-    void Init(string pluginDir);
     Task LoadPlugins();
     void InitPlugins();
     void ReleasePlugins();
@@ -27,9 +26,11 @@ public interface IExtensionManager {
 /// <summary>
 /// Manages the loading, retrieval, and lifecycle of plugins. This is a global singleton.
 /// </summary>
-public class ExtensionManager(ILogger logger, IProfiler profiler, INuGetManager nuGetManager) : IExtensionManager {
+public class ExtensionManager(ILogger logger, IProfiler profiler, string _pluginDir, INuGetManager nuGetManager) : IExtensionManager {
     private readonly ILogger _logger = logger;
     private readonly IProfiler _profiler = profiler;
+    private readonly string _pluginDir = _pluginDir;
+
     private readonly INuGetManager _nuGetManager = nuGetManager;
 
     /// <summary>
@@ -56,34 +57,21 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, INuGetManager 
     /// Matches NuGet dependencies in the format: "Package.Name@1.2.3".
     /// </summary>
     public static readonly Regex NugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d-]+)", RegexOptions.Compiled);
-
-    public string? PluginDir { get; private set; }
     public List<ManilaPlugin> Plugins { get; } = [];
-
-    /// <summary>
-    /// Initializes the manager with the plugin directory.
-    /// </summary>
-    /// <param name="pluginDir">The directory to search for plugins. Subdirectories are not searched.</param>
-    public void Init(string pluginDir) {
-        // This is a simple assignment, profiling overhead is not beneficial here.
-        this.PluginDir = pluginDir;
-    }
 
     /// <summary>
     /// Discovers and loads all plugins from the specified plugin directory.
     /// </summary>
     public async Task LoadPlugins() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            if (PluginDir == null) throw new Exception("Plugin directory not set. Call Init() first.");
+            _logger.Log(new LoadingPluginsLogEntry(_pluginDir, Guid.NewGuid()));
 
-            _logger.Log(new LoadingPluginsLogEntry(PluginDir, Guid.NewGuid()));
-
-            if (!Directory.Exists(PluginDir)) {
-                _logger.Warning($"Plugin directory does not exist: {PluginDir}. Skipping plugin loading.");
+            if (!Directory.Exists(_pluginDir)) {
+                _logger.Warning($"Plugin directory does not exist: {_pluginDir}. Skipping plugin loading.");
                 return;
             }
 
-            foreach (var file in Directory.GetFiles(PluginDir, "*.dll")) {
+            foreach (var file in Directory.GetFiles(_pluginDir, "*.dll")) {
                 using (new ProfileScope(_profiler, $"LoadPluginFile: {Path.GetFileName(file)}")) { // Profile each plugin file loading
                     var loadContext = new PluginLoadContext(_logger, _profiler, file);
                     PluginContextManager.AddContext(loadContext);

@@ -8,6 +8,13 @@ using Spectre.Console;
 
 namespace Shiron.Manila.CLI;
 
+public record LogOptions(
+    bool Quiet,
+    bool Verbose,
+    bool Structured,
+    bool StackTrace
+);
+
 /// <summary>
 /// Handles rendering structured log entries into a human-readable format
 /// using Spectre.Console, creating a rich, structured view of the build process.
@@ -29,8 +36,8 @@ public static class AnsiConsoleRenderer {
     private static Action? _refresh; // Action to refresh the LiveDisplay
     private static TaskCompletionSource<bool>? _buildCompletion; // Controls the LiveDisplay lifetime
     private static readonly Dictionary<string, TaskCompletionSource> _nodeCompletiosn = [];
-    private static bool _verbose = false;
-    private static bool _stackTrace = false;
+
+    private static LogOptions _options { get; set; } = new(false, false, false, false);
 
     private static readonly ConcurrentDictionary<string, TreeNode> _executionNodes = [];
     private static ILogger? _logger;
@@ -42,11 +49,10 @@ public static class AnsiConsoleRenderer {
     /// </summary>
     /// <param name="quiet">If true, only logs with level Error or higher.</param>
     /// <param name="structured">If true, outputs raw JSON instead of rendering.</param>
-    public static void Init(ILogger logger, bool quiet, bool verbose, bool structured, bool stackTrace) {
-        if (quiet && structured) throw new Exception("Cannot use quiet logging while structured logging is enabled!");
+    public static void Init(ILogger logger, LogOptions options) {
+        _options = options;
 
-        _verbose = verbose;
-        _stackTrace = stackTrace;
+        if (_options.Quiet && _options.Structured) throw new Exception("Cannot use quiet logging while structured logging is enabled!");
         _logger = logger;
 
         var jsonSerializerSettings = new JsonSerializerSettings {
@@ -58,13 +64,13 @@ public static class AnsiConsoleRenderer {
         };
 
         _logger.OnLogEntry += entry => {
-            if (structured) {
+            if (_options.Structured) {
                 Console.WriteLine(JsonConvert.SerializeObject(entry, jsonSerializerSettings));
                 return;
             }
 
             // Filter logs based on the quiet flag and log level.
-            if ((quiet && entry.Level < LogLevel.Error) || (!verbose && entry.Level < LogLevel.Info)) {
+            if ((_options.Quiet && entry.Level < LogLevel.Error) || (!_options.Verbose && entry.Level < LogLevel.Info)) {
                 return;
             }
 
@@ -73,7 +79,7 @@ public static class AnsiConsoleRenderer {
             }
         };
 
-        if (structured && verbose) { _logger?.Warning("Ignoring 'verbose' flag is the logger is running in structured mode!"); _logger?.Info("Logger always logs everything when running on structured mode!"); }
+        if (_options.Structured && _options.Verbose) { _logger?.Warning("Ignoring 'verbose' flag is the logger is running in structured mode!"); _logger?.Info("Logger always logs everything when running on structured mode!"); }
     }
 
     /// <summary>

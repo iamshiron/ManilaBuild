@@ -5,7 +5,9 @@ namespace Shiron.Manila.CLI.Commands;
 
 public sealed class DefaultCommand : BaseManilaCommand<DefaultCommandSettings> {
     protected override int ExecuteCommand(CommandContext context, DefaultCommandSettings settings) {
-        return ManilaCLI.CommandApp.Run(["--help"]);
+        return ManilaCLI.CommandApp == null
+            ? throw new InvalidOperationException("CommandApp is not initialized.")
+            : ManilaCLI.CommandApp.Run(["--help"]);
     }
 }
 

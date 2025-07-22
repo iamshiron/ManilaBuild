@@ -76,7 +76,7 @@ public static class ErrorHandler {
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
 
         if (settings.StackTrace) {
-            Utils.TryWriteException(e.InnerException ?? e);
+            ExceptionUtils.TryWriteException(e.InnerException ?? e);
         }
 
         return ExitCodes.SCRIPTING_ERROR;
@@ -88,7 +88,7 @@ public static class ErrorHandler {
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
 
         if (settings.StackTrace) {
-            Utils.TryWriteException(e.InnerException ?? e);
+            ExceptionUtils.TryWriteException(e.InnerException ?? e);
         }
 
         return ExitCodes.BUILD_ERROR;
@@ -100,7 +100,7 @@ public static class ErrorHandler {
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
 
         if (settings.StackTrace) {
-            Utils.TryWriteException(e.InnerException ?? e);
+            ExceptionUtils.TryWriteException(e.InnerException ?? e);
         }
 
         return ExitCodes.CONFIGURATION_ERROR;
@@ -112,7 +112,7 @@ public static class ErrorHandler {
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
 
         if (settings.StackTrace) {
-            Utils.TryWriteException(e);
+            ExceptionUtils.TryWriteException(e);
         }
 
         return ExitCodes.KNOWN_ERROR;
@@ -124,7 +124,7 @@ public static class ErrorHandler {
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed error log.[/]");
 
         if (settings.StackTrace) {
-            Utils.TryWriteException(e);
+            ExceptionUtils.TryWriteException(e);
         }
 
         return ExitCodes.UNKNOWN_ERROR;

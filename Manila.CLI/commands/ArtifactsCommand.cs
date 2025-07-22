@@ -1,5 +1,6 @@
 
 using System.ComponentModel;
+using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -7,18 +8,13 @@ using Spectre.Console.Cli;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available artifacts in the current workspace")]
-internal sealed class ArtifactsCommand : AsyncCommand<ArtifactsCommand.Settings> {
+internal sealed class ArtifactsCommand(ServiceContainer services, Workspace workspace) : BaseManilaCommand<ArtifactsCommand.Settings> {
+    private readonly ServiceContainer _services = services;
+    private readonly Workspace _workspace = workspace;
+
     public sealed class Settings : DefaultCommandSettings { }
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings) {
-        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
-            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
-
-        var engine = ManilaCLI.ManilaEngine;
-        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, engine);
-        await engine.Run();
-        if (engine.Workspace == null) throw new ManilaException("Not inside a workspace");
-
+    protected override int ExecuteCommand(CommandContext context, Settings settings) {
         AnsiConsole.Write(new Rule("[bold yellow]Available Artifacts[/]").RuleStyle("grey").DoubleBorder());
 
         var table = new Table().Border(TableBorder.Rounded)
@@ -27,7 +23,7 @@ internal sealed class ArtifactsCommand : AsyncCommand<ArtifactsCommand.Settings>
             .AddColumn(new TableColumn("[green]Description[/]"))
             .AddColumn(new TableColumn("[blue]Jobs[/]"));
 
-        foreach (var p in engine.Workspace.Projects) {
+        foreach (var p in _workspace.Projects) {
             var project = p.Value;
 
             foreach (var (name, artifact) in project.Artifacts) {

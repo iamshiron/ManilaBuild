@@ -51,7 +51,7 @@ public interface IScriptContext {
     /// Asynchronously executes the script associated with this context.
     /// </summary>
     /// <returns>A task that represents the asynchronous execution operation.</returns>
-    Task ExecuteAsync(FileHashCache cache, Component component);
+    Task ExecuteAsync(IFileHashCache cache, Component component);
 
     /// <summary>
     /// Applies an enum type to the script engine, making it available in the script.
@@ -191,7 +191,7 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
     /// <summary>
     /// Executes the script after performing necessary checks and setup.
     /// </summary>
-    public async Task ExecuteAsync(FileHashCache cache, Component component) {
+    public async Task ExecuteAsync(IFileHashCache cache, Component component) {
         if (ManilaAPI == null) throw new ManilaException("ManilaAPI is not initialized. Call Init() before executing the script.");
 
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
@@ -223,7 +223,7 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
     /// Checks if the script file has changed, logs the result, and returns its content.
     /// </summary>
     /// <returns>The content of the script file.</returns>
-    private bool CheckForScriptChanges(FileHashCache cache) {
+    private bool CheckForScriptChanges(IFileHashCache cache) {
         return cache.HasChanged(ScriptPath, ScriptHash);
     }
 
@@ -277,7 +277,7 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
     /// <param name="code">The script code to compile.</param>
     /// <param name="bytes">The compiled bytecode output.</param>
     /// <returns>True if compilation was successful or cached bytecode was used, false otherwise.</returns>
-    private bool CompileScriptAndRead(FileHashCache cahce, string code, out byte[] bytes) {
+    private bool CompileScriptAndRead(IFileHashCache cahce, string code, out byte[] bytes) {
         var documentInfo = new DocumentInfo(ScriptPath);
         var binaryFilePath = GetCompiledFilePath();
         var directory = Path.GetDirectoryName(binaryFilePath)!;
@@ -308,7 +308,7 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
     /// Wraps the script content in an async IIFE and executes it.
     /// </summary>
     /// <param name="scriptContent">The script code to execute.</param>
-    private async Task ExecuteScript(FileHashCache cache) {
+    private async Task ExecuteScript(IFileHashCache cache) {
         using (new ProfileScope(_profiler, "Executing Script")) {
             var scriptContent = await File.ReadAllTextAsync(ScriptPath);
             var code = $@"

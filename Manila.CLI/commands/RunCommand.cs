@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Spectre.Console.Cli;
@@ -7,7 +8,11 @@ using Spectre.Console.Cli;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Runs a job in the current workspace")]
-internal sealed class RunCommand : BaseAsyncManilaCommand<RunCommand.Settings> {
+internal sealed class RunCommand(ManilaEngine engine, ServiceContainer services, Workspace workspace) : BaseManilaCommand<RunCommand.Settings> {
+    private readonly ManilaEngine _engine = engine;
+    private readonly ServiceContainer _services = services;
+    private readonly Workspace _workspace = workspace;
+
     public class Settings : DefaultCommandSettings {
         [CommandArgument(0, "<job>")]
         [Description("The job to run")]
@@ -15,18 +20,13 @@ internal sealed class RunCommand : BaseAsyncManilaCommand<RunCommand.Settings> {
         public string Job { get; set; } = "";
     }
 
-    protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
-        if (ManilaCLI.Profiler == null || ManilaCLI.ManilaEngine == null || ManilaCLI.Logger == null)
-            throw new ManilaException("Manila engine, profiler, or logger is not initialized.");
+    protected override int ExecuteCommand(CommandContext context, Settings settings) {
+        var engine = _engine ?? throw new ManilaException("Manila engine is not initialized.");
 
-        ManilaCLI.SetupInitialComponents(ManilaCLI.Logger, settings);
+        _services.Logger.Info($"Running job: {string.Join(",", _services.JobRegistry.JobKeys)}");
 
-        await ManilaCLI.InitExtensions(ManilaCLI.Profiler, ManilaCLI.ManilaEngine ?? throw new ManilaException("Manila engine is not initialized."));
-
-        var engine = ManilaCLI.ManilaEngine ?? throw new ManilaException("Manila engine is not initialized.");
-        await ManilaCLI.StartEngine(engine);
-        return engine.JobRegisry.GetJob(settings.Job) == null
+        return _services.JobRegistry.GetJob(settings.Job) == null
             ? throw new JobNotFoundException(settings.Job)
-            : ManilaCLI.RunJob(engine, engine.ExtensionManager, settings, settings.Job);
+            : ManilaCLI.RunJob(engine, _workspace, settings, settings.Job);
     }
 }

@@ -18,19 +18,14 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Primary API class exposing global Manila functions.
 /// </summary>
-public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobRegistry, IArtifactManager artifactManager, IExtensionManager extensionManager, ScriptContext context, Workspace workspace, WorkspaceScriptBridge workspaceBridge, Project? project, ProjectScriptBridge? projectBridge) : ExposedDynamicObject {
+public sealed class Manila(ServiceContainer services, ScriptContext context, WorkspaceScriptBridge workspaceBridge, Workspace workspace, ProjectScriptBridge? projectBridge, Project? project) : ExposedDynamicObject {
+    private readonly ServiceContainer _services = services;
     private readonly ScriptContext _context = context;
-    private readonly ILogger _logger = logger;
-    private readonly IProfiler _profiler = profiler;
 
     private readonly Project? _project = project;
     private readonly Workspace _workspace = workspace;
     private readonly ProjectScriptBridge? _projectBridge = projectBridge;
     private readonly WorkspaceScriptBridge _workspaceBridge = workspaceBridge;
-
-    private readonly IJobRegistry _jobRegistry = jobRegistry;
-    private readonly IArtifactManager _artifactManager = artifactManager;
-    private readonly IExtensionManager _extensionManager = extensionManager;
 
     /// <summary>
     /// The current build configuration for this Manila instance.
@@ -119,18 +114,18 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
         var applyTo = _project ?? (Component) _workspace;
 
         if (CurrentArtifactBuilder != null) {
-            var jobBuilder = new JobBuilder(_logger, _jobRegistry, name, _context, applyTo, CurrentArtifactBuilder);
+            var jobBuilder = new JobBuilder(_services.Logger, _services.JobRegistry, name, _context, applyTo, CurrentArtifactBuilder);
             CurrentArtifactBuilder.JobBuilders.Add(jobBuilder);
             return jobBuilder;
         }
 
         try {
-            var builder = new JobBuilder(_logger, _jobRegistry, name, _context, applyTo, null);
+            var builder = new JobBuilder(_services.Logger, _services.JobRegistry, name, _context, applyTo, null);
             JobBuilders.Add(builder);
             return builder;
         } catch (ContextException e) {
             if (e.Is != Context.WORKSPACE) throw;
-            var builder = new JobBuilder(_logger, _jobRegistry, name, _context, _workspace, null);
+            var builder = new JobBuilder(_services.Logger, _services.JobRegistry, name, _context, _workspace, null);
             JobBuilders.Add(builder);
             return builder;
         }
@@ -157,7 +152,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(string pluginComponentKey) {
-        var component = _extensionManager.GetPluginComponent(pluginComponentKey);
+        var component = _services.ExtensionManager.GetPluginComponent(pluginComponentKey);
         apply(component);
     }
 
@@ -167,7 +162,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(ScriptObject obj) {
         var version = obj.GetProperty("version");
-        var component = _extensionManager.GetPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
+        var component = _services.ExtensionManager.GetPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
         apply(component);
     }
 
@@ -178,9 +173,9 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     public void apply(PluginComponent component) {
         if (_project == null || _projectBridge == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
 
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            _logger.Debug("Applying: " + component);
-            ScriptBridgeContextApplyer.ApplyComponent(_logger, _context, _projectBridge, _project, _workspace, component);
+        using (new ProfileScope(_services.Profiler, MethodBase.GetCurrentMethod()!)) {
+            _services.Logger.Debug("Applying: " + component);
+            ScriptBridgeContextApplyer.ApplyComponent(_services.Logger, _context, _projectBridge, _project, _workspace, component);
             if (component is LanguageComponent lc) {
                 BuildConfig = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
             }
@@ -192,8 +187,8 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void onProject(object o, dynamic a) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            var filter = ProjectFilter.From(_logger, o);
+        using (new ProfileScope(_services.Profiler, MethodBase.GetCurrentMethod()!)) {
+            var filter = ProjectFilter.From(_services.Logger, o);
             _workspace.ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
         }
     }
@@ -203,7 +198,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public async Task runJob(string key) {
-        var job = _jobRegistry.GetJob(key) ?? throw new Exception("Job not found: " + key);
+        var job = _services.JobRegistry.GetJob(key) ?? throw new Exception("Job not found: " + key);
         await job.Execute();
     }
 
@@ -215,35 +210,35 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
         var workspace = workspaceBridge._handle;
         var project = projectBridge._handle;
         var artifact = project.Artifacts[artifactID];
-        artifact = _artifactManager.AppendCahedData(artifact, config, project);
+        artifact = _services.ArtifactManager.AppendCahedData(artifact, config, project);
 
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_services.Profiler, MethodBase.GetCurrentMethod()!)) {
             var logCache = new LogCache();
 
             using var logInjector = new LogInjector(
-                _logger,
+                _services.Logger,
                 logCache.Entries.Add
             );
 
-            var res = project.GetLanguageComponent().Build(workspace, project, config, artifact, _artifactManager);
+            var res = project.GetLanguageComponent().Build(workspace, project, config, artifact, _services.ArtifactManager);
 
             if (res is BuildExitCodeSuccess) {
-                _logger.Info($"Build successful for {project.Name} with artifact {artifactID}");
+                _services.Logger.Info($"Build successful for {project.Name} with artifact {artifactID}");
                 artifact.LogCache = logCache;
 
-                _artifactManager.CacheArtifact(artifact, config, project);
+                _services.ArtifactManager.CacheArtifact(artifact, config, project);
             } else if (res is BuildExitCodeCached cached) {
-                _logger.Info($"Loaded cached build for {project.Name} with artifact {artifactID}.");
+                _services.Logger.Info($"Loaded cached build for {project.Name} with artifact {artifactID}.");
 
                 if (artifact.LogCache is null) {
-                    _logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
+                    _services.Logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
                     return;
                 }
 
-                _logger.Debug($"Current context ID: {_logger.LogContext.CurrentContextID}");
-                artifact.LogCache.Replay(_logger, _logger.LogContext.CurrentContextID ?? Guid.Empty);
+                _services.Logger.Debug($"Current context ID: {_services.Logger.LogContext.CurrentContextID}");
+                artifact.LogCache.Replay(_services.Logger, _services.Logger.LogContext.CurrentContextID ?? Guid.Empty);
             } else if (res is BuildExitCodeFailed failed) {
-                _logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
+                _services.Logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
             }
         }
     }
@@ -261,7 +256,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void run(Project project) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_services.Profiler, MethodBase.GetCurrentMethod()!)) {
             project.GetLanguageComponent().Run(project);
         }
     }
@@ -309,9 +304,9 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public object import(string key) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            var t = Activator.CreateInstance(_extensionManager.GetAPIType(key));
-            _logger.Debug($"Importing {key} as {t}");
+        using (new ProfileScope(_services.Profiler, MethodBase.GetCurrentMethod()!)) {
+            var t = Activator.CreateInstance(_services.ExtensionManager.GetAPIType(key));
+            _services.Logger.Debug($"Importing {key} as {t}");
 
             if (t == null)
                 throw new Exception($"Failed to import API type for key: {key}");
