@@ -34,12 +34,12 @@ public static class ManilaCLI {
         AnsiConsoleRenderer.Init(logger, logOptions);
     }
 
-    private static async Task InitExtensions(ServiceContainer services) {
+    private static async Task InitExtensions(BaseServiceCotnainer baseServices, ServiceContainer services) {
         if (Directories == null) {
             throw new InvalidOperationException("Directories are not initialized.");
         }
 
-        using (new ProfileScope(services.Profiler, "Initializing Plugins")) {
+        using (new ProfileScope(baseServices.Profiler, "Initializing Plugins")) {
             await services.ExtensionManager.LoadPlugins();
             services.ExtensionManager.InitPlugins();
         }
@@ -53,8 +53,8 @@ public static class ManilaCLI {
         };
     }
 
-    public static int RunJob(ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
-        var graph = engine.CreateExecutionGraph(workspace);
+    public static int RunJob(ServiceContainer services, ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
+        var graph = engine.CreateExecutionGraph(services, workspace);
 
         return ErrorHandler.SafeExecute(() => {
             engine.ExecuteBuildLogic(graph, job);
@@ -79,22 +79,12 @@ public static class ManilaCLI {
 
         var logger = new Logger(null);
         var profiler = new Profiler(logger);
-        var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
         var services = new ServiceCollection();
 
-        var serviceContainer = new ServiceContainer(
-            logger,
-            profiler,
-            new JobRegistry(),
-            new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
-            new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
-            nugetManager,
-            new FileHashCache(Path.Join(Directories.DataDir, "cache", "filehashes.db"), Directories.RootDir)
+        var baseServiceContainer = new BaseServiceCotnainer(
+            logger, profiler
         );
 
-        await serviceContainer.ArtifactManager.LoadCache();
-
-        var manilaEngine = new ManilaEngine(serviceContainer, Directories);
         SetupBaseComponents(logger, logOptions);
 
         if (!(args.Contains(CommandOptions.Quiet) || args.Contains(CommandOptions.QuietShort))) {
@@ -104,34 +94,76 @@ public static class ManilaCLI {
             AnsiConsole.MarkupLine(string.Format(Banner.Lines.Last(), ManilaEngine.VERSION) + "\n");
         }
 
-        await InitExtensions(serviceContainer);
+        var manilaEngine = new ManilaEngine(baseServiceContainer, Directories);
 
-        // Run engine and initialize projects
-        var workspace = await manilaEngine.RunWorkspaceScript(new(
-            serviceContainer.Logger, serviceContainer.Profiler,
-            CreateScriptEngine(),
-            Directories.RootDir, Path.Join(Directories.RootDir, "Manila.js")
-        ));
+        ServiceContainer? serviceContainer = null;
 
-        var workspaceBridge = new WorkspaceScriptBridge(serviceContainer.Logger, serviceContainer.Profiler, workspace);
+        try {
+            var shouldInitialize = true;
 
-        foreach (var script in manilaEngine.DiscoverProjectScripts()) {
-            var projet = await manilaEngine.RunProjectScript(new(
-                serviceContainer.Logger, serviceContainer.Profiler,
-                CreateScriptEngine(),
-                Directories.RootDir, script
-            ), workspace, workspaceBridge);
+            if (!Directory.Exists(Directories.DataDir)) {
+                shouldInitialize = false;
+                baseServiceContainer.Logger.Debug("Data directory does not exist. Skipping workspace initialization.");
+            }
+
+            if (!File.Exists(Path.Join(Directories.RootDir, "Manila.js"))) {
+                shouldInitialize = false;
+                baseServiceContainer.Logger.Debug("Workspace script file (Manila.js) does not exist. Skipping workspace initialization.");
+            }
+
+            if (shouldInitialize) {
+                Directory.CreateDirectory(Directories.DataDir);
+
+                var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
+
+                serviceContainer = new ServiceContainer(
+                    new JobRegistry(),
+                    new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
+                    new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
+                    nugetManager,
+                    new FileHashCache(Path.Join(Directories.DataDir, "cache", "filehashes.db"), Directories.RootDir)
+                );
+
+                await serviceContainer.ArtifactManager.LoadCache();
+
+                await InitExtensions(baseServiceContainer, serviceContainer);
+
+                // Run engine and initialize projects
+                var workspace = await manilaEngine.RunWorkspaceScript(serviceContainer, new(
+                    baseServiceContainer.Logger, baseServiceContainer.Profiler,
+                    CreateScriptEngine(),
+                    Directories.RootDir, Path.Join(Directories.RootDir, "Manila.js")
+                ));
+
+                var workspaceBridge = new WorkspaceScriptBridge(baseServiceContainer.Logger, baseServiceContainer.Profiler, workspace);
+
+                foreach (var script in manilaEngine.DiscoverProjectScripts()) {
+                    var projet = await manilaEngine.RunProjectScript(serviceContainer, new(
+                        baseServiceContainer.Logger, baseServiceContainer.Profiler,
+                        CreateScriptEngine(),
+                        Directories.RootDir, script
+                    ), workspace, workspaceBridge);
+                }
+
+                _ = services.AddSingleton(serviceContainer)
+                    .AddSingleton(workspace);
+            } else {
+                baseServiceContainer.Logger.Debug("No workspace found. Continuing without workspace.");
+            }
+        } catch (Exception ex) {
+            logger.Debug($"Unable initialize Manila engine: {ex.Message}. Continueing without workspace.");
         }
 
-        _ = services.AddSingleton(serviceContainer)
-            .AddSingleton(manilaEngine)
-            .AddSingleton(workspace);
+        _ = services.AddSingleton(manilaEngine)
+                .AddSingleton(baseServiceContainer)
+                .AddSingleton(Directories);
         _ = services.AddTransient<RunCommand>()
-            .AddTransient<PluginsCommand>()
-            .AddTransient<JobsCommand>()
-            .AddTransient<ArtifactsCommand>()
-            .AddTransient<ProjectsCommand>()
-            .AddTransient<ApiCommand>();
+                .AddTransient<PluginsCommand>()
+                .AddTransient<JobsCommand>()
+                .AddTransient<ArtifactsCommand>()
+                .AddTransient<ProjectsCommand>()
+                .AddTransient<ApiCommand>()
+                .AddTransient<InitCommand>();
 
         CommandApp = new CommandApp<DefaultCommand>(new TypeRegistrar(services));
 
@@ -144,15 +176,16 @@ public static class ManilaCLI {
             c.AddCommand<ArtifactsCommand>("artifacts");
             c.AddCommand<ProjectsCommand>("projects");
             c.AddCommand<ApiCommand>("api");
+            c.AddCommand<InitCommand>("init");
         });
 
         logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ProgramStartedTime));
 
         var exitCode = CommandApp.Run(args);
-        serviceContainer.ExtensionManager.ReleasePlugins();
+        serviceContainer?.ExtensionManager.ReleasePlugins();
 
         profiler.SaveToFile(Directories.Profiles);
-        manilaEngine.Dispose();
+        serviceContainer?.ArtifactManager.FlushCacheToDisk();
 
         return exitCode;
     }

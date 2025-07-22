@@ -81,15 +81,12 @@ public class Profiler(ILogger logger) : IProfiler {
     }
 
     public void SaveToFile(string baseDir) {
-        lock (_lock) {
-            if (!Directory.Exists(baseDir)) {
-                try {
-                    _ = Directory.CreateDirectory(baseDir);
-                } catch {
-                    throw;
-                }
-            }
+        if (!Directory.Exists(baseDir)) {
+            _logger.Debug($"Base directory does not exist: {baseDir}. Profile data will not be saved.");
+            return;
+        }
 
+        lock (_lock) {
             string timestamp = DateTime.Now.ToString("yyyy-MM_dd-HH_mm_ss");
             string fileName = $"profile-{timestamp}.json";
             string filePath = Path.Combine(baseDir, fileName);
@@ -98,7 +95,7 @@ public class Profiler(ILogger logger) : IProfiler {
                 var settings = new JsonSerializerSettings { Formatting = Formatting.None }; // Use no formatting for smaller file sizes
                 string jsonString = JsonConvert.SerializeObject(_events, settings);
                 File.WriteAllText(filePath, jsonString);
-                _logger.Info($"Profiling data saved to: {filePath}");
+                _logger.Debug($"Profiling data saved to: {filePath}");
             } catch {
                 throw;
             }

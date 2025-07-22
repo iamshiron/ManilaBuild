@@ -13,7 +13,7 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
-public sealed class ManilaEngine(ServiceContainer services, IDirectories directories) {
+public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories directories) {
     #region Properties
 
     /// <summary>
@@ -27,7 +27,7 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
     public static readonly string VERSION = "0.0.1";
 
     private readonly IDirectories _directories = directories;
-    private readonly ServiceContainer _services = services;
+    private readonly BaseServiceCotnainer _baseServices = baseServices;
 
     #endregion
 
@@ -43,18 +43,18 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
         }
     }
 
-    public async Task<Project> RunProjectScript(ScriptContext context, Workspace workspace, WorkspaceScriptBridge workspaceBridge) {
+    public async Task<Project> RunProjectScript(ServiceContainer services, ScriptContext context, Workspace workspace, WorkspaceScriptBridge workspaceBridge) {
         if (!Path.GetFileName(context.ScriptPath).Equals("manila.js", StringComparison.CurrentCultureIgnoreCase))
             throw new ManilaException($"Project script must be named 'Manila.js', but found '{Path.GetFileName(context.ScriptPath)}'.");
 
-        using (new ProfileScope(_services.Profiler, MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
             var projectRoot = Path.GetDirectoryName(context.ScriptPath) ?? throw new ManilaException($"Could not determine project root from script path: {context.ScriptPath}");
             var projectName = (projectRoot.Split(Path.DirectorySeparatorChar).LastOrDefault() ?? throw new ManilaException($"Could not determine project name from root: {projectRoot}")).ToLower();
 
-            _services.Logger.Log(new ProjectDiscoveredLogEntry(projectRoot, context.ScriptPath));
+            _baseServices.Logger.Log(new ProjectDiscoveredLogEntry(projectRoot, context.ScriptPath));
 
-            var project = new Project(_services.Logger, projectName, projectRoot, _directories.RootDir, workspace);
-            var projectBridge = new ProjectScriptBridge(_services.Logger, _services.Profiler, project);
+            var project = new Project(_baseServices.Logger, projectName, projectRoot, _directories.RootDir, workspace);
+            var projectBridge = new ProjectScriptBridge(_baseServices.Logger, _baseServices.Profiler, project);
 
             workspace.Projects.Add(projectName, project);
 
@@ -62,17 +62,17 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
             context.ApplyEnum<EArchitecture>();
 
             context.Init(new(
-                _services, context,
+                _baseServices, services, context,
                 workspaceBridge, workspace,
                 projectBridge, project
             ), projectBridge, project);
             try {
-                await context.ExecuteAsync(_services.FileHashCache, project);
+                await context.ExecuteAsync(services.FileHashCache, project);
             } catch {
                 throw;
             }
 
-            _services.Logger.Log(new ProjectInitializedLogEntry(project));
+            _baseServices.Logger.Log(new ProjectInitializedLogEntry(project));
 
             return project;
         }
@@ -80,27 +80,27 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
     /// <summary>
     /// Executes the workspace script (Manila.js in the root directory).
     /// </summary>
-    public async Task<Workspace> RunWorkspaceScript(ScriptContext context) {
-        using (new ProfileScope(_services.Profiler, MethodBase.GetCurrentMethod()!)) {
+    public async Task<Workspace> RunWorkspaceScript(ServiceContainer services, ScriptContext context) {
+        using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
             var workspaceRoot = Path.GetDirectoryName(context.ScriptPath) ?? throw new ManilaException($"Could not determine workspace root from script path: {context.ScriptPath}");
-            _services.Logger.Debug("Running workspace script: " + context.ScriptPath);
+            _baseServices.Logger.Debug("Running workspace script: " + context.ScriptPath);
 
-            var workspace = new Workspace(_services.Logger, workspaceRoot);
-            var workspaceBridge = new WorkspaceScriptBridge(_services.Logger, _services.Profiler, workspace);
+            var workspace = new Workspace(_baseServices.Logger, workspaceRoot);
+            var workspaceBridge = new WorkspaceScriptBridge(_baseServices.Logger, _baseServices.Profiler, workspace);
 
             context.ApplyEnum<EArchitecture>();
             context.ApplyEnum<EPlatform>();
 
             context.Init(
                 new(
-                    _services, context,
+                    _baseServices, services, context,
                     workspaceBridge, workspace,
                     null, null
                 ), workspaceBridge, workspace
             );
             try {
                 await context.ExecuteAsync(
-                    _services.FileHashCache, workspace
+                    services.FileHashCache, workspace
                 );
 
                 return workspace;
@@ -115,10 +115,10 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
     /// Constructs the execution graph and runs the build logic for a specified job.
     /// </summary>
     /// <param name="jobID">The ID of the job to execute.</param>
-    public ExecutionGraph CreateExecutionGraph(Workspace workspace) {
-        var graph = new ExecutionGraph(_services.Logger, _services.Profiler);
+    public ExecutionGraph CreateExecutionGraph(ServiceContainer services, Workspace workspace) {
+        var graph = new ExecutionGraph(_baseServices.Logger, _baseServices.Profiler);
 
-        using (new ProfileScope(_services.Profiler, "Building Dependency Tree")) {
+        using (new ProfileScope(_baseServices.Profiler, "Building Dependency Tree")) {
             List<Job> Jobs = [.. workspace.Jobs];
             foreach (var p in workspace.Projects.Values) {
                 Jobs.AddRange([.. p.Jobs]);
@@ -130,7 +130,7 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
             foreach (var t in Jobs) {
                 List<ExecutableObject> dependencies = [];
                 foreach (var d in t.Dependencies) {
-                    dependencies.Add(_services.JobRegistry.GetJob(d) ?? throw new ManilaException($"Dependency '{d}' not found for job '{t.Name}'"));
+                    dependencies.Add(services.JobRegistry.GetJob(d) ?? throw new ManilaException($"Dependency '{d}' not found for job '{t.Name}'"));
                 }
                 graph.Attach(t, dependencies);
             }
@@ -139,19 +139,19 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
     }
 
     public void ExecuteBuildLogic(ExecutionGraph graph, string jobID) {
-        using (new ProfileScope(_services.Profiler, "Executing Execution Layers")) {
+        using (new ProfileScope(_baseServices.Profiler, "Executing Execution Layers")) {
             long startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            _services.Logger.Log(new BuildStartedLogEntry());
+            _baseServices.Logger.Log(new BuildStartedLogEntry());
             var layers = graph.GetExecutionLayers(jobID);
-            _services.Logger.Log(new BuildLayersLogEntry(layers));
+            _baseServices.Logger.Log(new BuildLayersLogEntry(layers));
 
             try {
                 int layerIndex = 0;
                 foreach (var layer in layers) {
-                    using (new ProfileScope(_services.Profiler, $"Executing Layer {layerIndex}")) {
+                    using (new ProfileScope(_baseServices.Profiler, $"Executing Layer {layerIndex}")) {
                         Guid layerContextID = Guid.NewGuid();
-                        _services.Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
-                        using (_services.Logger.LogContext.PushContext(layerContextID)) {
+                        _baseServices.Logger.Log(new BuildLayerStartedLogEntry(layer, layerContextID, layerIndex));
+                        using (_baseServices.Logger.LogContext.PushContext(layerContextID)) {
                             List<Task> layerJobs = [];
 
                             foreach (var o in layer.Items) {
@@ -159,22 +159,18 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
                             }
 
                             Task.WhenAll(layerJobs).GetAwaiter().GetResult();
-                            _services.Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
+                            _baseServices.Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
                         }
 
                         layerIndex++;
                     }
                 }
-                _services.Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
+                _baseServices.Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
             } catch (Exception e) {
                 var ex = new BuildException(e.Message, e);
-                _services.Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
+                _baseServices.Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
                 throw ex;
             }
         }
-    }
-
-    public void Dispose() {
-        _services.ArtifactManager.FlushCacheToDisk();
     }
 }

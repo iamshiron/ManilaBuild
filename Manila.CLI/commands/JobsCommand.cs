@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
+using Shiron.Manila.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using static Shiron.Manila.CLI.CLIConstants;
@@ -8,13 +9,18 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available jobs in the current workspace")]
-internal sealed class JobsCommand(ServiceContainer container, Workspace workspace) : BaseManilaCommand<JobsCommand.Settings> {
-    private readonly ServiceContainer _services = container;
-    private readonly Workspace _workspace = workspace;
+internal sealed class JobsCommand(BaseServiceCotnainer baseSerices, Workspace? workspace = null) : BaseManilaCommand<JobsCommand.Settings> {
+    private readonly Workspace? _workspace = workspace;
+    private readonly BaseServiceCotnainer _baseServices = baseSerices;
 
     public sealed class Settings : DefaultCommandSettings { }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
+        if (_workspace == null) {
+            _baseServices.Logger.Error(Messages.NoWorkspace);
+            return ExitCodes.USER_COMMAND_ERROR;
+        }
+
         AnsiConsole.Write(new Rule(string.Format(Format.Rule, Messages.AvailableJobs)).RuleStyle(BorderStyles.Default).DoubleBorder());
 
         if (_workspace.Jobs.Count > 0) {

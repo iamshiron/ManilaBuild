@@ -6,4 +6,5 @@ public static class ExitCodes {
     public static readonly int CONFIGURATION_ERROR = -3;
     public static readonly int KNOWN_ERROR = -4;
     public static readonly int UNKNOWN_ERROR = -5;
+    public static readonly int USER_COMMAND_ERROR = -6;
 }

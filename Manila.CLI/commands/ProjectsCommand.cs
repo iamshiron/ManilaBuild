@@ -8,13 +8,18 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available projects in the current workspace")]
-internal sealed class ProjectsCommand(ServiceContainer services, Workspace workspace) : BaseManilaCommand<ProjectsCommand.Settings> {
-    private readonly ServiceContainer _services = services;
-    private readonly Workspace _workspace = workspace;
+internal sealed class ProjectsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) : BaseManilaCommand<ProjectsCommand.Settings> {
+    private readonly Workspace? _workspace = workspace;
+    private readonly BaseServiceCotnainer _baseServices = baseServices;
 
     public sealed class Settings : DefaultCommandSettings { }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
+        if (_workspace == null) {
+            _baseServices.Logger.Error(Messages.NoWorkspace);
+            return ExitCodes.USER_COMMAND_ERROR;
+        }
+
         AnsiConsole.Write(new Rule(string.Format(Format.Rule, Messages.AvailableProjects)).RuleStyle(BorderStyles.Default).DoubleBorder());
 
         var table = new Table().Border(TableBorder.Rounded)

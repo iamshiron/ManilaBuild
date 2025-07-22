@@ -31,11 +31,19 @@ public static class CLIConstants {
 
     // Common messages and titles
     public static class Messages {
-        public static readonly string NoWorkspace = "Not inside a workspace";
+        public static readonly string NoWorkspace = "Not inside a workspace. Please run 'manila init' to create a new workspace.";
+        public static readonly string AlreadyInitialized = "Workspace already initialized. Use 'manila init --force' to overwrite the current data directory.";
+        public static readonly string CreatingNewWorkspace = "Creating new workspace...";
+        public static readonly string WorkspaceInitialized = "Workspace initialized successfully!";
+        public static readonly string ManilaEngineNotInitialized = "Manila engine is not initialized. Please run 'manila init' first.";
         public static readonly string AvailableJobs = "Available Jobs";
         public static readonly string AvailableProjects = "Available Projects";
         public static readonly string AvailablePlugins = "Available Plugins";
         public static readonly string WorkspaceJobs = "Workspace Jobs";
+
+        public static class InvalidSubCommand {
+            public static readonly string ApiSubcommand = "Invalid or unknown API subcommand! Run 'manila api --help' to see available subcommands.";
+        }
     }
 
     // Border styles
@@ -83,6 +91,19 @@ public static class CLIConstants {
             @"[blue]| |\/| |/ _` | '_ \| | |/ _` |[/]",
             @"[blue]| |  | | (_| | | | | | | (_| |[/]",
             @"[blue]|_|  |_|\__,_|_| |_|_|_|\__,_|[/] [magenta]v{0}[/]"
+        ];
+    }
+
+    public static class ScriptDefaults {
+        public static readonly string[] WorkspaceScript = [
+            "const workspace = Manila.getWorkspace()",
+            "",
+            "Manila.job('hello-world')",
+            "    .description('A simple hello world job')",
+            "    .execute(() => {",
+            "        print('Hello World from the workspace script!')",
+            "    })",
+            "",
         ];
     }
 }

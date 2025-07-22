@@ -15,5 +15,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseRidGraph>true</UseRidGraph>
+    <AssemblyName>manila</AssemblyName>
   </PropertyGroup>
 </Project>

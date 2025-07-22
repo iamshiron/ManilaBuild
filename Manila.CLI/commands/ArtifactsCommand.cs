@@ -4,17 +4,23 @@ using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available artifacts in the current workspace")]
-internal sealed class ArtifactsCommand(ServiceContainer services, Workspace workspace) : BaseManilaCommand<ArtifactsCommand.Settings> {
-    private readonly ServiceContainer _services = services;
-    private readonly Workspace _workspace = workspace;
+internal sealed class ArtifactsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) : BaseManilaCommand<ArtifactsCommand.Settings> {
+    private readonly Workspace? _workspace = workspace;
+    private readonly BaseServiceCotnainer _baseServices = baseServices;
 
     public sealed class Settings : DefaultCommandSettings { }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
+        if (_workspace == null) {
+            _baseServices.Logger.Error(Messages.NoWorkspace);
+            return ExitCodes.USER_COMMAND_ERROR;
+        }
+
         AnsiConsole.Write(new Rule("[bold yellow]Available Artifacts[/]").RuleStyle("grey").DoubleBorder());
 
         var table = new Table().Border(TableBorder.Rounded)

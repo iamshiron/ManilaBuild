@@ -8,13 +8,18 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("List all available plugins in the current workspace")]
-internal sealed class PluginsCommand(ManilaEngine engine, ServiceContainer services) : BaseManilaCommand<PluginsCommand.Settings> {
-    private readonly ServiceContainer _services = services;
-    private readonly ManilaEngine _engine = engine;
+internal sealed class PluginsCommand(BaseServiceCotnainer baseSerices, ServiceContainer? services = null) : BaseManilaCommand<PluginsCommand.Settings> {
+    private readonly ServiceContainer? _services = services;
+    private readonly BaseServiceCotnainer _baseServices = baseSerices;
 
     public class Settings : DefaultCommandSettings { }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
+        if (_services == null) {
+            _baseServices.Logger.Error(Messages.ManilaEngineNotInitialized);
+            return ExitCodes.USER_COMMAND_ERROR;
+        }
+
         var table = new Table().Border(TableBorder.Rounded)
             .AddColumn(new TableColumn(TableColumns.Project))
             .AddColumn(new TableColumn(TableColumns.Version))

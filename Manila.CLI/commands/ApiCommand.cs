@@ -13,10 +13,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("API commands for retrieving information as JSON output")]
-internal sealed class ApiCommand(ManilaEngine engine, ServiceContainer services, Workspace workspace) : BaseManilaCommand<ApiCommand.Settings> {
-    private readonly ServiceContainer _services = services;
-    private readonly ManilaEngine _engine = engine;
-    private readonly Workspace _workspace = workspace;
+internal sealed class ApiCommand(BaseServiceCotnainer baseServices, ManilaEngine? engine = null, ServiceContainer? services = null, Workspace? workspace = null) : BaseManilaCommand<ApiCommand.Settings> {
+    private readonly ServiceContainer? _services = services;
+    private readonly ManilaEngine? _engine = engine;
+    private readonly Workspace? _workspace = workspace;
+    private readonly BaseServiceCotnainer _baseServices = baseServices;
 
     public sealed class Settings : DefaultCommandSettings {
         [Description("API subcommand: jobs, artifacts, projects, workspace, plugins")]
@@ -42,9 +43,17 @@ internal sealed class ApiCommand(ManilaEngine engine, ServiceContainer services,
     };
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
+        if (_workspace == null || _services == null || _engine == null) {
+            _baseServices.Logger.Error(Messages.ManilaEngineNotInitialized);
+            return ExitCodes.USER_COMMAND_ERROR;
+        }
+
         var cmd = settings.Subcommand?.ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(cmd) || !ApiSubcommands.All.Contains(cmd))
-            throw new ManilaException($"Unknown API subcommand: {settings.Subcommand}. Valid subcommands: {string.Join(", ", ApiSubcommands.All)}");
+        if (string.IsNullOrWhiteSpace(cmd) || !ApiSubcommands.All.Contains(cmd)) {
+            _baseServices.Logger.Error(Messages.InvalidSubCommand.ApiSubcommand);
+            return ExitCodes.USER_COMMAND_ERROR;
+        }
+
         var result = cmd switch {
             "jobs" => GetJobsData(_workspace, settings),
             "artifacts" => GetArtifactsData(_workspace, settings),

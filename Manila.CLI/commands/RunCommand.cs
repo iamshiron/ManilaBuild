@@ -4,14 +4,16 @@ using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Spectre.Console.Cli;
+using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Runs a job in the current workspace")]
-internal sealed class RunCommand(ManilaEngine engine, ServiceContainer services, Workspace workspace) : BaseManilaCommand<RunCommand.Settings> {
-    private readonly ManilaEngine _engine = engine;
-    private readonly ServiceContainer _services = services;
-    private readonly Workspace _workspace = workspace;
+internal sealed class RunCommand(BaseServiceCotnainer baseServices, ManilaEngine? engine = null, ServiceContainer? services = null, Workspace? workspace = null) : BaseManilaCommand<RunCommand.Settings> {
+    private readonly ManilaEngine? _engine = engine;
+    private readonly ServiceContainer? _services = services;
+    private readonly Workspace? _workspace = workspace;
+    private readonly BaseServiceCotnainer _baseServices = baseServices;
 
     public class Settings : DefaultCommandSettings {
         [CommandArgument(0, "<job>")]
@@ -21,9 +23,16 @@ internal sealed class RunCommand(ManilaEngine engine, ServiceContainer services,
     }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
+        if (_engine == null || _services == null || _workspace == null) {
+            _baseServices.Logger.Error(Messages.ManilaEngineNotInitialized);
+            return ExitCodes.USER_COMMAND_ERROR;
+        }
+
         var engine = _engine ?? throw new ManilaException("Manila engine is not initialized.");
+        var services = _services ?? throw new ManilaException("Services are not initialized.");
+
         return _services.JobRegistry.GetJob(settings.Job) == null
             ? throw new JobNotFoundException(settings.Job)
-            : ManilaCLI.RunJob(engine, _workspace, settings, settings.Job);
+            : ManilaCLI.RunJob(services, engine, _workspace, settings, settings.Job);
     }
 }

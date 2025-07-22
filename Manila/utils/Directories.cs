@@ -1,4 +1,6 @@
 
+namespace Shiron.Manila.Utils;
+
 public interface IDirectories {
     string RootDir { get; }
     string DataDir { get; }
@@ -8,4 +10,14 @@ public interface IDirectories {
     string Artifacts { get; }
     string Cache { get; }
     string Compiled { get; }
+
+    IEnumerable<string> AllDataDirectories => [
+        DataDir,
+        Plugins,
+        Nuget,
+        Profiles,
+        Artifacts,
+        Cache,
+        Compiled
+    ];
 }

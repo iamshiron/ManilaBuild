@@ -9,16 +9,17 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
-public class ServiceContainer(ILogger logger, IProfiler profiler, IJobRegistry jobRegistry,
-            IArtifactManager artifactManager,
-            IExtensionManager extensionManager,
-            INuGetManager nuGetManager,
-            IFileHashCache fileHashCache) {
-    public readonly IJobRegistry JobRegistry = jobRegistry;
-    public readonly IArtifactManager ArtifactManager = artifactManager;
-    public readonly IExtensionManager ExtensionManager = extensionManager;
-    public readonly INuGetManager NuGetManager = nuGetManager;
-    public readonly IFileHashCache FileHashCache = fileHashCache;
-    public readonly ILogger Logger = logger;
-    public readonly IProfiler Profiler = profiler;
+/// <summary>
+/// Base container for services used by the Manila engine.
+/// </summary>
+public record BaseServiceCotnainer(ILogger Logger, IProfiler Profiler) {
 }
+
+/// <summary>
+/// Container for all services used by the Manila engine.
+/// </summary>
+public record ServiceContainer(IJobRegistry JobRegistry,
+            IArtifactManager ArtifactManager,
+            IExtensionManager ExtensionManager,
+            INuGetManager NuGetManager,
+            IFileHashCache FileHashCache);

@@ -32,6 +32,27 @@ public interface IFileHashCache {
 }
 
 /// <summary>
+/// Used if no manila workspace was detected.
+/// This cache implementation does not store any file hashes and always considers files as changed.
+/// </summary>
+public class EmptyFileHashCache : IFileHashCache {
+    /// <inheritdoc/>
+    public void AddOrUpdate(string path, string hash) {
+        // No operation for empty cache
+    }
+
+    /// <inheritdoc/>
+    public bool HasChanged(string path, string hash) {
+        return true; // Always returns true since the cache is empty
+    }
+
+    /// <inheritdoc/>
+    public Task<IEnumerable<string>> HasChangedAny(IEnumerable<string> paths) {
+        return Task.FromResult(paths); // All paths are considered changed
+    }
+}
+
+/// <summary>
 /// An implementation of IFileHashCache that uses a SQLite database for storage.
 /// </summary>
 public class FileHashCache : IFileHashCache {
