@@ -11,10 +11,6 @@ if (Manila.getEnvBool('ENABLE')) {
 	print('Disabled')
 }
 
-Manila.onProject(['client', 'core'], p => {
-	p.setToolChain(ToolChain.Clang)
-})
-
 Manila.job('build').execute(() => {
 	print('Building...')
 })

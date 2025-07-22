@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.ClearScript.V8;
 using Shiron.Manila.API;
+using Shiron.Manila.API.Bridges;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
@@ -25,6 +26,7 @@ public sealed class ManilaEngine {
     /// Gets the current workspace.
     /// </summary>
     public Workspace Workspace { get; }
+    public WorkspaceScriptBridge WorkspaceScriptBridge { get; }
 
     /// <summary>
     /// Gets the currently executing project. This is null if no project script is running.
@@ -100,6 +102,7 @@ public sealed class ManilaEngine {
         ArtifactManager = new ArtifactManager(_logger, _profiler, Path.Join(DataDir, "artifacts"), Path.Join(DataDir, "cache", "artifacts.json"));
         WorkspaceContext = new(_logger, profiler, CreateScriptEngine(), RootDir, Path.Join(RootDir, "Manila.js"));
         Workspace = new(logger, RootDir);
+        WorkspaceScriptBridge = new(logger, profiler, Workspace);
         FileHashCache = new(Path.Join(DataDir, "cache", "filehashes.db"), RootDir);
         ExecutionGraph = new(_logger, _profiler);
     }
@@ -189,8 +192,12 @@ public sealed class ManilaEngine {
             CurrentContext.ApplyEnum<EArchitecture>();
 
             CurrentContext.Init(new(
-                _logger, _profiler, JobRegisry, ArtifactManager, ExtensionManager, CurrentContext, CurrentProject, Workspace
-            ), CurrentProject);
+                _logger, _profiler,
+                JobRegisry, ArtifactManager, ExtensionManager,
+                WorkspaceContext,
+                Workspace, WorkspaceScriptBridge,
+                CurrentProject, new ProjectScriptBridge(_logger, _profiler, CurrentProject)
+            ), WorkspaceScriptBridge, Workspace);
             try {
                 await CurrentContext.ExecuteAsync(FileHashCache, CurrentProject);
             } catch {
@@ -214,8 +221,12 @@ public sealed class ManilaEngine {
             WorkspaceContext.ApplyEnum<EPlatform>();
 
             WorkspaceContext.Init(new(
-                _logger, _profiler, JobRegisry, ArtifactManager, ExtensionManager, WorkspaceContext, CurrentProject, Workspace
-            ), Workspace);
+                _logger, _profiler,
+                JobRegisry, ArtifactManager, ExtensionManager,
+                WorkspaceContext,
+                Workspace, WorkspaceScriptBridge,
+                CurrentProject, CurrentProject != null ? new ProjectScriptBridge(_logger, _profiler, CurrentProject) : null
+            ), WorkspaceScriptBridge, Workspace);
             try {
                 await WorkspaceContext.ExecuteAsync(
                     FileHashCache, Workspace

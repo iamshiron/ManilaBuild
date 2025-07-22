@@ -18,12 +18,16 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Primary API class exposing global Manila functions.
 /// </summary>
-public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobRegistry, IArtifactManager artifactManager, IExtensionManager extensionManager, ScriptContext context, Project? project, Workspace workspace) : ExposedDynamicObject {
+public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobRegistry, IArtifactManager artifactManager, IExtensionManager extensionManager, ScriptContext context, Workspace workspace, WorkspaceScriptBridge workspaceBridge, Project? project, ProjectScriptBridge? projectBridge) : ExposedDynamicObject {
     private readonly ScriptContext _context = context;
     private readonly ILogger _logger = logger;
     private readonly IProfiler _profiler = profiler;
+
     private readonly Project? _project = project;
     private readonly Workspace _workspace = workspace;
+    private readonly ProjectScriptBridge? _projectBridge = projectBridge;
+    private readonly WorkspaceScriptBridge _workspaceBridge = workspaceBridge;
+
     private readonly IJobRegistry _jobRegistry = jobRegistry;
     private readonly IArtifactManager _artifactManager = artifactManager;
     private readonly IExtensionManager _extensionManager = extensionManager;
@@ -53,9 +57,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public ProjectScriptBridge getProject() {
-        return _project == null
-            ? throw new ContextException(Context.WORKSPACE, Context.PROJECT)
-            : new ProjectScriptBridge(_logger, _profiler, _project);
+        return _projectBridge ?? throw new ContextException(Context.WORKSPACE, Context.PROJECT);
     }
 
     /// <summary>
@@ -71,7 +73,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public WorkspaceScriptBridge getWorkspace() {
-        return new WorkspaceScriptBridge(_logger, _profiler, _workspace);
+        return _workspaceBridge;
     }
 
     /// <summary>
@@ -174,11 +176,11 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(PluginComponent component) {
-        if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
+        if (_project == null || _projectBridge == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
 
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             _logger.Debug("Applying: " + component);
-            ComponentContextApplyer.ApplyComponent(_logger, _context, _project, _workspace, component);
+            ScriptBridgeContextApplyer.ApplyComponent(_logger, _context, _projectBridge, _project, _workspace, component);
             if (component is LanguageComponent lc) {
                 BuildConfig = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
             }

@@ -4,7 +4,7 @@ using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.API.Bridges;
 
-public class WorkspaceScriptBridge(ILogger logger, IProfiler profiler, Workspace workspace) {
+public class WorkspaceScriptBridge(ILogger logger, IProfiler profiler, Workspace workspace) : ScriptBridge(logger) {
     private readonly ILogger _logger = logger;
     private readonly IProfiler _profiler = profiler;
     internal readonly Workspace _handle = workspace;
