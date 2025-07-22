@@ -118,8 +118,6 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
     public ExecutionGraph CreateExecutionGraph(Workspace workspace) {
         var graph = new ExecutionGraph(_services.Logger, _services.Profiler);
 
-        // Add all existing jobs to the graph, hopefully I'll find a better solution for this in the future
-        ExecutionGraph.ExecutionLayer[] layers = [];
         using (new ProfileScope(_services.Profiler, "Building Dependency Tree")) {
             List<Job> Jobs = [.. workspace.Jobs];
             foreach (var p in workspace.Projects.Values) {
@@ -137,9 +135,6 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
                 graph.Attach(t, dependencies);
             }
         }
-
-        _services.Logger.Log(new BuildLayersLogEntry(layers));
-
         return graph;
     }
 
@@ -148,6 +143,7 @@ public sealed class ManilaEngine(ServiceContainer services, IDirectories directo
             long startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _services.Logger.Log(new BuildStartedLogEntry());
             var layers = graph.GetExecutionLayers(jobID);
+            _services.Logger.Log(new BuildLayersLogEntry(layers));
 
             try {
                 int layerIndex = 0;

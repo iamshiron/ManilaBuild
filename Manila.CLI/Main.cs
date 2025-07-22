@@ -28,6 +28,7 @@ namespace Shiron.Manila.CLI;
 public static class ManilaCLI {
     public static CommandApp<DefaultCommand>? CommandApp { get; private set; }
     public static IDirectories? Directories { get; private set; }
+    public static readonly long ProgramStartedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     public static void SetupBaseComponents(ILogger logger, LogOptions logOptions) {
         AnsiConsoleRenderer.Init(logger, logOptions);
@@ -144,6 +145,8 @@ public static class ManilaCLI {
             c.AddCommand<ProjectsCommand>("projects");
             c.AddCommand<ApiCommand>("api");
         });
+
+        logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ProgramStartedTime));
 
         var exitCode = CommandApp.Run(args);
         serviceContainer.ExtensionManager.ReleasePlugins();

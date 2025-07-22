@@ -765,7 +765,7 @@ public class ReplayLogEntry(ILogEntry entry, Guid contextID) : ILogEntry {
     public long Timestamp { get; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     /// <inheritdoc />
-    public LogLevel Level => LogLevel.System;
+    public LogLevel Level => Entry.Level;
 
     /// <summary>
     /// Parent context ID for this log entry is always the same, use <see cref="ContextID"/> instead.
