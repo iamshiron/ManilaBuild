@@ -70,8 +70,8 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// Gets the current Manila workspace.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public Workspace getWorkspace() {
-        return _workspace;
+    public WorkspaceScriptBridge getWorkspace() {
+        return new WorkspaceScriptBridge(_logger, _profiler, _workspace);
     }
 
     /// <summary>
@@ -128,7 +128,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
             return builder;
         } catch (ContextException e) {
             if (e.Is != Context.WORKSPACE) throw;
-            var builder = new JobBuilder(_logger, _jobRegistry, name, _context, getWorkspace(), null);
+            var builder = new JobBuilder(_logger, _jobRegistry, name, _context, _workspace, null);
             JobBuilders.Add(builder);
             return builder;
         }
@@ -192,7 +192,7 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     public void onProject(object o, dynamic a) {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             var filter = ProjectFilter.From(_logger, o);
-            getWorkspace().ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
+            _workspace.ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
         }
     }
 
@@ -209,7 +209,8 @@ public sealed class Manila(ILogger logger, IProfiler profiler, IJobRegistry jobR
     /// Builds the project using its language component.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void build(Workspace workspace, ProjectScriptBridge projectBridge, BuildConfig config, string artifactID) {
+    public void build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, string artifactID) {
+        var workspace = workspaceBridge._handle;
         var project = projectBridge._handle;
         var artifact = project.Artifacts[artifactID];
         artifact = _artifactManager.AppendCahedData(artifact, config, project);
