@@ -22,9 +22,6 @@ internal sealed class RunCommand(ManilaEngine engine, ServiceContainer services,
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
         var engine = _engine ?? throw new ManilaException("Manila engine is not initialized.");
-
-        _services.Logger.Info($"Running job: {string.Join(",", _services.JobRegistry.JobKeys)}");
-
         return _services.JobRegistry.GetJob(settings.Job) == null
             ? throw new JobNotFoundException(settings.Job)
             : ManilaCLI.RunJob(engine, _workspace, settings, settings.Job);
