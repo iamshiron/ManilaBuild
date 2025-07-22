@@ -51,7 +51,6 @@ public class PrintAction(ILogger logger, string message, string scriptPath, Guid
 /// </summary>
 public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) : ExecutableObject {
     private readonly ILogger _logger = logger;
-    public readonly LogContext LogContext = new();
     private readonly IJobRegistry _jobRegistry = jobRegistry;
 
     public readonly string Name = builder.Name;
@@ -103,8 +102,10 @@ public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) :
     }
 
     protected override async Task Run() {
+        _logger.Debug($"Executing job: {ExecutableID}");
+
         _logger.Log(new JobExecutionStartedLogEntry(this, ExecutableID));
-        using (LogContext.PushContext(ExecutableID)) {
+        using (_logger.LogContext.PushContext(ExecutableID)) {
             try {
                 foreach (var a in Actions) await a.Execute();
             } catch (Exception e) {

@@ -768,9 +768,9 @@ public class ReplayLogEntry(ILogEntry entry, Guid contextID) : ILogEntry {
     public LogLevel Level => LogLevel.System;
 
     /// <summary>
-    /// Parent context ID for this log entry is always null, use <see cref="ContextID"/> instead.
+    /// Parent context ID for this log entry is always the same, use <see cref="ContextID"/> instead.
     /// </summary>
-    public virtual Guid? ParentContextID { get; } = null;
+    public Guid? ParentContextID { get => Guid.AllBitsSet; set => throw new InvalidOperationException("ParentContextID is not applicable for replayed log entries."); }
 }
 
 #endregion

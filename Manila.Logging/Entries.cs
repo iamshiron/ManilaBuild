@@ -14,6 +14,8 @@ public interface ILogEntry {
     /// The severity level of the log entry.
     /// </summary>
     LogLevel Level { get; }
+
+    Guid? ParentContextID { get; set; }
 }
 
 /// <summary>

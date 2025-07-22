@@ -114,6 +114,9 @@ public class Logger(string? loggerPrefix) : ILogger {
     /// </summary>
     /// <param name="entry">The log entry to process.</param>
     public void Log(ILogEntry entry) {
+        if (entry.ParentContextID == null && LogContext.CurrentContextID != null)
+            entry.ParentContextID = LogContext.CurrentContextID;
+
         OnLogEntry?.Invoke(entry);
         // Create a copy of values to prevent collection modification issues if an injector modifies the collection.
         foreach (var injector in _activeInjectors.Values.ToList()) {
