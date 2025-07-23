@@ -14,7 +14,7 @@ public abstract class BaseManilaCommand<TSettings> : Command<TSettings>
     /// Override ExecuteCommand instead of this method.
     /// </summary>
     public sealed override int Execute(CommandContext context, TSettings settings) {
-        return ErrorHandler.SafeExecute(() => ExecuteCommand(context, settings), settings);
+        return ErrorHandler.SafeExecute(() => ExecuteCommand(context, settings), settings.ToLogOptions());
     }
 
     /// <summary>
@@ -39,7 +39,7 @@ public abstract class BaseAsyncManilaCommand<TSettings> : AsyncCommand<TSettings
     /// Override ExecuteCommand instead of this method.
     /// </summary>
     public override async Task<int> ExecuteAsync(CommandContext context, TSettings settings) {
-        return await ErrorHandler.SafeExecuteAsync(() => ExecuteCommandAsync(context, settings), settings);
+        return await ErrorHandler.SafeExecuteAsync(() => ExecuteCommandAsync(context, settings), settings.ToLogOptions());
     }
 
     /// <summary>

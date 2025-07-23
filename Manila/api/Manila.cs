@@ -91,10 +91,10 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Creates an artifact using the provided configuration lambda.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public ArtifactBuilder artifact(dynamic lambda) {
+    public ArtifactBuilder artifact(ScriptObject obj) {
         if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
-        var builder = new ArtifactBuilder(_workspace, artifactBridge => lambda(artifactBridge), this, (BuildConfig) BuildConfig, _project);
+        var builder = new ArtifactBuilder(_workspace, obj, this, (BuildConfig) BuildConfig, _project);
         ArtifactBuilders.Add(builder);
         return builder;
     }

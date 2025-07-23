@@ -37,7 +37,7 @@ public static class ManilaCLI {
 
     private static async Task InitExtensions(BaseServiceCotnainer baseServices, ServiceContainer services) {
         if (Directories == null) {
-            throw new InvalidOperationException("Directories are not initialized.");
+            throw new UnableToInitializeEngineException("Directories are not initialized.");
         }
 
         using (new ProfileScope(baseServices.Profiler, "Initializing Plugins")) {
@@ -60,7 +60,7 @@ public static class ManilaCLI {
         return ErrorHandler.SafeExecute(() => {
             engine.ExecuteBuildLogic(graph, job);
             return ExitCodes.SUCCESS;
-        }, settings);
+        }, settings.ToLogOptions());
     }
 
     public static async Task<int> Main(string[] args) {
@@ -154,8 +154,10 @@ public static class ManilaCLI {
             } else {
                 baseServiceContainer.Logger.Debug("No workspace found. Continuing without workspace.");
             }
-        } catch (Exception ex) {
-            logger.Debug($"Unable initialize Manila engine: {ex.Message}. Continueing without workspace.");
+        } catch (UnableToInitializeEngineException e) {
+            logger.Debug($"Unable initialize Manila engine: {e.Message}. Continueing without workspace.");
+        } catch (Exception e) {
+            return ErrorHandler.HandleException(e, logOptions);
         }
 
         _ = services.AddSingleton(manilaEngine)

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.ClearScript;
 using NuGet.Common;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.Artifacts;
@@ -10,7 +11,7 @@ namespace Shiron.Manila.API.Builders;
 /// <summary>
 /// Builder for creating artifacts within a Manila build configuration.
 /// </summary>
-public sealed class ArtifactBuilder(Workspace workspace, Action<UnresolvedArtifactScriptBridge> lambda, Manila manilaAPI, BuildConfig buildConfig, Project project) : IBuildable<Artifact> {
+public sealed class ArtifactBuilder(Workspace workspace, ScriptObject configurator, Manila manilaAPI, BuildConfig buildConfig, Project project) : IBuildable<Artifact> {
     /// <summary>
     /// The build configuration associated with this artifact.
     /// </summary>
@@ -34,7 +35,7 @@ public sealed class ArtifactBuilder(Workspace workspace, Action<UnresolvedArtifa
     /// <summary>
     /// Lambda function that defines the artifact configuration.
     /// </summary>
-    public readonly Action<UnresolvedArtifactScriptBridge> Lambda = lambda;
+    public readonly ScriptObject Lambda = configurator;
 
     /// <summary>
     /// Reference to the Manila API instance.
@@ -94,9 +95,14 @@ public sealed class ArtifactBuilder(Workspace workspace, Action<UnresolvedArtifa
         if (Name == null) throw new ManilaException("Artifact name must be set before building.");
 
         ManilaAPI.CurrentArtifactBuilder = this;
-        Lambda.Invoke(new(
-            Project, Name
-        ));
+        try {
+            _ = Lambda.InvokeAsFunction(new UnresolvedArtifactScriptBridge(
+                Project, Name
+            ));
+        } catch (Exception ex) {
+            throw new ManilaException($"Error while building artifact '{Name}': {ex.Message}", ex);
+        }
+
         ManilaAPI.CurrentArtifactBuilder = null;
         return new(_workspace, this);
     }

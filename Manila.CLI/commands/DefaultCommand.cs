@@ -31,4 +31,8 @@ public class DefaultCommandSettings : CommandSettings {
     [CommandOption("--stack-trace")]
     [DefaultValue(false)]
     public bool StackTrace { get; set; }
+
+    public LogOptions ToLogOptions() {
+        return new LogOptions(Quiet, Verbose, Structured, StackTrace);
+    }
 }

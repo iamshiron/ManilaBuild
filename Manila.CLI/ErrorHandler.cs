@@ -17,7 +17,7 @@ public static class ErrorHandler {
     /// <param name="exception">The exception to handle</param>
     /// <param name="settings">Command settings for determining output verbosity</param>
     /// <returns>The appropriate exit code based on the exception type</returns>
-    public static int HandleException(Exception exception, DefaultCommandSettings settings) {
+    public static int HandleException(Exception exception, LogOptions settings) {
         return exception switch {
             ScriptingException e => HandleScriptingException(e, settings),
             BuildException e => HandleBuildException(e, settings),
@@ -33,7 +33,7 @@ public static class ErrorHandler {
     /// <param name="commandFunction">The command function to execute</param>
     /// <param name="settings">Command settings for error handling</param>
     /// <returns>Exit code - 0 for success, negative values for errors</returns>
-    public static int SafeExecute(Func<int> commandFunction, DefaultCommandSettings settings) {
+    public static int SafeExecute(Func<int> commandFunction, LogOptions settings) {
         try {
             return commandFunction();
         } catch (Exception e) {
@@ -47,7 +47,9 @@ public static class ErrorHandler {
     /// <param name="commandFunction">The async command function to execute</param>
     /// <param name="settings">Command settings for error handling</param>
     /// <returns>Exit code - 0 for success, negative values for errors</returns>
-    public static async Task<int> SafeExecuteAsync(Func<Task<int>> commandFunction, DefaultCommandSettings settings) {
+    public static async Task<int> SafeExecuteAsync(Func<Task<int>> commandFunction, LogOptions settings) {
+
+
         try {
             return await commandFunction();
         } catch (AggregateException ae) {
@@ -58,7 +60,7 @@ public static class ErrorHandler {
         }
     }
 
-    private static int HandleScriptingException(ScriptingException e, DefaultCommandSettings settings) {
+    private static int HandleScriptingException(ScriptingException e, LogOptions settings) {
         // Extract the most relevant error message, preferring inner exception details if available
         string errorMessage = e.Message;
 
@@ -82,7 +84,7 @@ public static class ErrorHandler {
         return ExitCodes.SCRIPTING_ERROR;
     }
 
-    private static int HandleBuildException(BuildException e, DefaultCommandSettings settings) {
+    private static int HandleBuildException(BuildException e, LogOptions settings) {
         AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Build Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         AnsiConsole.MarkupLine("[grey]The project failed to build. Review the build configuration and source files for errors.[/]");
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
@@ -94,7 +96,7 @@ public static class ErrorHandler {
         return ExitCodes.BUILD_ERROR;
     }
 
-    private static int HandleConfigurationException(ConfigurationException e, DefaultCommandSettings settings) {
+    private static int HandleConfigurationException(ConfigurationException e, LogOptions settings) {
         AnsiConsole.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Configuration Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         AnsiConsole.MarkupLine("[grey]There is a problem with a configuration file or setting. Please verify it is correct.[/]");
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
@@ -106,7 +108,7 @@ public static class ErrorHandler {
         return ExitCodes.CONFIGURATION_ERROR;
     }
 
-    private static int HandleManilaException(ManilaException e, DefaultCommandSettings settings) {
+    private static int HandleManilaException(ManilaException e, LogOptions settings) {
         AnsiConsole.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Application Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         AnsiConsole.MarkupLine($"[grey]A known issue ('{e.GetType().Name}') occurred. This is a handled error condition.[/]");
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
@@ -118,7 +120,7 @@ public static class ErrorHandler {
         return ExitCodes.KNOWN_ERROR;
     }
 
-    private static int HandleUnknownException(Exception e, DefaultCommandSettings settings) {
+    private static int HandleUnknownException(Exception e, LogOptions settings) {
         AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.Collision} Unexpected System Exception:[/] [white]{Markup.Escape(e.GetType().Name)}[/]");
         AnsiConsole.MarkupLine("[red]This may indicate a bug in the application. Please report this issue.[/]");
         AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed error log.[/]");

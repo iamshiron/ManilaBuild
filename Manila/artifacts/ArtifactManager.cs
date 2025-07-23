@@ -73,7 +73,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
 
                 return true;
             } catch (Exception ex) {
-                var e = new ManilaException($"Failed to load artifacts cache from {ArtifactsCacheFile}: {ex.Message}", ex);
+                var e = new UnableToInitializeEngineException($"Failed to load artifacts cache from {ArtifactsCacheFile}: {ex.Message}", ex);
                 throw e;
             }
         }
