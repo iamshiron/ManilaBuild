@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using NuGet.Common;
+using Shiron.Manila.API.Bridges;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
@@ -8,7 +10,7 @@ namespace Shiron.Manila.API.Builders;
 /// <summary>
 /// Builder for creating artifacts within a Manila build configuration.
 /// </summary>
-public sealed class ArtifactBuilder(Workspace workspace, Action lambda, Manila manilaAPI, BuildConfig buildConfig, string projectName) : IBuildable<Artifact> {
+public sealed class ArtifactBuilder(Workspace workspace, Action<UnresolvedArtifactScriptBridge> lambda, Manila manilaAPI, BuildConfig buildConfig, Project project) : IBuildable<Artifact> {
     /// <summary>
     /// The build configuration associated with this artifact.
     /// </summary>
@@ -17,7 +19,7 @@ public sealed class ArtifactBuilder(Workspace workspace, Action lambda, Manila m
     /// <summary>
     /// The name of the project this artifact belongs to.
     /// </summary>
-    public readonly string ProjectName = projectName;
+    public readonly Project Project = project;
 
     /// <summary>
     /// Description of the artifact.
@@ -32,7 +34,7 @@ public sealed class ArtifactBuilder(Workspace workspace, Action lambda, Manila m
     /// <summary>
     /// Lambda function that defines the artifact configuration.
     /// </summary>
-    public readonly Action Lambda = lambda;
+    public readonly Action<UnresolvedArtifactScriptBridge> Lambda = lambda;
 
     /// <summary>
     /// Reference to the Manila API instance.
@@ -89,8 +91,12 @@ public sealed class ArtifactBuilder(Workspace workspace, Action lambda, Manila m
     /// </summary>
     /// <returns>The built artifact.</returns>
     public Artifact Build() {
+        if (Name == null) throw new ManilaException("Artifact name must be set before building.");
+
         ManilaAPI.CurrentArtifactBuilder = this;
-        Lambda.Invoke();
+        Lambda.Invoke(new(
+            Project, Name
+        ));
         ManilaAPI.CurrentArtifactBuilder = null;
         return new(_workspace, this);
     }

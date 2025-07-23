@@ -14,11 +14,11 @@ project.SourceSets({
 })
 
 project.Artifacts({
-	main: Manila.artifact(() => {
+	main: Manila.artifact(artifact => {
 		Manila.job('build')
 			.description('Create the Zip File')
 			.execute(() => {
-				Manila.build(workspace, project, config, 'main')
+				Manila.build(workspace, project, config, artifact)
 			})
 	})
 		.from('shiron.manila:zip/zip')

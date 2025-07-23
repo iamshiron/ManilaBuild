@@ -13,7 +13,7 @@ project.SourceSets({
 })
 
 project.Artifacts({
-	main: Manila.artifact(() => {
+	main: Manila.artifact(artifact => {
 		Manila.job('clean')
 			.description('Clean the client')
 			.execute(() => {

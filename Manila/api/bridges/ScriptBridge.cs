@@ -150,9 +150,7 @@ public static class ScriptBridgeContextApplyer {
     }
 }
 
-public abstract class ScriptBridge(ILogger logger) : DynamicObject, IScriptableObject {
-    private readonly ILogger _logger = logger;
-
+public abstract class ScriptBridge : DynamicObject, IScriptableObject {
     /// <summary>
     /// Dynamic methods available for script invocation.
     /// </summary>
@@ -191,9 +189,6 @@ public abstract class ScriptBridge(ILogger logger) : DynamicObject, IScriptableO
                 var methodParams = method.Method.GetParameters();
                 for (int i = 0; i < methodParams.Length; ++i) {
                     var param = methodParams[i];
-                    _logger.Debug($"Parameter: {param.Name}");
-
-                    // Convert enum strings to enum values
                     if (param.ParameterType.IsEnum) {
                         var type = param.ParameterType;
                         if (args[i] != null) {
@@ -210,7 +205,6 @@ public abstract class ScriptBridge(ILogger logger) : DynamicObject, IScriptableO
             }
         }
 
-        _logger.Debug($"Method '{binder.Name}' not found.");
         return base.TryInvokeMember(binder, args, out result);
     }
 }

@@ -13,11 +13,11 @@ project.SourceSets({
 })
 
 project.Artifacts({
-	main: Manila.artifact(() => {
+	main: Manila.artifact(artifact => {
 		Manila.job('build')
 			.description('Build the Core')
 			.execute(() => {
-				Manila.build(workspace, project, config)
+				Manila.build(workspace, project, config, artifact)
 			})
 	})
 		.from('shiron.manila:cpp/console')

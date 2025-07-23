@@ -94,7 +94,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     public ArtifactBuilder artifact(dynamic lambda) {
         if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
-        var builder = new ArtifactBuilder(_workspace, () => lambda(), this, (BuildConfig) BuildConfig, _project.Name);
+        var builder = new ArtifactBuilder(_workspace, artifactBridge => lambda(artifactBridge), this, (BuildConfig) BuildConfig, _project);
         ArtifactBuilders.Add(builder);
         return builder;
     }
@@ -207,10 +207,11 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Builds the project using its language component.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, string artifactID) {
+    public void build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge unresolvedArtifact) {
         var workspace = workspaceBridge._handle;
         var project = projectBridge._handle;
-        var artifact = project.Artifacts[artifactID];
+        var artifact = unresolvedArtifact.Resolve();
+
         artifact = _services.ArtifactManager.AppendCahedData(artifact, config, project);
 
         using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
@@ -224,22 +225,22 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
             var res = project.GetLanguageComponent().Build(workspace, project, config, artifact, _services.ArtifactManager);
 
             if (res is BuildExitCodeSuccess) {
-                _baseServices.Logger.Info($"Build successful for {project.Name} with artifact {artifactID}");
+                _baseServices.Logger.Info($"Build successful for {project.Name} with artifact {artifact.Name}");
                 artifact.LogCache = logCache;
 
                 _services.ArtifactManager.CacheArtifact(artifact, config, project);
             } else if (res is BuildExitCodeCached cached) {
-                _baseServices.Logger.Info($"Loaded cached build for {project.Name} with artifact {artifactID}.");
+                _baseServices.Logger.Info($"Loaded cached build for {project.Name} with artifact {artifact.Name}.");
 
                 if (artifact.LogCache is null) {
-                    _baseServices.Logger.Error($"Artifact '{artifactID}' has no log cache, this is unexpected!");
+                    _baseServices.Logger.Error($"Artifact '{artifact.Name}' has no log cache, this is unexpected!");
                     return;
                 }
 
                 _baseServices.Logger.Debug($"Current context ID: {_baseServices.Logger.LogContext.CurrentContextID}");
                 artifact.LogCache.Replay(_baseServices.Logger, _baseServices.Logger.LogContext.CurrentContextID ?? Guid.Empty);
             } else if (res is BuildExitCodeFailed failed) {
-                _baseServices.Logger.Error($"Build failed for {project.Name} with artifact {artifactID}: {failed.Exception.Message}");
+                _baseServices.Logger.Error($"Build failed for {project.Name} with artifact {artifact.Name}: {failed.Exception.Message}");
             }
         }
     }
