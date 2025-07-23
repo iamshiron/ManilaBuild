@@ -14,6 +14,7 @@ public interface IJobAction {
 
 public class JobScriptAction(ScriptObject obj) : IJobAction {
     private readonly ScriptObject _scriptObject = obj;
+    public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
 
     public async Task Execute() {
         try {
@@ -28,6 +29,7 @@ public class JobScriptAction(ScriptObject obj) : IJobAction {
 }
 public class JobShellAction(ShellUtils.CommandInfo info) : IJobAction {
     private readonly ShellUtils.CommandInfo _commandInfo = info;
+    public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
 
     public async Task Execute() {
         ShellUtils.Run(_commandInfo);
@@ -39,6 +41,7 @@ public class PrintAction(ILogger logger, string message, string scriptPath, Guid
     private readonly string _message = message;
     private readonly string _scriptPath = scriptPath;
     private readonly Guid _scriptContextID = scriptContextID;
+    public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
 
     public async Task Execute() {
         _logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextID));
