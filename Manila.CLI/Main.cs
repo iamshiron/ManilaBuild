@@ -88,7 +88,10 @@ public static class ManilaCLI {
 
         SetupBaseComponents(logger, logOptions);
 
-        if (!(args.Contains(CommandOptions.Quiet) || args.Contains(CommandOptions.QuietShort))) {
+        var commands = CommandUtils.GetCommandNames(args);
+        var ignoreBanner = logOptions.Quiet || (commands.Length > 0 && commands[0] == "api" && commands.Length > 1);
+
+        if (!ignoreBanner) {
             foreach (string line in Banner.Lines.Take(Banner.Lines.Length - 1)) {
                 AnsiConsole.MarkupLine(line);
             }

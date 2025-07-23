@@ -94,6 +94,10 @@ public static class CLIConstants {
         ];
     }
 
+    public static string[] IgnoreBannerOnCommaands => [
+        "api"
+    ];
+
     public static class ScriptDefaults {
         public static readonly string[] WorkspaceScript = [
             "const workspace = Manila.getWorkspace()",
