@@ -187,6 +187,7 @@ public static class ManilaCLI {
             c.AddCommand<InitCommand>("init");
 
             c.AddBranch<APICommandSettings>("api", api => {
+                api.SetDescription("API commands for retrieving information as json.");
                 api.AddCommand<APIJobsCommand>("jobs");
                 api.AddCommand<APIArtifactsCommand>("artifacts");
                 api.AddCommand<APIProjectsCommand>("projects");

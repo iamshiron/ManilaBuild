@@ -7,6 +7,7 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
+[Description("Initializes a new Manila workspace")]
 internal sealed class InitCommand(IDirectories directories, BaseServiceCotnainer baseServices) : BaseManilaCommand<InitCommand.Settings> {
     private readonly IDirectories _directories = directories;
     private readonly BaseServiceCotnainer _baseServices = baseServices;
