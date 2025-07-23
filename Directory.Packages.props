@@ -1,6 +1,0 @@
-<Project>
-  <!-- Security override for vulnerable transitive dependencies -->
-  <ItemGroup>
-    <PackageReference Include="System.Formats.Asn1" Version="9.0.3" />
-  </ItemGroup>
-</Project>
