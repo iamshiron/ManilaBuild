@@ -12,6 +12,7 @@ using Shiron.Manila.Artifacts;
 using Shiron.Manila.Caching;
 using Shiron.Manila.CLI;
 using Shiron.Manila.CLI.Commands;
+using Shiron.Manila.CLI.Commands.API;
 using Shiron.Manila.CLI.Utils;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
@@ -157,13 +158,21 @@ public static class ManilaCLI {
         _ = services.AddSingleton(manilaEngine)
                 .AddSingleton(baseServiceContainer)
                 .AddSingleton(Directories);
-        _ = services.AddTransient<RunCommand>()
+        _ = services
+                // Base Commands
+                .AddTransient<RunCommand>()
                 .AddTransient<PluginsCommand>()
                 .AddTransient<JobsCommand>()
                 .AddTransient<ArtifactsCommand>()
                 .AddTransient<ProjectsCommand>()
-                .AddTransient<ApiCommand>()
-                .AddTransient<InitCommand>();
+                .AddTransient<InitCommand>()
+
+                // API Commands
+                .AddTransient<APIArtifactsCommand>()
+                .AddTransient<APIJobsCommand>()
+                .AddTransient<APIProjectsCommand>()
+                .AddTransient<APIPluginsCommand>()
+                .AddTransient<APIWorkspaceCommand>();
 
         CommandApp = new CommandApp<DefaultCommand>(new TypeRegistrar(services));
 
@@ -175,8 +184,15 @@ public static class ManilaCLI {
             c.AddCommand<RunCommand>("run");
             c.AddCommand<ArtifactsCommand>("artifacts");
             c.AddCommand<ProjectsCommand>("projects");
-            c.AddCommand<ApiCommand>("api");
             c.AddCommand<InitCommand>("init");
+
+            c.AddBranch<APICommandSettings>("api", api => {
+                api.AddCommand<APIJobsCommand>("jobs");
+                api.AddCommand<APIArtifactsCommand>("artifacts");
+                api.AddCommand<APIProjectsCommand>("projects");
+                api.AddCommand<APIPluginsCommand>("plugins");
+                api.AddCommand<APIWorkspaceCommand>("workspace");
+            });
         });
 
         logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ProgramStartedTime));
