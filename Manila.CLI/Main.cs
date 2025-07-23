@@ -128,8 +128,7 @@ public static class ManilaCLI {
                     new FileHashCache(Path.Join(Directories.DataDir, "cache", "filehashes.db"), Directories.RootDir)
                 );
 
-                await serviceContainer.ArtifactManager.LoadCache();
-
+                serviceContainer.ArtifactManager.LoadCache();
                 await InitExtensions(baseServiceContainer, serviceContainer);
 
                 // Run engine and initialize projects
@@ -141,13 +140,17 @@ public static class ManilaCLI {
 
                 var workspaceBridge = new WorkspaceScriptBridge(baseServiceContainer.Logger, baseServiceContainer.Profiler, workspace);
 
+                List<Task<Project>> projectInitializationTasks = [];
                 foreach (var script in manilaEngine.DiscoverProjectScripts()) {
-                    var projet = await manilaEngine.RunProjectScript(serviceContainer, new(
-                        baseServiceContainer.Logger, baseServiceContainer.Profiler,
-                        CreateScriptEngine(),
-                        Directories.RootDir, script
-                    ), workspace, workspaceBridge);
+                    projectInitializationTasks.Add(
+                        manilaEngine.RunProjectScript(serviceContainer, new(
+                            baseServiceContainer.Logger, baseServiceContainer.Profiler,
+                            CreateScriptEngine(),
+                            Directories.RootDir, script
+                        ), workspace, workspaceBridge)
+                    );
                 }
+                await Task.WhenAll(projectInitializationTasks);
 
                 _ = services.AddSingleton(serviceContainer)
                     .AddSingleton(workspace);

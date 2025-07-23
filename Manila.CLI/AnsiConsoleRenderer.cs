@@ -262,7 +262,7 @@ public static class AnsiConsoleRenderer {
         PushLog($"[green]{Emoji.Known.Package} Layer [yellow]{entry.LayerIndex}[/] completed![/]", entry.ParentContextID.ToString(), entry.ContextID);
     }
     private static void HandleProjectsInitializedLogEntry(ProjectsInitializedLogEntry entry) {
-        _logger?.Debug($"Initialization took [yellow]{entry.Duration}[/]ms!");
+        _logger?.Info($"Initialization took [yellow]{entry.Duration}[/]ms!");
     }
     private static void HandleScriptExecutionStartedLogEntry(ScriptExecutionStartedLogEntry entry) {
         _logger?.Debug($"Running script {entry.ScriptPath}");

@@ -16,8 +16,8 @@ project.Artifacts({
 	main: Manila.artifact(artifact => {
 		Manila.job('build')
 			.description('Build the Core')
-			.execute(() => {
-				Manila.build(workspace, project, config, artifact)
+			.execute(async () => {
+				await Manila.build(workspace, project, config, artifact)
 			})
 	})
 		.from('shiron.manila:cpp/console')

@@ -207,12 +207,12 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Builds the project using its language component.
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge unresolvedArtifact) {
+    public async Task build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge unresolvedArtifact) {
         var workspace = workspaceBridge._handle;
         var project = projectBridge._handle;
         var artifact = unresolvedArtifact.Resolve();
 
-        artifact = _services.ArtifactManager.AppendCahedData(artifact, config, project);
+        artifact = await _services.ArtifactManager.AppendCahedData(artifact, config, project);
 
         using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
             var logCache = new LogCache();
@@ -228,7 +228,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
                 _baseServices.Logger.Info($"Build successful for {project.Name} with artifact {artifact.Name}");
                 artifact.LogCache = logCache;
 
-                _services.ArtifactManager.CacheArtifact(artifact, config, project);
+                await _services.ArtifactManager.CacheArtifact(artifact, config, project);
             } else if (res is BuildExitCodeCached cached) {
                 _baseServices.Logger.Info($"Loaded cached build for {project.Name} with artifact {artifact.Name}.");
 

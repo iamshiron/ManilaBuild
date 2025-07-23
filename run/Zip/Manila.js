@@ -17,8 +17,8 @@ project.Artifacts({
 	main: Manila.artifact(artifact => {
 		Manila.job('build')
 			.description('Create the Zip File')
-			.execute(() => {
-				Manila.build(workspace, project, config, artifact)
+			.execute(async () => {
+				await Manila.build(workspace, project, config, artifact)
 			})
 	})
 		.from('shiron.manila:zip/zip')

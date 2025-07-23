@@ -1,5 +1,6 @@
 
 using System.Reflection;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.Caching;
@@ -12,9 +13,9 @@ namespace Shiron.Manila.Artifacts;
 
 public interface IArtifactManager {
     string GetArtifactRoot(BuildConfig config, Project project, Artifact artifact);
-    void CacheArtifact(Artifact artifact, BuildConfig config, Project project);
-    Artifact AppendCahedData(Artifact artifact, BuildConfig config, Project project);
-    Task<bool> LoadCache();
+    Task CacheArtifact(Artifact artifact, BuildConfig config, Project project);
+    Task<Artifact> AppendCahedData(Artifact artifact, BuildConfig config, Project project);
+    void LoadCache();
     void FlushCacheToDisk();
 }
 
@@ -26,6 +27,8 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     public readonly string ArtifactsCacheFile = artifactsCacheFile;
 
     private Dictionary<string, ArtifactCacheEntry> _artifacts = [];
+    private Task<bool>? _cacheLoadTask;
+    private bool _cacheLoaded = false;
 
     private static readonly JsonSerializerSettings _jsonSettings = new() {
         Formatting = Formatting.Indented,
@@ -45,11 +48,17 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         );
     }
 
-    public void CacheArtifact(Artifact artifact, BuildConfig config, Project project) {
+    public async Task CacheArtifact(Artifact artifact, BuildConfig config, Project project) {
+        if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
+        _ = await _cacheLoadTask;
+
         _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
     }
 
-    public Artifact AppendCahedData(Artifact artifact, BuildConfig config, Project project) {
+    public async Task<Artifact> AppendCahedData(Artifact artifact, BuildConfig config, Project project) {
+        if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
+        _ = await _cacheLoadTask;
+
         var root = GetArtifactRoot(config, project, artifact);
         if (_artifacts.TryGetValue(root, out var entry)) {
             artifact.LogCache = entry.LogCache;
@@ -59,9 +68,16 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         return artifact;
     }
 
-    public async Task<bool> LoadCache() {
+    public void LoadCache() {
+        _cacheLoadTask = PerformCacheLoad();
+    }
+
+    private async Task<bool> PerformCacheLoad() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             try {
+                if (_cacheLoaded) _logger.Warning("Cache is already loaded. Overwriting existing cache.");
+
+                _cacheLoaded = true;
                 if (!File.Exists(ArtifactsCacheFile)) return false;
 
                 var json = await File.ReadAllTextAsync(ArtifactsCacheFile);
