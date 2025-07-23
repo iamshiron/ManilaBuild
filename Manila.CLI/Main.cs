@@ -199,6 +199,8 @@ public static class ManilaCLI {
                 api.AddCommand<APIProjectsCommand>("projects");
                 api.AddCommand<APIPluginsCommand>("plugins");
                 api.AddCommand<APIWorkspaceCommand>("workspace");
+                api.AddCommand<APIBuildLayersCommand>("layers");
+                api.AddCommand<APIGraphCommand>("graph");
             });
         });
 
