@@ -182,12 +182,13 @@ public static class ManilaCLI {
         CommandApp.Configure(c => {
             c.SetApplicationName("manila");
             c.SetApplicationVersion(ManilaEngine.VERSION);
-            c.AddCommand<PluginsCommand>("plugins");
-            c.AddCommand<JobsCommand>("jobs");
+
+            c.AddCommand<InitCommand>("init");
             c.AddCommand<RunCommand>("run");
+            c.AddCommand<JobsCommand>("jobs");
             c.AddCommand<ArtifactsCommand>("artifacts");
             c.AddCommand<ProjectsCommand>("projects");
-            c.AddCommand<InitCommand>("init");
+            c.AddCommand<PluginsCommand>("plugins");
 
             c.AddBranch<APICommandSettings>("api", api => {
                 api.SetDescription("API commands for retrieving information as json.");
