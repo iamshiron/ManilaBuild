@@ -209,7 +209,7 @@ public class NuGetManager : INuGetManager {
             using var packageStream = new MemoryStream();
             bool success = await _findPackageByIdResource!.CopyNupkgToStreamAsync(id, version, packageStream, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
 
-            if (!success) throw new InvalidOperationException($"Failed to download package: {id}@{version}");
+            if (!success) throw new ManilaException($"Failed to download package: {id}@{version}");
 
             using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write);
             packageStream.Position = 0;
@@ -241,7 +241,7 @@ public class NuGetManager : INuGetManager {
 
     private static string GetCurrentFrameworkName()
         => Assembly.GetEntryAssembly()?.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName
-           ?? throw new InvalidOperationException("Could not determine the application's target framework.");
+           ?? throw new ManilaException("Could not determine the application's target framework.");
 
     private List<string> GetInstalledBasePackages() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {

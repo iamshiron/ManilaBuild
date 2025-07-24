@@ -7,7 +7,7 @@ namespace Shiron.Manila.CLI.Commands;
 public sealed class DefaultCommand(ILogger logger) : BaseManilaCommand<DefaultCommandSettings>(logger) {
     protected override int ExecuteCommand(CommandContext context, DefaultCommandSettings settings) {
         return ManilaCli.CommandApp == null
-            ? throw new InvalidOperationException("CommandApp is not initialized.")
+            ? throw new ManilaException("CommandApp is not initialized.")
             : ManilaCli.CommandApp.Run(["--help"]);
     }
 }

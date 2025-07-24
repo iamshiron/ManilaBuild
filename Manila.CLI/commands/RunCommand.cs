@@ -34,7 +34,7 @@ internal sealed class RunCommand(BaseServiceCotnainer baseServices, ManilaEngine
         var safeServices = _services ?? throw new ManilaException("Services are not initialized.");
 
         return _services.JobRegistry.GetJob(settings.Job) == null
-            ? throw new JobNotFoundException(settings.Job)
+            ? throw new ManilaException(settings.Job)
             : await ManilaCli.RunJobAsync(safeServices, _baseServices, safeEngine, _workspace, settings, settings.Job);
     }
 }

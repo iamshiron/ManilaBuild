@@ -92,7 +92,7 @@ public class Logger(string? loggerPrefix) : ILogger {
     /// <exception cref="InvalidOperationException">Thrown if an injector with the same ID already exists.</exception>
     public void AddInjector(Guid id, LogInjector injector) {
         if (!_activeInjectors.TryAdd(id, injector)) {
-            throw new InvalidOperationException($"An injector with ID {id} already exists.");
+            throw new Exception($"An injector with ID {id} already exists.");
         }
     }
 
@@ -105,7 +105,7 @@ public class Logger(string? loggerPrefix) : ILogger {
         if (!_activeInjectors.Remove(id)) {
             // Note: Depending on requirements, this could fail silently instead of throwing.
             // Throwing makes behavior more explicit.
-            throw new InvalidOperationException($"No injector with ID {id} exists to remove.");
+            throw new Exception($"No injector with ID {id} exists to remove.");
         }
     }
 

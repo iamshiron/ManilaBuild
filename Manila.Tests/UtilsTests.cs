@@ -60,7 +60,7 @@ public class FunctionUtilsTests {
     }
 
     [Test]
-    public void ToDelegate_TooManyParams_ThrowsNotSupportedException() {
+    public void ManilaException() {
         var instance = new TestClass();
         var method = typeof(TestClass).GetMethod("TooManyParams");
         Assert.Throws<ArgumentException>(() => FunctionUtils.ToDelegate(instance, method!));

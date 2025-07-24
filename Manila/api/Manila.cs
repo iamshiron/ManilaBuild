@@ -52,7 +52,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Gets the current Manila project or throws if none exists.
     /// </summary>
     public ProjectScriptBridge GetProject() {
-        return _projectBridge ?? throw new ContextException(Context.WORKSPACE, Context.PROJECT);
+        return _projectBridge ?? throw new ManilaException("Not in a project context.");
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Gets the build configuration or throws if not set.
     /// </summary>
     public object GetConfig() {
-        return BuildConfig ?? throw new ScriptingException("Cannot retreive build config before applying a language component!");
+        return BuildConfig ?? throw new ManilaException("Cannot retreive build config before applying a language component!");
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Creates an artifact using the provided configuration lambda.
     /// </summary>
     public ArtifactBuilder Artifact(ScriptObject obj) {
-        if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
+        if (_project == null) throw new ManilaException("Not in a project context.");
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
         var builder = new ArtifactBuilder(_workspace, obj, this, (BuildConfig) BuildConfig, _project);
         ArtifactBuilders.Add(builder);
@@ -266,16 +266,16 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Applies a language component by its URI.
     /// </summary>
     public void Apply(string uri) {
-        if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
+        if (_project == null) throw new ManilaException(Context.WORKSPACE, Context.PROJECT);
 
         var component = _services.ExtensionManager.GetPluginComponent(uri);
-        if (component is not LanguageComponent) throw new ScriptingException($"Component {uri} is not a language component.");
+        if (component is not LanguageComponent) throw new ManilaException($"Component {uri} is not a language component.");
 
         var langComp = (LanguageComponent) component;
         _baseServices.Logger.Debug($"Applying language component {langComp.Name} from {langComp._plugin}");
         _project.PluginComponents.Add(langComp.GetType(), langComp);
 
-        var buildConfig = Activator.CreateInstance(langComp.BuildConfigType) ?? throw new ScriptingException($"Failed to create build config for language component {langComp.Name}.");
+        var buildConfig = Activator.CreateInstance(langComp.BuildConfigType) ?? throw new ManilaException($"Failed to create build config for language component {langComp.Name}.");
         BuildConfig = buildConfig;
     }
 

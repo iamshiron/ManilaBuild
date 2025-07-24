@@ -20,8 +20,8 @@ public class LogInjector : IDisposable {
     /// </summary>
     /// <param name="onLog">The action to execute for each new log entry. Cannot be null.</param>
     public LogInjector(ILogger logger, Action<ILogEntry> onLog) {
-        _onLog = onLog ?? throw new ArgumentNullException(nameof(onLog));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _onLog = onLog ?? throw new Exception(nameof(onLog));
+        _logger = logger ?? throw new Exception(nameof(logger));
         _logger.AddInjector(ID, this);
     }
 

@@ -171,6 +171,9 @@ public static class AnsiConsoleRenderer {
             case CommandStdErrLogEntry log:
                 HandleCommandStdErrLogEntry(log);
                 break;
+            case StageChangeLogEntry log:
+                HandleStageChangeLogEntry(log);
+                break;
             case ReplayLogEntry log:
                 var logEntry = (BaseLogEntry) log.Entry;
                 logEntry.ParentContextID = log.ContextID;
@@ -314,5 +317,11 @@ public static class AnsiConsoleRenderer {
             PushLog($"[green]>[/] {entry.Message}", entry.ParentContextID.ToString(), entry.ContextID);
         }
     }
+
+    private static void HandleStageChangeLogEntry(StageChangeLogEntry entry) {
+        var duration = entry.Timestamp - entry.PreviousStartedAt;
+        PushLog($"[grey]Stage changed from [blue]{entry.ChangedFrom}[/] to [magenta]{entry.ChangedTo}[/]. Old stage took [yellow]{duration}[/]ms[/]");
+    }
+
     private static void HandleCommandStdErrLogEntry(CommandStdErrLogEntry entry) { }
 }

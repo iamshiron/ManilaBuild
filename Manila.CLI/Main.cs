@@ -14,6 +14,7 @@ using Shiron.Manila.CLI;
 using Shiron.Manila.CLI.Commands;
 using Shiron.Manila.CLI.Commands.API;
 using Shiron.Manila.CLI.Utils;
+using Shiron.Manila.Enums;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
@@ -38,7 +39,7 @@ public static class ManilaCli {
     private static async Task InitExtensions(BaseServiceCotnainer baseServices, ServiceContainer services) {
         using (new ProfileScope(baseServices.Profiler, "Initializing Extensons")) {
             if (Directories == null) {
-                throw new UnableToInitializeEngineException("Directories are not initialized.");
+                throw new ManilaException("Directories are not initialized.");
             }
 
             using (new ProfileScope(baseServices.Profiler, "Initializing Plugins")) {
@@ -92,9 +93,10 @@ public static class ManilaCli {
         var logger = isApiCommand ? (ILogger) new EmptyLogger() : new Logger(null);
         var profiler = new Profiler(logger);
         var services = new ServiceCollection();
+        var executionStage = new ExecutionStage(logger);
 
         var baseServiceContainer = new BaseServiceCotnainer(
-            logger, profiler
+            logger, profiler, executionStage
         );
 
         SetupBaseComponents(logger, logOptions);
@@ -103,7 +105,7 @@ public static class ManilaCli {
             foreach (string line in Banner.Lines.Take(Banner.Lines.Length - 1)) {
                 AnsiConsole.MarkupLine(line);
             }
-            AnsiConsole.MarkupLine(string.Format(Banner.Lines[Banner.Lines.Length - 1], ManilaEngine.VERSION) + "\n");
+            AnsiConsole.MarkupLine(string.Format(Banner.Lines[^1], ManilaEngine.VERSION) + "\n");
         }
 
         var manilaEngine = new ManilaEngine(baseServiceContainer, Directories);
@@ -117,6 +119,10 @@ public static class ManilaCli {
                 shouldInitialize = false;
                 baseServiceContainer.Logger.Debug("Data directory does not exist. Skipping workspace initialization.");
             }
+            if (!File.Exists(Path.Join(Directories.RootDir, "Manila.config.json"))) {
+                shouldInitialize = false;
+                baseServiceContainer.Logger.Debug("Workspace configuration file (Manila.config.json) does not exist. Skipping workspace initialization.");
+            }
 
             if (!File.Exists(Path.Join(Directories.RootDir, "Manila.js"))) {
                 shouldInitialize = false;
@@ -125,6 +131,8 @@ public static class ManilaCli {
 
             if (shouldInitialize) {
                 using (new ProfileScope(baseServiceContainer.Profiler, "Initializing Manila Engine")) {
+                    executionStage.ChangeState(ExecutionStages.Discovery);
+
                     Directory.CreateDirectory(Directories.DataDir);
 
                     var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
@@ -141,6 +149,7 @@ public static class ManilaCli {
                     await InitExtensions(baseServiceContainer, serviceContainer);
 
                     // Run engine and initialize projects
+                    executionStage.ChangeState(ExecutionStages.Configuration);
                     var workspace = await manilaEngine.RunWorkspaceScriptAsync(serviceContainer, new(
                         baseServiceContainer.Logger, baseServiceContainer.Profiler,
                         CreateScriptEngine(),
@@ -169,10 +178,8 @@ public static class ManilaCli {
             } else {
                 baseServiceContainer.Logger.Debug("No workspace found. Continuing without workspace.");
             }
-        } catch (UnableToInitializeEngineException e) {
-            logger.Debug($"Unable initialize Manila engine: {e.Message}. Continueing without workspace.");
         } catch (Exception e) {
-            return ErrorHandler.HandleException(baseServiceContainer.Logger, e, logOptions);
+            return ErrorHandler.ManilaException(baseServiceContainer.Logger, e, logOptions);
         }
 
         _ = services.AddSingleton(manilaEngine)
@@ -223,7 +230,10 @@ public static class ManilaCli {
 
         logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ProgramStartedTime));
 
+        executionStage.ChangeState(ExecutionStages.Runtime);
         var exitCode = await CommandApp.RunAsync(args);
+        executionStage.ChangeState(ExecutionStages.Shutdown);
+
         serviceContainer?.ExtensionManager.ReleasePlugins();
 
         profiler.SaveToFile(Directories.Profiles);

@@ -1,4 +1,3 @@
-
 using System.Reflection;
 using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
@@ -15,96 +14,62 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila;
 
 public interface IScriptContext {
-    /// <summary>
-    /// A list of enum types that have been applied to the script engine.
-    /// </summary>
     List<Type> EnumComponents { get; }
-
     V8ScriptEngine ScriptEngine { get; }
-
-    /// <summary>
-    /// Gets the full path for the compiled script file.
-    /// </summary>
-    /// <returns>The path to the compiled file.</returns>
     string GetCompiledFilePath();
-
-    /// <summary>
-    /// Initializes the script context, setting up the script engine and APIs.
-    /// </summary>
     void Init(API.Manila manilaAPI, ScriptBridge bridge, Component component);
-
-    /// <summary>
-    /// Gets an environment variable, checking project-specific variables first.
-    /// </summary>
-    /// <param name="key">The key of the environment variable.</param>
-    /// <returns>The value of the environment variable, or null if not found.</returns>
     string? GetEnvironmentVariable(string key);
-
-    /// <summary>
-    /// Sets a project-specific environment variable.
-    /// </summary>
-    /// <param name="key">The key of the environment variable.</param>
-    /// <param name="value">The value to set.</param>
     void SetEnvironmentVariable(string key, string value);
-
-    /// <summary>
-    /// Asynchronously executes the script associated with this context.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous execution operation.</returns>
     Task ExecuteAsync(IFileHashCache cache, Component component);
 }
 
-public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEngine scriptEngine, string rootDir, string scriptPath) : IScriptContext {
-    private readonly ILogger _logger = logger;
-    private readonly IProfiler _profiler = profiler;
 
-    private readonly string _rootDir = rootDir;
-    private readonly string _dataDir = Path.Join(rootDir, ".manila");
+public sealed class ScriptContext : IScriptContext {
+    private readonly ILogger _logger;
+    private readonly IProfiler _profiler;
 
-    /// <summary>
-    /// The script engine used by this context.
-    /// </summary>
+    private readonly string _rootDir;
+    private readonly string _dataDir;
+
     [JsonIgnore]
-    public V8ScriptEngine ScriptEngine { get => scriptEngine; }
+    public V8ScriptEngine ScriptEngine { get; }
 
-    /// <summary>
-    /// The path to the script file.
-    /// </summary>
-    public string ScriptPath { get; private set; } = scriptPath;
-    public readonly string ScriptHash = HashUtils.HashFile(scriptPath);
+    public string ScriptPath { get; private set; }
+    public readonly string ScriptHash;
 
-    /// <summary>
-    /// Mostly used for logging
-    /// </summary>
     public readonly Guid ContextID = Guid.NewGuid();
-
-    /// <summary>
-    /// Project-specific environment variables that get isolated between projects
-    /// </summary>
     private Dictionary<string, string> EnvironmentVariables { get; } = new();
-
     public List<Type> EnumComponents { get; } = [];
-
     public API.Manila? ManilaAPI { get; private set; } = null;
+
+    public ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEngine scriptEngine, string rootDir, string scriptPath) {
+        _logger = logger;
+        _profiler = profiler;
+        ScriptEngine = scriptEngine;
+
+        _rootDir = rootDir;
+        _dataDir = Path.Combine(_rootDir, ".manila");
+        ScriptPath = scriptPath;
+
+        if (!File.Exists(scriptPath)) {
+            throw new ConfigurationException($"The script file could not be found at the specified path: '{scriptPath}'.");
+        }
+        try {
+            ScriptHash = HashUtils.HashFile(scriptPath);
+        } catch (Exception ex) {
+            throw new EnvironmentException($"Failed to read and hash the script file '{scriptPath}'. Check file permissions.", ex);
+        }
+    }
 
     public string GetCompiledFilePath() {
         var fileName = $"{ScriptHash[0..16]}.bin";
-        return Path.Join(
-            _dataDir,
-            "compiled",
-            fileName
-        );
+        return Path.Join(_dataDir, "compiled", fileName);
     }
 
-    /// <summary>
-    /// Initializes the script context.
-    /// </summary>
     public void Init(API.Manila manilaAPI, ScriptBridge bridge, Component component) {
         ManilaAPI = manilaAPI;
-
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             _logger.Debug($"Initializing script context for '{ScriptPath}'");
-
             ScriptEngine.AddHostObject("Manila", ManilaAPI);
             ScriptEngine.AddHostObject("print", (params object[] args) => {
                 _logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args), ContextID));
@@ -112,19 +77,11 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
         }
     }
 
-    /// <summary>
-    /// Asynchronously loads environment variables from a .env file if it exists.
-    /// </summary>
     private async Task LoadEnvironmentVariablesAsync() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             EnvironmentVariables.Clear();
 
-            string? projectDir = Path.GetDirectoryName(ScriptPath);
-            if (projectDir == null) {
-                _logger.Warning($"Could not determine project directory for '{ScriptPath}'.");
-                return;
-            }
-
+            string projectDir = Path.GetDirectoryName(ScriptPath) ?? throw new InternalLogicException($"Could not determine project directory for a valid script path '{ScriptPath}'.");
             string envFilePath = Path.Combine(projectDir, ".env");
 
             if (!File.Exists(envFilePath)) {
@@ -134,7 +91,6 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
 
             _logger.Debug($"Loading environment variables from '{envFilePath}'.");
             try {
-                // 3. Use ReadAllLinesAsync for non-blocking file I/O.
                 foreach (string line in await File.ReadAllLinesAsync(envFilePath)) {
                     string trimmedLine = line.Trim();
 
@@ -147,31 +103,25 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
                         EnvironmentVariables[split[0]] = split[1].Trim('"', '\'');
                     }
                 }
-            } catch (Exception ex) {
-                _logger.Warning($"Error loading environment variables: {ex.Message}");
+            } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException) {
+                throw new EnvironmentException($"Error loading environment variables from '{envFilePath}'. Check file permissions and integrity.", ex);
             }
         }
     }
 
-    /// <summary>
-    /// Gets an environment variable, first checking project-specific variables, then system variables
-    /// </summary>
     public string? GetEnvironmentVariable(string key) {
         return EnvironmentVariables.TryGetValue(key, out string? value) ? value : null;
     }
 
-    /// <summary>
-    /// Sets a project-specific environment variable
-    /// </summary>
     public void SetEnvironmentVariable(string key, string value) {
         EnvironmentVariables[key] = value;
     }
 
-    /// <summary>
-    /// Executes the script after performing necessary checks and setup.
-    /// </summary>
     public async Task ExecuteAsync(IFileHashCache cache, Component component) {
-        if (ManilaAPI == null) throw new ManilaException("ManilaAPI is not initialized. Call Init() before executing the script.");
+        // This is a programmer error; the caller is using the class incorrectly.
+        if (ManilaAPI == null) {
+            throw new InternalLogicException("ManilaAPI is not initialized. Call Init() before executing the script.");
+        }
 
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -184,32 +134,24 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
                 SetupScriptEngine(jobCompletion);
 
                 await ExecuteScriptAsync(cache);
-
-                // Await the script's completion signal.
                 _ = await jobCompletion.Task;
 
                 component.Finalize(ManilaAPI);
-            } catch (Exception e) {
-                HandleExecutionException(e);
-                // The above method re-throws, so this is the end of the line.
+
+            } catch (ManilaException) {
+                throw;
+            } catch (Exception ex) {
+                throw new InternalLogicException($"An unexpected error occurred during script execution of '{ScriptPath}'. See inner exception for details.", ex);
             }
 
             _logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
         }
     }
 
-    /// <summary>
-    /// Checks if the script file has changed, logs the result, and returns its content.
-    /// </summary>
-    /// <returns>The content of the script file.</returns>
     private bool CheckForScriptChanges(IFileHashCache cache) {
         return cache.HasChanged(ScriptPath, ScriptHash);
     }
 
-    /// <summary>
-    /// Configures the script engine with host objects for completion and error handling.
-    /// </summary>
-    /// <param name="jobCompletion">The TaskCompletionSource to signal script status.</param>
     private void SetupScriptEngine(TaskCompletionSource<bool> jobCompletion) {
         ScriptEngine.AddHostObject("__Manila_signalCompletion", new Action(() => jobCompletion.TrySetResult(true)));
         ScriptEngine.AddHostObject("__Manila_handleError", new Action<object>(e => HandleJavaScriptError(e, jobCompletion)));
@@ -217,80 +159,54 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
         ScriptEngine.EnableAutoHostVariables = true;
     }
 
-    /// <summary>
-    /// Handles errors passed from the JavaScript environment, converting them to .NET exceptions.
-    /// </summary>
-    /// <param name="e">The error object from JavaScript.</param>
-    /// <param name="jobCompletion">The TaskCompletionSource to set the exception on.</param>
-    private static void HandleJavaScriptError(object e, TaskCompletionSource<bool> jobCompletion) {
-        Exception exceptionToThrow;
+    private void HandleJavaScriptError(object e, TaskCompletionSource<bool> jobCompletion) {
+        ScriptExecutionException exceptionToThrow;
 
-        if (e == null) {
-            exceptionToThrow = new ScriptingException("Script error: null exception occurred");
-        } else if (e is Exception directException) {
-            // Wrap existing .NET exception for consistency.
-            exceptionToThrow = new ScriptingException($"Script execution failed: {directException.Message}", directException);
+        if (e is Exception directException) {
+            exceptionToThrow = new ScriptExecutionException($"Script execution failed: {directException.Message}", ScriptPath, directException);
         } else {
-            // Attempt to build a detailed error from the JavaScript error object.
-            string errorMessage = e.ToString() ?? "Unknown script error";
+            string errorMessage = e?.ToString() ?? "Unknown script error";
+            string? name = null;
+            string? stack = null;
+
             if (e is ScriptObject scriptObj) {
                 var message = scriptObj.GetProperty("message")?.ToString() ?? "Unknown error";
-                var name = scriptObj.GetProperty("name")?.ToString();
-                var stack = scriptObj.GetProperty("stack")?.ToString();
-
+                name = scriptObj.GetProperty("name")?.ToString();
+                stack = scriptObj.GetProperty("stack")?.ToString();
                 errorMessage = !string.IsNullOrEmpty(name) ? $"{name}: {message}" : message;
-                if (!string.IsNullOrEmpty(stack)) {
-                    errorMessage += $"\n\nJavaScript Stack Trace:\n{stack}";
-                }
             }
-            exceptionToThrow = new ScriptingException($"JavaScript error: {errorMessage}");
+
+            exceptionToThrow = new ScriptExecutionException(errorMessage, ScriptPath, name, stack);
         }
 
-        _ = jobCompletion.TrySetException(exceptionToThrow);
+        jobCompletion.TrySetException(exceptionToThrow);
     }
 
-    /// <summary>
-    /// Compiles the script code and reads the resulting bytecode.
-    /// If the script has not changed since the last compilation, it uses the cached bytecode
-    /// </summary>
-    /// <param name="code">The script code to compile.</param>
-    /// <param name="bytes">The compiled bytecode output.</param>
-    /// <returns>True if compilation was successful or cached bytecode was used, false otherwise.</returns>
-    private bool CompileScriptAndRead(IFileHashCache cahce, string code, out byte[] bytes) {
-        var documentInfo = new DocumentInfo(ScriptPath);
-        var binaryFilePath = GetCompiledFilePath();
-        var directory = Path.GetDirectoryName(binaryFilePath)!;
+    // This method has been removed as its logic is now inside ExecuteScriptAsync,
+    // which simplifies the flow and exception handling for compilation.
 
-        var fileChanged = CheckForScriptChanges(cahce);
-
-        if (!fileChanged && File.Exists(binaryFilePath)) {
-            _logger.Debug($"Using cached compiled script from '{binaryFilePath}'.");
-            bytes = File.ReadAllBytes(binaryFilePath);
-            return true;
-        }
-
-        cahce.AddOrUpdate(ScriptPath, ScriptHash);
-        if (!Directory.Exists(directory)) _ = Directory.CreateDirectory(directory);
-
-        _ = ScriptEngine.Compile(documentInfo, code, V8CacheKind.Code, out bytes);
-        if (bytes != null && bytes.Length > 0) {
-            File.WriteAllBytes(binaryFilePath, bytes);
-            _logger.Debug($"Compiled script saved to '{binaryFilePath}'.");
-            return false;
-        } else {
-            _logger.Error($"Failed to compile script '{ScriptPath}'. No bytecode generated.");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Wraps the script content in an async IIFE and executes it.
-    /// </summary>
-    /// <param name="scriptContent">The script code to execute.</param>
     private async Task ExecuteScriptAsync(IFileHashCache cache) {
         using (new ProfileScope(_profiler, "Executing Script")) {
-            var scriptContent = await File.ReadAllTextAsync(ScriptPath);
-            var code = $@"
+            string scriptContent;
+            byte[]? cachedBytes = null;
+            var binaryFilePath = GetCompiledFilePath();
+
+            try {
+                // Read the script file first.
+                scriptContent = await File.ReadAllTextAsync(ScriptPath);
+
+                var fileChanged = CheckForScriptChanges(cache);
+
+                if (!fileChanged && File.Exists(binaryFilePath)) {
+                    _logger.Debug($"Using cached compiled script from '{binaryFilePath}'.");
+                    cachedBytes = await File.ReadAllBytesAsync(binaryFilePath);
+                }
+            } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException) {
+                throw new EnvironmentException($"Failed to read script file or its cache at '{ScriptPath}'. Check file permissions.", ex);
+            }
+
+            // This wrapper is essential for capturing async errors inside the JS code.
+            var codeToExecute = $@"
                 (async function() {{
                     try {{
                         {scriptContent}
@@ -300,33 +216,32 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
                     }}
                 }})();";
 
-            if (!CompileScriptAndRead(cache, code, out var bytes)) {
-                _logger.Warning($"Script '{ScriptPath}' could not be compiled or cached. Using raw code execution.");
-            }
+            try {
+                var documentInfo = new DocumentInfo(ScriptPath);
+                var script = ScriptEngine.Compile(documentInfo, codeToExecute, V8CacheKind.Code, cachedBytes, out var cacheAccepted);
 
-            var script = ScriptEngine.Compile(new DocumentInfo(ScriptPath), code, V8CacheKind.Code, bytes, out var accepted);
-            if (!accepted) {
-                _logger.Warning($"Script '{ScriptPath}' was not accepted by the script engine. It may have been modified or is invalid.");
-            } else {
-                _logger.Debug($"Script '{ScriptPath}' loaded successfully.");
-            }
+                if (!cacheAccepted && cachedBytes != null) {
+                    _logger.Warning($"Cached script for '{ScriptPath}' was rejected. Recompiling.");
+                    script = ScriptEngine.Compile(documentInfo, codeToExecute);
+                }
 
-            ScriptEngine.Execute(script);
+                if (cacheAccepted == false) {
+                    cache.AddOrUpdate(ScriptPath, ScriptHash);
+                    // Overwrite the cache with the new compiled script.
+                    script = ScriptEngine.Compile(documentInfo, codeToExecute, V8CacheKind.Code, out var newBytes);
+                    var directory = Path.GetDirectoryName(binaryFilePath)!;
+                    if (!Directory.Exists(directory)) _ = Directory.CreateDirectory(directory);
+                    await File.WriteAllBytesAsync(binaryFilePath, newBytes);
+                    _logger.Debug($"Recompiled and saved new cache to '{binaryFilePath}'.");
+                }
+
+                ScriptEngine.Execute(script);
+
+            } catch (ScriptEngineException ex) {
+                throw new ScriptExecutionException($"Failed to compile or execute script: {ex.Message}", ScriptPath, ex);
+            } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+                throw new EnvironmentException($"Failed to write script cache to '{binaryFilePath}'. Check directory permissions.", ex);
+            }
         }
-    }
-
-    /// <summary>
-    /// Logs script execution failures and re-throws a formatted exception.
-    /// </summary>
-    /// <param name="e">The exception caught during execution.</param>
-    private void HandleExecutionException(Exception e) {
-        // Re-throw ScriptingExceptions as they are already formatted.
-        if (e is ScriptingException) throw e;
-
-        var relativePath = Path.GetRelativePath(_rootDir, ScriptPath);
-        var errorMessage = e is ScriptEngineException see ? see.ErrorDetails ?? see.Message : e.Message;
-        var ex = new ScriptingException($"An error occurred in '{relativePath}': {errorMessage}", e);
-        _logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
-        throw ex;
     }
 }

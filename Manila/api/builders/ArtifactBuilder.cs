@@ -59,7 +59,7 @@ public sealed class ArtifactBuilder(Workspace workspace, ScriptObject configurat
         return this;
     }
     public ArtifactBuilder From(string key) {
-        var temp = RegexUtils.MatchPluginComponent(key) ?? throw new ArgumentException($"Invalid plugin component format: {key}");
+        var temp = RegexUtils.MatchPluginComponent(key) ?? throw new ManilaException($"Invalid plugin component format: {key}");
         PluginComponent = temp;
 
         return this;

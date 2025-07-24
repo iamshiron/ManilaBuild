@@ -14,7 +14,7 @@ public class MockLogger : ILogger {
     public event Action<ILogEntry>? OnLogEntry = null;
 #pragma warning restore CS0414
 
-    public void AddInjector(Guid id, LogInjector injector) => throw new NotImplementedException();
+    public void AddInjector(Guid id, LogInjector injector) => throw new ManilaException();
 
     public void Debug(string message) => Console.WriteLine($"[DEBUG] {message}");
     public void System(string message) => Console.WriteLine($"[SYSTEM] {message}");
@@ -26,7 +26,7 @@ public class MockLogger : ILogger {
     public void Log(ILogEntry entry) {
         Console.WriteLine($"[{entry.Level}] {entry}");
     }
-    public void RemoveInjector(Guid id) => throw new NotImplementedException();
+    public void RemoveInjector(Guid id) => throw new ManilaException();
     public void MarkupLine(string message, bool logAlways = false) { }
 }
 

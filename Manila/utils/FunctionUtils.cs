@@ -27,7 +27,7 @@ public static class FunctionUtils {
                     2 => typeof(Action<,>).MakeGenericType(paramTypes),
                     3 => typeof(Action<,,>).MakeGenericType(paramTypes),
                     4 => typeof(Action<,,,>).MakeGenericType(paramTypes),
-                    _ => throw new ArgumentException($"Methods with {paramTypes.Length} parameters are not supported")
+                    _ => throw new ManilaException($"Methods with {paramTypes.Length} parameters are not supported")
                 };
                 return Delegate.CreateDelegate(delegateType, o, method, throwOnBindFailure: false)
                        ?? CreateDelegateWithExpression(o, method, delegateType);
@@ -40,13 +40,13 @@ public static class FunctionUtils {
                     2 => typeof(Func<,,>).MakeGenericType(typeArgs),
                     3 => typeof(Func<,,,>).MakeGenericType(typeArgs),
                     4 => typeof(Func<,,,,>).MakeGenericType(typeArgs),
-                    _ => throw new ArgumentException($"Methods with {paramTypes.Length} parameters are not supported")
+                    _ => throw new ManilaException($"Methods with {paramTypes.Length} parameters are not supported")
                 };
                 return Delegate.CreateDelegate(delegateType, o, method, throwOnBindFailure: false)
                        ?? CreateDelegateWithExpression(o, method, delegateType);
             }
         } catch (Exception ex) {
-            throw new ArgumentException(
+            throw new ManilaException(
                 $"Failed to create delegate for method {method.Name} on type {method.DeclaringType?.Name}. " +
                 $"Return type: {method.ReturnType.Name}, " +
                 $"Parameter types: {string.Join(", ", method.GetParameters().Select(p => p.ParameterType.Name))}. " +

@@ -36,7 +36,7 @@ public class ExceptionConverter : JsonConverter {
     }
 
     public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
-        throw new NotSupportedException("Deserializing exceptions is not supported by this converter.");
+        throw new Exception("Deserializing exceptions is not supported by this converter.");
     }
 }
 
@@ -50,7 +50,7 @@ public class LogEntryConverter : JsonConverter<ILogEntry> {
     public override bool CanRead => false;
 
     public override ILogEntry ReadJson(JsonReader reader, Type objectType, ILogEntry? existingValue, bool hasExistingValue, JsonSerializer serializer) {
-        throw new NotImplementedException("Deserialization of ILogEntry is not supported by this converter.");
+        throw new Exception("Deserialization of ILogEntry is not supported by this converter.");
     }
 
     public override void WriteJson(JsonWriter writer, ILogEntry? value, JsonSerializer serializer) {

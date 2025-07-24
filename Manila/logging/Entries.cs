@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
+using Shiron.Manila.Enums;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Utils;
 
@@ -770,7 +772,14 @@ public class ReplayLogEntry(ILogEntry entry, Guid contextID) : ILogEntry {
     /// <summary>
     /// Parent context ID for this log entry is always the same, use <see cref="ContextID"/> instead.
     /// </summary>
-    public Guid? ParentContextID { get => Guid.AllBitsSet; set => throw new InvalidOperationException("ParentContextID is not applicable for replayed log entries."); }
+    public Guid? ParentContextID { get => Guid.AllBitsSet; set => throw new ManilaException("ParentContextID is not applicable for replayed log entries."); }
+}
+
+public class StageChangeLogEntry(ExecutionStages changedFrom, ExecutionStages changedTo, long previousStartedAt) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public ExecutionStages ChangedFrom { get; } = changedFrom;
+    public ExecutionStages ChangedTo { get; } = changedTo;
+    public long PreviousStartedAt { get; } = previousStartedAt;
 }
 
 #endregion

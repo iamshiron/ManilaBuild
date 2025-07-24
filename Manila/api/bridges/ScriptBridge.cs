@@ -54,7 +54,7 @@ public abstract class ScriptBridge : DynamicObject, IScriptableObject {
                         if (args[i] != null) {
                             args[i] = Enum.Parse(type, args[i]!.ToString()!);
                         } else {
-                            throw new ArgumentNullException($"Argument at position {i} for enum parameter '{param.Name}' cannot be null.");
+                            throw new ManilaException($"Argument at position {i} for enum parameter '{param.Name}' cannot be null.");
                         }
                     }
                 }

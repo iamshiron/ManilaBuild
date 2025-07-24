@@ -99,7 +99,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
 
     private async Task LoadPluginAsync(Type pluginType, string file, PluginLoadContext loadContext) {
         var plugin = (ManilaPlugin?) Activator.CreateInstance(pluginType)
-            ?? throw new PluginLoadException(pluginType, file);
+            ?? throw new ManilaException(pluginType, file);
 
         plugin.SetLogger(_logger);
         plugin.File = file;
@@ -182,25 +182,25 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
 
     public T GetPlugin<T>() where T : ManilaPlugin {
         var plugin = Plugins.FirstOrDefault(p => p is T);
-        return plugin is T typedPlugin ? typedPlugin : throw new PluginTypeNotFoundException(typeof(T));
+        return plugin is T typedPlugin ? typedPlugin : throw new ManilaException(typeof(T));
     }
     public ManilaPlugin GetPlugin(Type type) {
         var plugin = Plugins.FirstOrDefault(p => p.GetType() == type);
-        return plugin ?? throw new PluginTypeNotFoundException(type);
+        return plugin ?? throw new ManilaException(type);
     }
 
     public ManilaPlugin GetPlugin(string uri) {
-        return GetPlugin(RegexUtils.MatchPlugin(uri) ?? throw new InvalidPluginURIException(uri));
+        return GetPlugin(RegexUtils.MatchPlugin(uri) ?? throw new ManilaException(uri));
     }
     public ManilaPlugin GetPlugin(RegexUtils.PluginMatch match) {
         var plugin = Plugins.FirstOrDefault(p =>
             p.Group == match.Group && p.Name == match.Plugin && (p.Version == match.Version || match.Version == null)
         );
-        return plugin ?? throw new PluginNotFoundException(match);
+        return plugin ?? throw new ManilaException(match);
     }
 
     public PluginComponent GetPluginComponent(string uri) {
-        return GetPluginComponent(RegexUtils.MatchPluginComponent(uri) ?? throw new InvalidPluginComponentURIException(uri));
+        return GetPluginComponent(RegexUtils.MatchPluginComponent(uri) ?? throw new ManilaException(uri));
     }
     public PluginComponent GetPluginComponent(RegexUtils.PluginComponentMatch match) {
         var plugin = GetPlugin(match.ToPluginMatch());
@@ -208,11 +208,11 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             c.Value.Name == match.Component
         );
 
-        return component.Value ?? throw new PluginComponentNotFoundException(match);
+        return component.Value ?? throw new ManilaException(match);
     }
 
     public Type GetAPIType(string uri) {
-        return GetAPIType(RegexUtils.MatchPluginApiClass(uri) ?? throw new InvalidPluginAPIClassURIException(uri));
+        return GetAPIType(RegexUtils.MatchPluginApiClass(uri) ?? throw new ManilaException(uri));
     }
     public Type GetAPIType(RegexUtils.PluginApiClassMatch match) {
         var plugin = GetPlugin(match.ToPluginMatch());
@@ -220,6 +220,6 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             a.Key == match.ApiClass
         );
 
-        return apiType.Value ?? throw new PluginAPIClassNotFoundException(match);
+        return apiType.Value ?? throw new ManilaException(match);
     }
 }

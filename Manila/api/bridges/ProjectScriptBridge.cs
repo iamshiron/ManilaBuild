@@ -47,7 +47,7 @@ public class ProjectScriptBridge(ILogger logger, IProfiler profiler, Project pro
             if (obj[n] is Dependency dep) {
                 _handle.Dependencies.Add(dep);
             } else {
-                throw new InvalidCastException($"Property '{n}' is not a Dependency.");
+                throw new ManilaException($"Property '{n}' is not a Dependency.");
             }
         }
     }

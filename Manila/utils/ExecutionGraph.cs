@@ -309,7 +309,7 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
         }
 
         if (processedNodesCount != subgraphNodes.Count) {
-            throw new InvalidOperationException("A cycle was detected in the dependency graph for the given job.");
+            throw new ManilaException("A cycle was detected in the dependency graph for the given job.");
         }
 
         return allLayers

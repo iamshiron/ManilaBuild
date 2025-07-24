@@ -29,7 +29,7 @@ public class JobRegistry(IProfiler profiler) : IJobRegistry {
                 var uri = new RegexUtils.JobMatch(job.Component is Project ? ((Project) job.Component).Name : null, job.ArtiafactName, job.Name).Format();
 
                 if (_jobs.ContainsKey(uri)) {
-                    throw new ArgumentException($"Job with uri '{uri}' is already registered.");
+                    throw new ManilaException($"Job with uri '{uri}' is already registered.");
                 }
                 _jobs[uri] = job;
             }

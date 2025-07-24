@@ -26,7 +26,7 @@ public sealed class TypeRegistrar(IServiceCollection builder) : ITypeRegistrar {
 }
 
 public sealed class TypeResolver(IServiceProvider provider) : ITypeResolver {
-    private readonly IServiceProvider _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+    private readonly IServiceProvider _provider = provider ?? throw new ManilaException(nameof(provider));
 
     public object? Resolve(Type? type) {
         return type == null ? throw new ManilaException("Type cannot be null when resolving services.") : _provider.GetService(type);

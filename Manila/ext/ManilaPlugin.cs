@@ -68,7 +68,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// <param name="component">The instance the component</param>
     /// <exception cref="Exception">Component already registered to this plugin</exception>
     public void RegisterComponent(PluginComponent component) {
-        if (Components.ContainsKey(component.Name)) throw new UnableToRegisterPluginComponentException(this, component.Name, "Component already registered to this plugin");
+        if (Components.ContainsKey(component.Name)) throw new ManilaException("Component already registered to this plugin.");
         Components[component.Name] = component;
         component._plugin = this;
     }
