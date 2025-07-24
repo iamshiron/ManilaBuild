@@ -43,3 +43,10 @@ public class BasicLogEntry(string message, LogLevel level, string? loggerPrefix 
     public string Message { get; } = message;
     public string? LoggerPrefix { get; } = loggerPrefix;
 }
+
+public class MarkupLogEntry(string message, bool logAlways = false, string? loggerPrefix = null) : BaseLogEntry {
+    public override LogLevel Level { get; } = LogLevel.Info;
+    public string Message { get; } = message;
+    public string? LoggerPrefix { get; } = loggerPrefix;
+    public bool LogAlways { get; } = logAlways;
+}

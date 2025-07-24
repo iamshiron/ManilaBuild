@@ -8,9 +8,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("List all available plugins in the current workspace")]
-internal sealed class PluginsCommand(BaseServiceCotnainer baseSerices, ServiceContainer? services = null) : BaseManilaCommand<PluginsCommand.Settings> {
+internal sealed class PluginsCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null) :
+    BaseManilaCommand<PluginsCommand.Settings>(baseServices.Logger) {
+
     private readonly ServiceContainer? _services = services;
-    private readonly BaseServiceCotnainer _baseServices = baseSerices;
+    private readonly BaseServiceCotnainer _baseServices = baseServices;
 
     public class Settings : DefaultCommandSettings { }
 

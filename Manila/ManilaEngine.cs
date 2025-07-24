@@ -171,7 +171,7 @@ public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories
                 }
                 _baseServices.Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
             } catch (Exception e) {
-                var ex = new BuildException(e.Message, e);
+                var ex = new BuildTimeException(e.Message, e);
                 _baseServices.Logger.Log(new BuildFailedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, e));
                 throw ex;
             }

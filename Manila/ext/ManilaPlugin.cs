@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Ext;
 
@@ -67,7 +68,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// <param name="component">The instance the component</param>
     /// <exception cref="Exception">Component already registered to this plugin</exception>
     public void RegisterComponent(PluginComponent component) {
-        if (Components.ContainsKey(component.Name)) throw new ManilaException("Component with name " + component.Name + " already registered");
+        if (Components.ContainsKey(component.Name)) throw new UnableToRegisterPluginComponentException(this, component.Name, "Component already registered to this plugin");
         Components[component.Name] = component;
         component._plugin = this;
     }
@@ -86,33 +87,11 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     }
 
     /// <summary>
-    /// Returns a component by its name.
-    /// </summary>
-    /// <param name="name">The component name</param>
-    /// <returns>The instance of the component</returns>
-    /// <exception cref="Exception">Component was not found</exception>
-    public PluginComponent GetComponent(string name) {
-        if (!Components.ContainsKey(name)) throw new ManilaException("Component with name " + name + " not registered");
-        return Components[name];
-    }
-
-    /// <summary>
-    /// Returns a api class by its name.
-    /// </summary>
-    /// <param name="name">The name</param>
-    /// <returns>The type</returns>
-    /// <exception cref="Exception">Class was not found</exception>
-    public Type GetAPIClass(string name) {
-        if (!APIClasses.ContainsKey(name)) throw new ManilaException("API class with name " + name + " not registered");
-        return APIClasses[name];
-    }
-
-    /// <summary>
     /// Returns a string representation of the plugin.
     /// </summary>
     /// <returns>Format: ManilaPlugin(Group:Name@Version)</returns>
     public override string ToString() {
-        return $"ManilaPlugin({Group}:{Name}@{Version})";
+        return $"ManilaPlugin({new RegexUtils.PluginMatch(Group, Name, Version).Format()})";
     }
 
     /// <summary>

@@ -27,4 +27,29 @@ public class MockLogger : ILogger {
         Console.WriteLine($"[{entry.Level}] {entry}");
     }
     public void RemoveInjector(Guid id) => throw new NotImplementedException();
+    public void MarkupLine(string message, bool logAlways = false) { }
+}
+
+public class EmptyMockLogger : ILogger {
+    public string? LoggerPrefix => null;
+
+    public LogContext LogContext => new();
+
+#pragma warning disable CS0414
+    public event Action<ILogEntry>? OnLogEntry = null;
+#pragma warning restore CS0414
+
+    public void AddInjector(Guid id, LogInjector injector) { }
+    public void RemoveInjector(Guid id) { }
+
+    public void Debug(string message) { }
+    public void System(string message) { }
+    public void Info(string message) { }
+    public void Warning(string message) { }
+    public void Error(string message) { }
+    public void Critical(string message) { }
+
+    public void Log(ILogEntry entry) { }
+
+    public void MarkupLine(string message, bool logAlways = false) { }
 }

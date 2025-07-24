@@ -8,7 +8,9 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retrieve the execution graph as a mermaid diagram.")]
-public class APIGraphCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null, ManilaEngine? engine = null, Workspace? workspace = null) : BaseManilaCommand<APIGraphCommand.Settings> {
+public class APIGraphCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null, ManilaEngine? engine = null, Workspace? workspace = null) :
+    BaseManilaCommand<APIGraphCommand.Settings>(baseServices.Logger) {
+
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly ServiceContainer? _services = services;
     private readonly Workspace? _workspace = workspace;

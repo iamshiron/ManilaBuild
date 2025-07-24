@@ -1,4 +1,6 @@
+
 using Shiron.Manila.CLI.Commands;
+using Shiron.Manila.Logging;
 using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI;
@@ -7,14 +9,16 @@ namespace Shiron.Manila.CLI;
 /// Base class for all Manila CLI commands that provides centralized error handling.
 /// </summary>
 /// <typeparam name="TSettings">The settings type for the command</typeparam>
-public abstract class BaseManilaCommand<TSettings> : Command<TSettings>
+public abstract class BaseManilaCommand<TSettings>(ILogger logger) : Command<TSettings>
     where TSettings : DefaultCommandSettings {
+    private readonly ILogger _logger = logger;
+
     /// <summary>
     /// Final execute method that wraps the command execution with error handling.
     /// Override ExecuteCommand instead of this method.
     /// </summary>
     public sealed override int Execute(CommandContext context, TSettings settings) {
-        return ErrorHandler.SafeExecute(() => ExecuteCommand(context, settings), settings.ToLogOptions());
+        return ErrorHandler.SafeExecute(_logger, () => ExecuteCommand(context, settings), settings.ToLogOptions());
     }
 
     /// <summary>
@@ -31,15 +35,16 @@ public abstract class BaseManilaCommand<TSettings> : Command<TSettings>
 /// Base class for all Manila CLI commands that provides centralized error handling.
 /// </summary>
 /// <typeparam name="TSettings">The settings type for the command</typeparam>
-public abstract class BaseAsyncManilaCommand<TSettings> : AsyncCommand<TSettings>
+public abstract class BaseAsyncManilaCommand<TSettings>(ILogger logger) : AsyncCommand<TSettings>
     where TSettings : DefaultCommandSettings {
+    private readonly ILogger _logger = logger;
 
     /// <summary>
     /// Final execute method that wraps the command execution with error handling.
     /// Override ExecuteCommand instead of this method.
     /// </summary>
     public override async Task<int> ExecuteAsync(CommandContext context, TSettings settings) {
-        return await ErrorHandler.SafeExecuteAsync(() => ExecuteCommandAsync(context, settings), settings.ToLogOptions());
+        return await ErrorHandler.SafeExecuteAsync(_logger, () => ExecuteCommandAsync(context, settings), settings.ToLogOptions());
     }
 
     /// <summary>

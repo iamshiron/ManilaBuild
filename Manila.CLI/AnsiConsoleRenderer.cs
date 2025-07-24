@@ -14,7 +14,10 @@ public record LogOptions(
     bool Verbose,
     bool Structured,
     bool StackTrace
-);
+) {
+    public static readonly LogOptions None = new(true, false, false, false);
+    public static readonly LogOptions Default = new(false, false, false, false);
+}
 
 /// <summary>
 /// Handles rendering structured log entries into a human-readable format
@@ -92,6 +95,9 @@ public static class AnsiConsoleRenderer {
         switch (entry) {
             case BasicLogEntry log:
                 HandleBasicLogEntry(log);
+                break;
+            case MarkupLogEntry log:
+                HandleMarkupLogEntry(log);
                 break;
             case BasicPluginLogEntry log:
                 HandleBasicPluginLogEntry(log);
@@ -207,6 +213,10 @@ public static class AnsiConsoleRenderer {
 
         // Trigger a refresh of the live display to show the new node.
         _refresh?.Invoke();
+    }
+
+    private static void HandleMarkupLogEntry(MarkupLogEntry entry) {
+        PushLog(entry.Message);
     }
 
     private static void HandleBuildStartedLogEntry(BuildStartedLogEntry entry) {

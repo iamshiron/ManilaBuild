@@ -1,6 +1,7 @@
 using System;
 using Shiron.Manila.CLI.Commands;
 using Shiron.Manila.Exceptions;
+using Shiron.Manila.Logging;
 using Spectre.Console;
 
 namespace Shiron.Manila.CLI;
@@ -10,20 +11,21 @@ namespace Shiron.Manila.CLI;
 /// Provides consistent error formatting and exit codes across all commands.
 /// </summary>
 public static class ErrorHandler {
-
     /// <summary>
     /// Handles any exception that occurs during command execution and returns the appropriate exit code.
     /// </summary>
     /// <param name="exception">The exception to handle</param>
     /// <param name="settings">Command settings for determining output verbosity</param>
     /// <returns>The appropriate exit code based on the exception type</returns>
-    public static int HandleException(Exception exception, LogOptions settings) {
+    public static int HandleException(ILogger logger, Exception exception, LogOptions settings) {
         return exception switch {
-            ScriptingException e => HandleScriptingException(e, settings),
-            BuildException e => HandleBuildException(e, settings),
-            ConfigurationException e => HandleConfigurationException(e, settings),
-            ManilaException e => HandleManilaException(e, settings),
-            _ => HandleUnknownException(exception, settings)
+            ScriptingException e => HandleScriptingException(logger, e, settings),
+            BuildTimeException e => HandleBuildTimeException(logger, e, settings),
+            ConfigurationTimeException e => HandleConfigurationException(logger, e, settings),
+            PluginException e => HandlePluginException(logger, e, settings),
+            RuntimeException e => HandleRuntimeException(logger, e, settings),
+            ManilaException e => HandleManilaException(logger, e, settings),
+            _ => HandleUnknownException(logger, exception, settings)
         };
     }
 
@@ -33,11 +35,11 @@ public static class ErrorHandler {
     /// <param name="commandFunction">The command function to execute</param>
     /// <param name="settings">Command settings for error handling</param>
     /// <returns>Exit code - 0 for success, negative values for errors</returns>
-    public static int SafeExecute(Func<int> commandFunction, LogOptions settings) {
+    public static int SafeExecute(ILogger logger, Func<int> commandFunction, LogOptions settings) {
         try {
             return commandFunction();
         } catch (Exception e) {
-            return HandleException(e, settings);
+            return HandleException(logger, e, settings);
         }
     }
 
@@ -47,25 +49,21 @@ public static class ErrorHandler {
     /// <param name="commandFunction">The async command function to execute</param>
     /// <param name="settings">Command settings for error handling</param>
     /// <returns>Exit code - 0 for success, negative values for errors</returns>
-    public static async Task<int> SafeExecuteAsync(Func<Task<int>> commandFunction, LogOptions settings) {
-
-
+    public static async Task<int> SafeExecuteAsync(ILogger logger, Func<Task<int>> commandFunction, LogOptions settings) {
         try {
             return await commandFunction();
         } catch (AggregateException ae) {
             var innerException = ae.InnerException ?? ae;
-            return HandleException(innerException, settings);
+            return HandleException(logger, innerException, settings);
         } catch (Exception e) {
-            return HandleException(e, settings);
+            return HandleException(logger, e, settings);
         }
     }
 
-    private static int HandleScriptingException(ScriptingException e, LogOptions settings) {
-        // Extract the most relevant error message, preferring inner exception details if available
+    private static int HandleScriptingException(ILogger logger, ScriptingException e, LogOptions settings) {
         string errorMessage = e.Message;
 
         if (e.InnerException != null) {
-            // Check if inner exception has more detailed error information
             if (e.InnerException is Microsoft.ClearScript.ScriptEngineException see && !string.IsNullOrEmpty(see.ErrorDetails)) {
                 errorMessage = see.ErrorDetails;
             } else if (!string.IsNullOrEmpty(e.InnerException.Message)) {
@@ -73,9 +71,9 @@ public static class ErrorHandler {
             }
         }
 
-        AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Script Error:[/] [white]{Markup.Escape(errorMessage)}[/]");
-        AnsiConsole.MarkupLine("[grey]This error occurred while executing a script. Check the script for syntax errors or logic issues.[/]");
-        AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
+        logger.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Script Error:[/] [white]{Markup.Escape(errorMessage)}[/]");
+        logger.MarkupLine("[grey]This error occurred while executing a script. Check the script for syntax errors or logic issues.[/]");
+        logger.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
 
         if (settings.StackTrace) {
             ExceptionUtils.TryWriteException(e.InnerException ?? e);
@@ -84,10 +82,10 @@ public static class ErrorHandler {
         return ExitCodes.SCRIPTING_ERROR;
     }
 
-    private static int HandleBuildException(BuildException e, LogOptions settings) {
-        AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Build Error:[/] [white]{Markup.Escape(e.Message)}[/]");
-        AnsiConsole.MarkupLine("[grey]The project failed to build. Review the build configuration and source files for errors.[/]");
-        AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
+    private static int HandleBuildTimeException(ILogger logger, BuildTimeException e, LogOptions settings) {
+        logger.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Build Error:[/] [white]{Markup.Escape(e.Message)}[/]");
+        logger.MarkupLine("[grey]The project failed to build. Review the build configuration and source files for errors.[/]");
+        logger.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
 
         if (settings.StackTrace) {
             ExceptionUtils.TryWriteException(e.InnerException ?? e);
@@ -96,10 +94,10 @@ public static class ErrorHandler {
         return ExitCodes.BUILD_ERROR;
     }
 
-    private static int HandleConfigurationException(ConfigurationException e, LogOptions settings) {
-        AnsiConsole.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Configuration Error:[/] [white]{Markup.Escape(e.Message)}[/]");
-        AnsiConsole.MarkupLine("[grey]There is a problem with a configuration file or setting. Please verify it is correct.[/]");
-        AnsiConsole.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
+    private static int HandleConfigurationException(ILogger logger, ConfigurationTimeException e, LogOptions settings) {
+        logger.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Configuration Error:[/] [white]{Markup.Escape(e.Message)}[/]");
+        logger.MarkupLine("[grey]There is a problem with a configuration file or setting. Please verify it is correct.[/]");
+        logger.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
 
         if (settings.StackTrace) {
             ExceptionUtils.TryWriteException(e.InnerException ?? e);
@@ -108,22 +106,46 @@ public static class ErrorHandler {
         return ExitCodes.CONFIGURATION_ERROR;
     }
 
-    private static int HandleManilaException(ManilaException e, LogOptions settings) {
-        AnsiConsole.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Application Error:[/] [white]{Markup.Escape(e.Message)}[/]");
-        AnsiConsole.MarkupLine($"[grey]A known issue ('{e.GetType().Name}') occurred. This is a handled error condition.[/]");
-        AnsiConsole.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
+    private static int HandleRuntimeException(ILogger logger, RuntimeException e, LogOptions settings) {
+        logger.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Runtime Error:[/] [white]{Markup.Escape(e.Message)}[/]");
+        logger.MarkupLine("[grey]An unexpected error occurred during execution. This may indicate a bug in the application.[/]");
+        logger.MarkupLine("[grey]Run with --stack-trace for a detailed error log.[/]");
+
+        if (settings.StackTrace) {
+            ExceptionUtils.TryWriteException(e.InnerException ?? e);
+        }
+
+        return ExitCodes.RUNTIME_ERROR;
+    }
+
+    private static int HandlePluginException(ILogger logger, PluginException e, LogOptions settings) {
+        logger.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Plugin Error:[/] [white]{Markup.Escape(e.Message)}[/]");
+        logger.MarkupLine("[grey]An error occurred in a plugin. Please check the plugin configuration or report this issue.[/]");
+        logger.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
+
+        if (settings.StackTrace) {
+            ExceptionUtils.TryWriteException(e.InnerException ?? e);
+        }
+
+        return ExitCodes.PLUGIN_ERROR;
+    }
+
+    private static int HandleManilaException(ILogger logger, ManilaException e, LogOptions settings) {
+        logger.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Application Error:[/] [white]{Markup.Escape(e.Message)}[/]");
+        logger.MarkupLine($"[grey]A known issue ('{e.GetType().Name}') occurred. This is a handled error condition.[/]");
+        logger.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
 
         if (settings.StackTrace) {
             ExceptionUtils.TryWriteException(e);
         }
 
-        return ExitCodes.KNOWN_ERROR;
+        return ExitCodes.ANY_KNOWN_ERROR;
     }
 
-    private static int HandleUnknownException(Exception e, LogOptions settings) {
-        AnsiConsole.MarkupLine($"\n[red]{Emoji.Known.Collision} Unexpected System Exception:[/] [white]{Markup.Escape(e.GetType().Name)}[/]");
-        AnsiConsole.MarkupLine("[red]This may indicate a bug in the application. Please report this issue.[/]");
-        AnsiConsole.MarkupLine("[grey]Run with --stack-trace for a detailed error log.[/]");
+    private static int HandleUnknownException(ILogger logger, Exception e, LogOptions settings) {
+        logger.MarkupLine($"\n[red]{Emoji.Known.Collision} Unexpected System Exception:[/] [white]{Markup.Escape(e.GetType().Name)}[/]");
+        logger.MarkupLine("[red]This may indicate a bug in the application. Please report this issue.[/]");
+        logger.MarkupLine("[grey]Run with --stack-trace for a detailed error log.[/]");
 
         if (settings.StackTrace) {
             ExceptionUtils.TryWriteException(e);

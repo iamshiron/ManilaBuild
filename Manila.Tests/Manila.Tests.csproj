@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Manila\Manila.csproj" />
+    <ProjectReference Include="..\Manila.CLI\Manila.CLI.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

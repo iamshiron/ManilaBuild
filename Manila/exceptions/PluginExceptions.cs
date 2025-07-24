@@ -4,7 +4,7 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Ext;
 
-public class PluginException(string message, Exception? innerException) : ManilaException(message, innerException) {
+public class PluginException(string message, Exception? innerException) : RuntimeException(message, innerException) {
     public PluginException(string message) : this(message, null) { }
 }
 
@@ -85,5 +85,16 @@ public class InvalidPluginAPIClassURIException(string uri, Exception? innerExcep
 
     public InvalidPluginAPIClassURIException(string uri)
         : this(uri, null) {
+    }
+}
+
+public class UnableToRegisterPluginComponentException(ManilaPlugin plugin, string key, string message, Exception? innerException) :
+    PluginException($"Unable to register plugin component '{key}' in plugin '{plugin}': {message}.", innerException) {
+
+    public readonly ManilaPlugin Plugin = plugin;
+    public readonly string Key = key;
+
+    public UnableToRegisterPluginComponentException(ManilaPlugin plugin, string key, string message)
+        : this(plugin, key, message, null) {
     }
 }

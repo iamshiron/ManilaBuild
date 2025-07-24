@@ -1,9 +1,10 @@
 using System.ComponentModel;
+using Shiron.Manila.Logging;
 using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
-public sealed class DefaultCommand : BaseManilaCommand<DefaultCommandSettings> {
+public sealed class DefaultCommand(ILogger logger) : BaseManilaCommand<DefaultCommandSettings>(logger) {
     protected override int ExecuteCommand(CommandContext context, DefaultCommandSettings settings) {
         return ManilaCli.CommandApp == null
             ? throw new InvalidOperationException("CommandApp is not initialized.")

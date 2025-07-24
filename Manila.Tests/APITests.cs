@@ -13,7 +13,7 @@ namespace Shiron.Manila.Tests;
 
 [TestFixture]
 public class ProjectFilterTests {
-    public static readonly ILogger Logger = new Mock.MockLogger();
+    public static readonly ILogger Logger = new Mock.EmptyMockLogger();
 
     [Test]
     public void From_String_CreatesProjectFilterName() {

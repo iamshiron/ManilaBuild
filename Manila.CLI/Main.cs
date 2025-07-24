@@ -62,7 +62,7 @@ public static class ManilaCli {
     public static async Task<int> RunJobAsync(ServiceContainer services, BaseServiceCotnainer baseServices, ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
         var graph = engine.CreateExecutionGraph(services, baseServices, workspace);
 
-        var task = ErrorHandler.SafeExecuteAsync(async () => {
+        var task = ErrorHandler.SafeExecuteAsync(baseServices.Logger, async () => {
             await engine.ExecuteBuildLogicAsync(graph, job);
             return ExitCodes.SUCCESS;
         }, settings.ToLogOptions());
@@ -172,7 +172,7 @@ public static class ManilaCli {
         } catch (UnableToInitializeEngineException e) {
             logger.Debug($"Unable initialize Manila engine: {e.Message}. Continueing without workspace.");
         } catch (Exception e) {
-            return ErrorHandler.HandleException(e, logOptions);
+            return ErrorHandler.HandleException(baseServiceContainer.Logger, e, logOptions);
         }
 
         _ = services.AddSingleton(manilaEngine)

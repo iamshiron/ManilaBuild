@@ -4,7 +4,7 @@ namespace Shiron.Manila.Exceptions;
 /// Represents an error that originated from the scripting engine or during the
 /// execution of a user-provided script file.
 /// </summary>
-public class ScriptingException : ManilaException {
+public class ScriptingException : RuntimeException {
     public ScriptingException(string message) : base(message) { }
 
     public ScriptingException(string message, Exception innerException) : base(message, innerException) { }

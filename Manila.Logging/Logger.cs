@@ -125,6 +125,14 @@ public class Logger(string? loggerPrefix) : ILogger {
     }
 
     /// <summary>
+    /// Logs a message as a markup line at the Info level.
+    /// </summary>
+    /// <param name="message">The message to log.</param>
+    public void MarkupLine(string message, bool logAlways = false) {
+        Log(new MarkupLogEntry(message, logAlways, loggerPrefix));
+    }
+
+    /// <summary>
     /// Logs a message at the Info level.
     /// </summary>
     /// <param name="message">The message to log.</param>

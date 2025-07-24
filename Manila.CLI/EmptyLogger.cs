@@ -13,6 +13,7 @@ public class EmptyLogger : ILogger {
     public event Action<ILogEntry>? OnLogEntry;
 #pragma warning restore CS0067
 
+    public void MarkupLine(string message, bool logAlways = false) { }
     public void AddInjector(Guid id, LogInjector injector) { }
     public void Critical(string message) { }
     public void Debug(string message) { }

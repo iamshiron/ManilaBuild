@@ -45,8 +45,11 @@ public class RegexUtilsTests {
     public void MatchJobs_InvalidCases_ShouldFail(string input) {
         var result = RegexUtils.MatchJobs(input);
 
-        Assert.That(result, Is.Null, $"Input: '{input}' should not produce a match.");
-        Assert.That(RegexUtils.IsValidJob(input), Is.False, $"Input: '{input}' should be invalid.");
+        using (Assert.EnterMultipleScope()) {
+            Assert.That(result, Is.Null, $"Input: '{input}' should not produce a match.");
+            Assert.That(RegexUtils.IsValidJob(input), Is.False, $"Input: '{input}' should be invalid.");
+        }
+
     }
 
     [Test]

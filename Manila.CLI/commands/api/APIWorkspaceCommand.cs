@@ -8,7 +8,9 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retrieve workspace information")]
-internal sealed class APIWorkspaceCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) : BaseManilaCommand<APIWorkspaceCommand.Settings> {
+internal sealed class APIWorkspaceCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
+    BaseManilaCommand<APIWorkspaceCommand.Settings>(baseServices.Logger) {
+
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly Workspace? _workspace = workspace;
 
