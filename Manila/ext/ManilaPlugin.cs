@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 
 namespace Shiron.Manila.Ext;
@@ -12,7 +14,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public readonly List<string> Authors = authors;
     public readonly List<string> NugetDependencies = nugetDependencies ?? [];
 
-    public readonly Dictionary<string, PluginComponent> Components = [];
+    public readonly ConcurrentDictionary<string, PluginComponent> Components = [];
     public readonly List<Type> Enums = [];
     public readonly List<Type> Dependencies = [];
     public string? File { get; internal set; } = null;
@@ -65,8 +67,8 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// <param name="component">The instance the component</param>
     /// <exception cref="Exception">Component already registered to this plugin</exception>
     public void RegisterComponent(PluginComponent component) {
-        if (Components.ContainsKey(component.Name)) throw new Exception("Component with name " + component.Name + " already registered");
-        Components.Add(component.Name, component);
+        if (Components.ContainsKey(component.Name)) throw new ManilaException("Component with name " + component.Name + " already registered");
+        Components[component.Name] = component;
         component._plugin = this;
     }
     /// <summary>

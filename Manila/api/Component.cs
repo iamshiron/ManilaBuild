@@ -20,7 +20,6 @@ public class Component(ILogger logger, string rootDir, string path) {
     /// <summary>
     /// The directory path of this component.
     /// </summary>
-    [ScriptProperty(true)]
     public DirHandle Path { get; private set; } = new DirHandle(path);
 
     /// <summary>
@@ -75,7 +74,7 @@ public class Component(ILogger logger, string rootDir, string path) {
                 return (T) p.Value;
         }
 
-        throw new Exception($"Component of type {typeof(T).Name} not found in this context.");
+        throw new ManilaException($"Component of type {typeof(T).Name} not found in this context.");
     }
 
     /// <summary>
@@ -87,7 +86,7 @@ public class Component(ILogger logger, string rootDir, string path) {
         foreach (var component in PluginComponents.Values) {
             if (component is LanguageComponent languageComponent) return languageComponent;
         }
-        throw new Exception("No language component found.");
+        throw new ManilaException("No language component found.");
     }
 
     /// <summary>

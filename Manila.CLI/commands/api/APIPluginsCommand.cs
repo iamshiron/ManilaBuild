@@ -13,7 +13,23 @@ internal sealed class APIPluginsCommand(BaseServiceCotnainer baseServices, Servi
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly ServiceContainer? _services = services;
 
-    public class Settings : APICommandSettings { }
+    public class Settings : APICommandSettings {
+        [Description("Include detailed information")]
+        [CommandOption("--detailed")]
+        public bool Detailed { get; set; } = false;
+
+        [Description("Output in compact format")]
+        [CommandOption("--no-indent")]
+        public bool NoIndent { get; set; } = false;
+
+        [Description("No null values in output")]
+        [CommandOption("--no-null-values")]
+        public bool NoNullValues { get; set; } = false;
+
+        [Description("Include default values in output")]
+        [CommandOption("--include-default-values")]
+        public bool IncludeDefaultValues { get; set; } = false;
+    }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
         if (_services == null) {
@@ -23,7 +39,7 @@ internal sealed class APIPluginsCommand(BaseServiceCotnainer baseServices, Servi
 
         Console.WriteLine(APICommandHelpers.FormatData(
             GetData(_services.ExtensionManager, settings),
-            settings
+            settings.NoIndent, settings.NoNullValues, settings.IncludeDefaultValues
         ));
 
         return ExitCodes.SUCCESS;
@@ -31,6 +47,7 @@ internal sealed class APIPluginsCommand(BaseServiceCotnainer baseServices, Servi
 
     private static object GetData(IExtensionManager mgr, Settings settings) {
         var list = new List<object>();
+
         foreach (var plugin in mgr.Plugins) {
             var pluginData = new {
                 group = plugin.Group,

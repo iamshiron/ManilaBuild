@@ -1,0 +1,23 @@
+
+
+using Shiron.Manila.Logging;
+
+namespace Shiron.Manila.CLI;
+
+public class EmptyLogger : ILogger {
+    public string? LoggerPrefix => null;
+
+    public LogContext LogContext => new LogContext();
+
+    public event Action<ILogEntry>? OnLogEntry;
+
+    public void AddInjector(Guid id, LogInjector injector) { }
+    public void Critical(string message) { }
+    public void Debug(string message) { }
+    public void Error(string message) { }
+    public void Info(string message) { }
+    public void Log(ILogEntry entry) { }
+    public void RemoveInjector(Guid id) { }
+    public void System(string message) { }
+    public void Warning(string message) { }
+}

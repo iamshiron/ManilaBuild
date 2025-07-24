@@ -18,6 +18,18 @@ public class APIBuildLayersCommand(BaseServiceCotnainer baseServices, ServiceCon
         [CommandArgument(0, "<job>")]
         [Description("The job to create the graph for.")]
         public string Job { get; set; } = string.Empty;
+
+        [Description("Output in compact format")]
+        [CommandOption("--no-indent")]
+        public bool NoIndent { get; set; } = false;
+
+        [Description("No null values in output")]
+        [CommandOption("--no-null-values")]
+        public bool NoNullValues { get; set; } = false;
+
+        [Description("Include default values in output")]
+        [CommandOption("--include-default-values")]
+        public bool IncludeDefaultValues { get; set; } = false;
     }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
@@ -33,7 +45,7 @@ public class APIBuildLayersCommand(BaseServiceCotnainer baseServices, ServiceCon
 
         Console.WriteLine(APICommandHelpers.FormatData(
             GetData(_engine.CreateExecutionGraph(_services, _baseServices, _workspace), settings.Job),
-            settings
+            settings.NoIndent, settings.NoNullValues, settings.IncludeDefaultValues
         ));
 
 

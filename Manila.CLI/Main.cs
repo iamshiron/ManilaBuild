@@ -80,9 +80,13 @@ public static class ManilaCli {
             args.Contains(CommandOptions.StackTrace)
         );
 
+        var commands = CommandUtils.GetCommandNames(args);
+        var isApiCommand = commands.Length > 0 && commands[0] == "api";
+        var ignoreBanner = logOptions.Quiet || isApiCommand;
+
         Directories = new Directories();
 
-        var logger = new Logger(null);
+        var logger = isApiCommand ? (ILogger) new EmptyLogger() : new Logger(null);
         var profiler = new Profiler(logger);
         var services = new ServiceCollection();
 
@@ -91,9 +95,6 @@ public static class ManilaCli {
         );
 
         SetupBaseComponents(logger, logOptions);
-
-        var commands = CommandUtils.GetCommandNames(args);
-        var ignoreBanner = logOptions.Quiet || (commands.Length > 0 && commands[0] == "api" && commands.Length > 1);
 
         if (!ignoreBanner) {
             foreach (string line in Banner.Lines.Take(Banner.Lines.Length - 1)) {
@@ -193,6 +194,8 @@ public static class ManilaCli {
         CommandApp = new CommandApp<DefaultCommand>(new TypeRegistrar(services));
 
         CommandApp.Configure(c => {
+            c.Settings.ShowOptionDefaultValues = true;
+
             c.SetApplicationName("manila");
             c.SetApplicationVersion(ManilaEngine.VERSION);
 

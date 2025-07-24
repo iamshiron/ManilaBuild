@@ -17,25 +17,21 @@ public class Project(ILogger logger, string name, string projectRoot, string roo
     /// <summary>
     /// The unique name of the project.
     /// </summary>
-    [ScriptProperty(true)]
     public string Name { get; private set; } = name;
 
     /// <summary>
     /// The project version identifier.
     /// </summary>
-    [ScriptProperty]
     public string? Version { get; set; }
 
     /// <summary>
     /// The project group identifier for organization.
     /// </summary>
-    [ScriptProperty]
     public string? Group { get; set; }
 
     /// <summary>
     /// A brief description of the project.
     /// </summary>
-    [ScriptProperty]
     public string? Description { get; set; }
 
     /// <summary>

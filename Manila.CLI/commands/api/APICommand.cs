@@ -8,39 +8,19 @@ using Spectre.Console.Cli;
 namespace Shiron.Manila.CLI.Commands.API;
 
 public static class APICommandHelpers {
-    public static JsonSerializerSettings GetJsonSettings(APICommandSettings settings) {
+    public static JsonSerializerSettings GetJsonSettings(bool noIndent, bool noNullValues, bool includeDefaultValues) {
         return new JsonSerializerSettings {
-            Formatting = settings.NoIndent ? Formatting.None : Formatting.Indented,
-            NullValueHandling = settings.NoNullValues ? NullValueHandling.Ignore : NullValueHandling.Include,
-            DefaultValueHandling = settings.IncludeDefaultValues ? DefaultValueHandling.Include : DefaultValueHandling.Ignore,
+            Formatting = noIndent ? Formatting.None : Formatting.Indented,
+            NullValueHandling = noNullValues ? NullValueHandling.Ignore : NullValueHandling.Include,
+            DefaultValueHandling = includeDefaultValues ? DefaultValueHandling.Include : DefaultValueHandling.Ignore,
             ContractResolver = new CamelCasePropertyNamesContractResolver()
         };
     }
 
-    public static string FormatData(object data, APICommandSettings settings) {
-        var jsonSettings = GetJsonSettings(settings);
+    public static string FormatData(object data, bool noIndent, bool noNullValues, bool includeDefaultValues) {
+        var jsonSettings = GetJsonSettings(noIndent, noNullValues, includeDefaultValues);
         return JsonConvert.SerializeObject(data, jsonSettings);
     }
 }
 
-public class APICommandSettings : DefaultCommandSettings {
-    [Description("Include detailed information")]
-    [CommandOption("--detailed")] // Can't use constant in attribute
-    [DefaultValue(false)]
-    public bool Detailed { get; set; }
-
-    [Description("Output in compact format")]
-    [CommandOption("--no-indent")]
-    [DefaultValue(false)]
-    public bool NoIndent { get; set; } = false;
-
-    [Description("No null values in output")]
-    [CommandOption("--no-null-values")]
-    [DefaultValue(false)]
-    public bool NoNullValues { get; set; } = false;
-
-    [Description("Include default values in output")]
-    [CommandOption("--include-default-values")]
-    [DefaultValue(false)]
-    public bool IncludeDefaultValues { get; set; } = false;
-}
+public class APICommandSettings : DefaultCommandSettings { }

@@ -21,6 +21,7 @@ public static class CLIConstants {
         public static readonly string Description = "[green]Description[/]";
         public static readonly string Dependencies = "[magenta]Direct Dependencies[/]";
         public static readonly string Project = "[cyan]Project[/]";
+        public static readonly string Plugin = "[cyan]Plugin[/]";
         public static readonly string Version = "[green]Version[/]";
         public static readonly string Artifacts = "[blue]Artifacts[/]";
         public static readonly string Group = "[magenta]Group[/]";

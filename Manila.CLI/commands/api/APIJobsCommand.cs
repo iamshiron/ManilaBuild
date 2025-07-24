@@ -16,6 +16,22 @@ internal sealed class APIJobsCommand(BaseServiceCotnainer baseServices, Workspac
         [Description("Name of the project to filter by")]
         [CommandOption("--project|-p <NAME>")]
         public string? Project { get; set; } = null;
+
+        [Description("Include detailed information")]
+        [CommandOption("--detailed")]
+        public bool Detailed { get; set; } = false;
+
+        [Description("Output in compact format")]
+        [CommandOption("--no-indent")]
+        public bool NoIndent { get; set; } = false;
+
+        [Description("No null values in output")]
+        [CommandOption("--no-null-values")]
+        public bool NoNullValues { get; set; } = false;
+
+        [Description("Include default values in output")]
+        [CommandOption("--include-default-values")]
+        public bool IncludeDefaultValues { get; set; } = false;
     }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
@@ -26,7 +42,7 @@ internal sealed class APIJobsCommand(BaseServiceCotnainer baseServices, Workspac
 
         Console.WriteLine(APICommandHelpers.FormatData(
             GetData(_workspace, settings),
-            settings
+            settings.NoIndent, settings.NoNullValues, settings.IncludeDefaultValues
         ));
 
         return ExitCodes.SUCCESS;
@@ -36,36 +52,37 @@ internal sealed class APIJobsCommand(BaseServiceCotnainer baseServices, Workspac
         var jobs = new List<object>();
 
         // Workspace jobs
-        foreach (var job in workspace.Jobs) {
-            if (settings.Project != null) continue; // Skip workspace jobs if filtering by project
 
-            var jobData = new {
-                name = job.Name,
-                identifier = job.GetIdentifier(),
-                description = job.Description,
-                dependencies = job.Dependencies,
-                type = ProjectTypes.Workspace,
-                project = (string?) null,
-                artifact = (string?) null,
-                blocking = job.Blocking
-            };
+        if (settings.Project == null) {
+            foreach (var job in workspace.Jobs) {
+                var jobData = new {
+                    name = job.Name,
+                    identifier = job.GetIdentifier(),
+                    description = job.Description,
+                    dependencies = job.Dependencies,
+                    type = ProjectTypes.Workspace,
+                    project = (string?) null,
+                    artifact = (string?) null,
+                    blocking = job.Blocking
+                };
 
-            if (settings.Detailed) {
-                jobs.Add(new {
-                    jobData.name,
-                    jobData.identifier,
-                    jobData.description,
-                    jobData.dependencies,
-                    jobData.type,
-                    jobData.project,
-                    jobData.artifact,
-                    jobData.blocking,
-                    executionOrder = job.GetExecutionOrder(),
-                    jobId = job.JobID,
-                    component = job.Component?.GetIdentifier()
-                });
-            } else {
-                jobs.Add(jobData);
+                if (settings.Detailed) {
+                    jobs.Add(new {
+                        jobData.name,
+                        jobData.identifier,
+                        jobData.description,
+                        jobData.dependencies,
+                        jobData.type,
+                        jobData.project,
+                        jobData.artifact,
+                        jobData.blocking,
+                        executionOrder = job.GetExecutionOrder(),
+                        jobId = job.JobID,
+                        component = job.Component?.GetIdentifier()
+                    });
+                } else {
+                    jobs.Add(jobData);
+                }
             }
         }
 

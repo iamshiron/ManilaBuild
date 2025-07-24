@@ -18,7 +18,7 @@ namespace Shiron.Manila.API;
 /// <summary>
 /// Primary API class exposing global Manila functions.
 /// </summary>
-public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer services, ScriptContext context, WorkspaceScriptBridge workspaceBridge, Workspace workspace, ProjectScriptBridge? projectBridge, Project? project) : ExposedDynamicObject {
+public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer services, ScriptContext context, WorkspaceScriptBridge workspaceBridge, Workspace workspace, ProjectScriptBridge? projectBridge, Project? project) {
     private readonly ServiceContainer _services = services;
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly ScriptContext _context = context;
@@ -146,41 +146,6 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public FileHandle file(string path) {
         return new FileHandle(path);
-    }
-
-    /// <summary>
-    /// Applies the plugin component identified by the given key.
-    /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void apply(string pluginComponentKey) {
-        var component = _services.ExtensionManager.GetPluginComponent(pluginComponentKey);
-        apply(component);
-    }
-
-    /// <summary>
-    /// Applies the plugin component defined in the script object.
-    /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void apply(ScriptObject obj) {
-        var version = obj.GetProperty("version");
-        var component = _services.ExtensionManager.GetPluginComponent((string) obj["group"], (string) obj["name"], (string) obj["component"], version == Undefined.Value ? null : (string) version);
-        apply(component);
-    }
-
-    /// <summary>
-    /// Applies the provided plugin component to the current project.
-    /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void apply(PluginComponent component) {
-        if (_project == null || _projectBridge == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
-
-        using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
-            _baseServices.Logger.Debug("Applying: " + component);
-            ScriptBridgeContextApplyer.ApplyComponent(_baseServices.Logger, _context, _projectBridge, _project, _workspace, component);
-            if (component is LanguageComponent lc) {
-                BuildConfig = Activator.CreateInstance(lc.BuildConfigType) ?? throw new ManilaException("Unable to assign build config");
-            }
-        }
     }
 
     /// <summary>
@@ -315,6 +280,22 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
 
             return t;
         }
+    }
+
+    /// <summary>
+    /// Applies a language component by its URI.
+    /// </summary>
+    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
+    public void apply(string uri) {
+        var match = RegexUtils.MatchPluginComponent(uri) ?? throw new ScriptingException($"Invalid component URI: {uri}");
+        var component = _services.ExtensionManager.GetPluginComponent(match.Group ?? "shiron.manila", match.Plugin, match.Component, match.Version);
+        if (component is not LanguageComponent) throw new ScriptingException($"Component {uri} is not a language component.");
+
+        var langComp = (LanguageComponent) component;
+        _baseServices.Logger.Debug($"Applying language component {langComp.Name} from {langComp._plugin}");
+
+        var buildConfig = Activator.CreateInstance(langComp.BuildConfigType) ?? throw new ScriptingException($"Failed to create build config for language component {langComp.Name}.");
+        BuildConfig = buildConfig;
     }
 
     #region Job Actions

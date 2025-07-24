@@ -16,6 +16,22 @@ internal sealed class APIProjectsCommand(BaseServiceCotnainer baseServices, Work
         [Description("Name of the project to filter by")]
         [CommandOption("--project|-p <NAME>")]
         public string? Project { get; set; } = null;
+
+        [Description("Include detailed information")]
+        [CommandOption("--detailed")]
+        public bool Detailed { get; set; } = false;
+
+        [Description("Output in compact format")]
+        [CommandOption("--no-indent")]
+        public bool NoIndent { get; set; } = false;
+
+        [Description("No null values in output")]
+        [CommandOption("--no-null-values")]
+        public bool NoNullValues { get; set; } = false;
+
+        [Description("Include default values in output")]
+        [CommandOption("--include-default-values")]
+        public bool IncludeDefaultValues { get; set; } = false;
     }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
@@ -26,7 +42,7 @@ internal sealed class APIProjectsCommand(BaseServiceCotnainer baseServices, Work
 
         Console.WriteLine(APICommandHelpers.FormatData(
             GetData(_workspace, settings),
-            settings
+            settings.NoIndent, settings.NoNullValues, settings.IncludeDefaultValues
         ));
 
         return ExitCodes.SUCCESS;

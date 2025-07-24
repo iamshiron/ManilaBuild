@@ -21,7 +21,7 @@ internal sealed class PluginsCommand(BaseServiceCotnainer baseSerices, ServiceCo
         }
 
         var table = new Table().Border(TableBorder.Rounded)
-            .AddColumn(new TableColumn(TableColumns.Project))
+            .AddColumn(new TableColumn(TableColumns.Plugin))
             .AddColumn(new TableColumn(TableColumns.Version))
             .AddColumn(new TableColumn(TableColumns.Group))
             .AddColumn(new TableColumn(TableColumns.Path))

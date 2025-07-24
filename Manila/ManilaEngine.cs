@@ -63,9 +63,6 @@ public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories
 
             workspace.Projects.Add(projectName, project);
 
-            context.ApplyEnum<EPlatform>();
-            context.ApplyEnum<EArchitecture>();
-
             context.Init(new(
                 _baseServices, services, context,
                 workspaceBridge, workspace,
@@ -73,8 +70,8 @@ public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories
             ), projectBridge, project);
             try {
                 await context.ExecuteAsync(services.FileHashCache, project);
-            } catch {
-                var ex = new ManilaException($"Failed to execute project script: {context.ScriptPath}");
+            } catch (Exception e) {
+                var ex = new ManilaException($"Failed to execute project script: {context.ScriptPath}", e);
                 throw ex;
             }
 
@@ -93,9 +90,6 @@ public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories
 
             var workspace = new Workspace(_baseServices.Logger, workspaceRoot);
             var workspaceBridge = new WorkspaceScriptBridge(_baseServices.Logger, _baseServices.Profiler, workspace);
-
-            context.ApplyEnum<EArchitecture>();
-            context.ApplyEnum<EPlatform>();
 
             context.Init(
                 new(

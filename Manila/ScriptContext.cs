@@ -52,18 +52,6 @@ public interface IScriptContext {
     /// </summary>
     /// <returns>A task that represents the asynchronous execution operation.</returns>
     Task ExecuteAsync(IFileHashCache cache, Component component);
-
-    /// <summary>
-    /// Applies an enum type to the script engine, making it available in the script.
-    /// </summary>
-    /// <typeparam name="T">The enum type to apply.</typeparam>
-    void ApplyEnum<T>();
-
-    /// <summary>
-    /// Applies an enum type to the script engine, making it available in the script.
-    /// </summary>
-    /// <param name="t">The enum type to apply.</param>
-    void ApplyEnum(Type t);
 }
 
 public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEngine scriptEngine, string rootDir, string scriptPath) : IScriptContext {
@@ -121,15 +109,6 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
             ScriptEngine.AddHostObject("print", (params object[] args) => {
                 _logger.Log(new ScriptLogEntry(ScriptPath, string.Join(" ", args), ContextID));
             });
-
-            foreach (var prop in ScriptEngine.GetType().GetProperties()) {
-                if (prop.GetCustomAttribute<ScriptProperty>() == null) continue;
-                ScriptBridgeContextApplyer.AddScriptProperty(_logger, this, bridge, prop);
-            }
-            foreach (var func in component.GetType().GetMethods()) {
-                if (func.GetCustomAttribute<ScriptFunction>() == null) continue;
-                ScriptBridgeContextApplyer.AddScriptFunction(_logger, bridge, func, ScriptEngine);
-            }
         }
     }
 
@@ -349,29 +328,5 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
         var ex = new ScriptingException($"An error occurred in '{relativePath}': {errorMessage}", e);
         _logger.Log(new ScriptExecutionFailedLogEntry(ScriptPath, ex, ContextID));
         throw ex;
-    }
-
-    /// <summary>
-    /// Applies an enum to the script engine.
-    /// </summary>
-    /// <typeparam name="T">The enum type</typeparam>
-    public void ApplyEnum<T>() {
-        ApplyEnum(typeof(T));
-    }
-    /// <summary>
-    /// Applies an enum to the script engine.
-    /// </summary>
-    /// <typeparam name="T">The enum type</typeparam>
-    /// <exception cref="Exception">The class is not tagged with the <see cref="ScriptEnum"/> attribute.</exception>
-    public void ApplyEnum(Type t) {
-        if (t.GetCustomAttributes<ScriptEnum>() == null) throw new ManilaException($"Object '{t}' is not a script enum.");
-
-        if (EnumComponents.Contains(t)) {
-            _logger.Warning($"Enum '{t}' already applied.");
-            return;
-        }
-
-        EnumComponents.Add(t);
-        ScriptEngine.AddHostType(t.Name[1..], t);
     }
 }
