@@ -287,12 +287,15 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// </summary>
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public void apply(string uri) {
+        if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
+
         var match = RegexUtils.MatchPluginComponent(uri) ?? throw new ScriptingException($"Invalid component URI: {uri}");
         var component = _services.ExtensionManager.GetPluginComponent(match.Group ?? "shiron.manila", match.Plugin, match.Component, match.Version);
         if (component is not LanguageComponent) throw new ScriptingException($"Component {uri} is not a language component.");
 
         var langComp = (LanguageComponent) component;
         _baseServices.Logger.Debug($"Applying language component {langComp.Name} from {langComp._plugin}");
+        _project.PluginComponents.Add(langComp.GetType(), langComp);
 
         var buildConfig = Activator.CreateInstance(langComp.BuildConfigType) ?? throw new ScriptingException($"Failed to create build config for language component {langComp.Name}.");
         BuildConfig = buildConfig;

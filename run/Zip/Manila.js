@@ -1,7 +1,7 @@
 const project = Manila.getProject()
 const workspace = Manila.getWorkspace()
 
-Manila.apply('shiron.manila:zip/zip')
+Manila.apply('shiron.manila:zip@1.0.0/zip')
 const config = Manila.getConfig()
 
 project.Version('1.0.0')
