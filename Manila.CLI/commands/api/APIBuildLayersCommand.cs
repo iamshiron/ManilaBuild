@@ -32,7 +32,7 @@ public class APIBuildLayersCommand(BaseServiceCotnainer baseServices, ServiceCon
         }
 
         Console.WriteLine(APICommandHelpers.FormatData(
-            GetData(_engine.CreateExecutionGraph(_services, _workspace), settings.Job),
+            GetData(_engine.CreateExecutionGraph(_services, _baseServices, _workspace), settings.Job),
             settings
         ));
 

@@ -22,7 +22,7 @@ public class APIGraphCommand(BaseServiceCotnainer baseServices, ServiceContainer
             return ExitCodes.USER_COMMAND_ERROR;
         }
 
-        Console.WriteLine(_engine.CreateExecutionGraph(_services, _workspace).ToMermaid());
+        Console.WriteLine(_engine.CreateExecutionGraph(_services, _baseServices, _workspace).ToMermaid());
 
         return ExitCodes.SUCCESS;
     }

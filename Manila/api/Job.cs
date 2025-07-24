@@ -9,14 +9,14 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila.API;
 
 public interface IJobAction {
-    Task Execute();
+    Task ExecuteAsync();
 }
 
 public class JobScriptAction(ScriptObject obj) : IJobAction {
     private readonly ScriptObject _scriptObject = obj;
     public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
 
-    public async Task Execute() {
+    public async Task ExecuteAsync() {
         try {
             var res = _scriptObject.InvokeAsFunction();
             if (res is Task task) {
@@ -31,7 +31,7 @@ public class JobShellAction(ShellUtils.CommandInfo info) : IJobAction {
     private readonly ShellUtils.CommandInfo _commandInfo = info;
     public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
 
-    public async Task Execute() {
+    public async Task ExecuteAsync() {
         ShellUtils.Run(_commandInfo);
         await Task.Yield();
     }
@@ -43,7 +43,7 @@ public class PrintAction(ILogger logger, string message, string scriptPath, Guid
     private readonly Guid _scriptContextID = scriptContextID;
     public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
 
-    public async Task Execute() {
+    public async Task ExecuteAsync() {
         _logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextID));
         await Task.Yield();
     }
@@ -104,13 +104,13 @@ public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) :
         return Blocking;
     }
 
-    protected override async Task Run() {
+    protected override async Task RunAsync() {
         _logger.Debug($"Executing job: {ExecutableID}");
 
         _logger.Log(new JobExecutionStartedLogEntry(this, ExecutableID));
         using (_logger.LogContext.PushContext(ExecutableID)) {
             try {
-                foreach (var a in Actions) await a.Execute();
+                foreach (var a in Actions) await a.ExecuteAsync();
             } catch (Exception e) {
                 _logger.Log(new JobExecutionFailedLogEntry(this, ExecutableID, e));
                 throw;

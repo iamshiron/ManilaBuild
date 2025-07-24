@@ -54,7 +54,7 @@ public class InMemoryFileHashCache : IFileHashCache {
     /// </summary>
     /// <param name="paths">An enumerable of file paths to check.</param>
     /// <returns>A task that resolves to an enumerable of paths for the files that have changed.</returns>
-    public Task<IEnumerable<string>> HasChangedAny(IEnumerable<string> paths) {
+    public Task<IEnumerable<string>> HasChangedAnyAsync(IEnumerable<string> paths) {
         // Filter the mock "current files" to only those in the input list.
         var filesToCheck = CurrentFileHashesForTesting
             .Where(kvp => paths.Contains(kvp.Key));
@@ -155,7 +155,7 @@ public class InMemoryFileHashCacheTests {
         };
 
         var pathsToCheck = new[] { _file1, _file2, _file3 };
-        var changedFiles = (await _cache.HasChangedAny(pathsToCheck)).ToList();
+        var changedFiles = (await _cache.HasChangedAnyAsync(pathsToCheck)).ToList();
 
         // Expect file1 (updated) and file3 (new) to be reported.
         // file2 is unchanged and should be ignored.
@@ -176,7 +176,7 @@ public class InMemoryFileHashCacheTests {
         };
 
         var pathsToCheck = new[] { _file1, _file2 };
-        var changedFiles = await _cache.HasChangedAny(pathsToCheck);
+        var changedFiles = await _cache.HasChangedAnyAsync(pathsToCheck);
 
         // No changes, should return an empty collection.
         Assert.That(changedFiles, Is.Empty);
@@ -185,7 +185,7 @@ public class InMemoryFileHashCacheTests {
     [Test]
     public async Task HasChangedAny_WithEmptyInput_ReturnsEmpty() {
         // Give it nothing, expect nothing back.
-        var changedFiles = await _cache.HasChangedAny(Enumerable.Empty<string>());
+        var changedFiles = await _cache.HasChangedAnyAsync(Enumerable.Empty<string>());
         Assert.That(changedFiles, Is.Empty);
     }
 
@@ -200,7 +200,7 @@ public class InMemoryFileHashCacheTests {
         };
 
         var pathsToCheck = new[] { _file1, _file2 };
-        var changedFiles = (await _cache.HasChangedAny(pathsToCheck)).ToList();
+        var changedFiles = (await _cache.HasChangedAnyAsync(pathsToCheck)).ToList();
 
         // Only the new file (file2) should be reported.
         // The deleted file (file1) should not be in the result.

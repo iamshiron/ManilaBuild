@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.Loader;
 using System.Runtime.Versioning;
 using System.Text.Json;
+using System.Threading.Tasks;
 using NuGet.Common;
 using NuGet.Frameworks;
 using NuGet.Packaging.Core;
@@ -16,7 +17,8 @@ namespace Shiron.Manila.Utils;
 
 public interface INuGetManager {
     Task<List<string>> DownloadPackageWithDependenciesAsync(string packageId, string version);
-    void PersistCache();
+    Task LoadCacheAsync();
+    Task PersistCacheAsync();
 }
 
 /// <summary>
@@ -48,6 +50,8 @@ public class NuGetManager : INuGetManager {
     private FindPackageByIdResource? _findPackageByIdResource;
     private readonly NuGetFramework _currentTargetFramework;
 
+    private readonly Task _cacheLoadTask;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="NuGetManager"/> class.
     /// </summary>
@@ -56,14 +60,14 @@ public class NuGetManager : INuGetManager {
         _logger = logger;
         _profiler = profiler;
 
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+        using (new ProfileScope(_profiler, "Initialize NuGetManager")) {
             PackageDir = packageDir;
             PackageCacheFilePath = Path.Combine(PackageDir, "nuget.json");
             Directory.CreateDirectory(PackageDir); // Ensures the directory exists.
 
             _currentTargetFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
 
-            LoadCache();
+            _cacheLoadTask = LoadCacheAsync();
         }
     }
 
@@ -76,25 +80,33 @@ public class NuGetManager : INuGetManager {
         }
     }
 
-    private void LoadCache() {
-        if (!File.Exists(PackageCacheFilePath)) return;
-        try {
-            var serializedData = File.ReadAllText(PackageCacheFilePath);
-            var data = JsonSerializer.Deserialize<Dictionary<string, InstalledPackage>>(serializedData);
-            if (data != null) {
-                _installedPackages = data;
+    public async Task LoadCacheAsync() {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            if (!File.Exists(PackageCacheFilePath)) return;
+            try {
+                using FileStream stream = new(PackageCacheFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                var data = await JsonSerializer.DeserializeAsync<Dictionary<string, InstalledPackage>>(stream);
+                if (data != null) {
+                    _installedPackages = data;
+                }
+            } catch (Exception e) {
+                _logger.Warning($"Unable to read NuGet package cache at '{PackageCacheFilePath}'. A new cache will be created. Reason: {e.Message}");
             }
-        } catch (Exception e) {
-            _logger.Warning($"Unable to read NuGet package cache at '{PackageCacheFilePath}'. A new cache will be created. Reason: {e.Message}");
         }
     }
 
-    public void PersistCache() {
-        try {
-            var serializedData = JsonSerializer.Serialize(_installedPackages, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(PackageCacheFilePath, serializedData);
-        } catch (Exception e) {
-            _logger.Warning("Unable to write NuGet package cache! " + e.Message);
+    public async Task PersistCacheAsync() {
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            try {
+                using (new ProfileScope(_profiler, "Awaiting cache load")) {
+                    await _cacheLoadTask; // Ensure the cache is loaded before proceeding.
+                }
+
+                var serializedData = JsonSerializer.Serialize(_installedPackages, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(PackageCacheFilePath, serializedData);
+            } catch (Exception e) {
+                _logger.Warning("Unable to write NuGet package cache! " + e.Message);
+            }
         }
     }
 
@@ -106,6 +118,10 @@ public class NuGetManager : INuGetManager {
     /// <returns>A list of absolute file paths to the downloaded DLLs.</returns>
     public async Task<List<string>> DownloadPackageWithDependenciesAsync(string packageId, string version) {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            using (new ProfileScope(_profiler, "Awaiting cache load")) {
+                await _cacheLoadTask; // Ensure the cache is loaded before proceeding.
+            }
+
             string cacheKey = $"{packageId}@{version}";
             if (_installedPackages.TryGetValue(cacheKey, out var cachedPackage)) {
                 // Reconstruct absolute paths from cached relative paths.
@@ -168,53 +184,59 @@ public class NuGetManager : INuGetManager {
     }
 
     private async Task<SourcePackageDependencyInfo?> ResolvePackageAsync(string packageId, NuGetVersion version) {
-        var key = $"{packageId}@{version}";
-        if (_resolvedPackageCache.TryGetValue(key, out var cachedInfo)) {
-            return cachedInfo;
-        }
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            var key = $"{packageId}@{version}";
+            if (_resolvedPackageCache.TryGetValue(key, out var cachedInfo)) {
+                return cachedInfo;
+            }
 
-        var packageIdentity = new PackageIdentity(packageId, version);
-        var packageInfo = await _dependencyResource!.ResolvePackage(packageIdentity, _currentTargetFramework, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
+            var packageIdentity = new PackageIdentity(packageId, version);
+            var packageInfo = await _dependencyResource!.ResolvePackage(packageIdentity, _currentTargetFramework, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
 
-        if (packageInfo != null) {
-            _resolvedPackageCache[key] = packageInfo;
+            if (packageInfo != null) {
+                _resolvedPackageCache[key] = packageInfo;
+            }
+            return packageInfo;
         }
-        return packageInfo;
     }
 
     private async Task<string> DownloadPackageAsync(string id, NuGetVersion version) {
-        var nupkgFileName = $"{id}_{version.ToNormalizedString()}.nupkg";
-        var downloadPath = Path.Combine(PackageDir, nupkgFileName);
-        if (File.Exists(downloadPath)) return downloadPath;
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            var nupkgFileName = $"{id}_{version.ToNormalizedString()}.nupkg";
+            var downloadPath = Path.Combine(PackageDir, nupkgFileName);
+            if (File.Exists(downloadPath)) return downloadPath;
 
-        using var packageStream = new MemoryStream();
-        bool success = await _findPackageByIdResource!.CopyNupkgToStreamAsync(id, version, packageStream, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
+            using var packageStream = new MemoryStream();
+            bool success = await _findPackageByIdResource!.CopyNupkgToStreamAsync(id, version, packageStream, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None).ConfigureAwait(false);
 
-        if (!success) throw new InvalidOperationException($"Failed to download package: {id}@{version}");
+            if (!success) throw new InvalidOperationException($"Failed to download package: {id}@{version}");
 
-        using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write);
-        packageStream.Position = 0;
-        await packageStream.CopyToAsync(fileStream).ConfigureAwait(false);
+            using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write);
+            packageStream.Position = 0;
+            await packageStream.CopyToAsync(fileStream).ConfigureAwait(false);
 
-        return downloadPath;
+            return downloadPath;
+        }
     }
 
     private List<string> GetAssemblyPaths(string nupkgPath, string extractPath) {
-        if (!Directory.Exists(extractPath) || !Directory.EnumerateFileSystemEntries(extractPath).Any()) {
-            ZipFile.ExtractToDirectory(nupkgPath, extractPath, overwriteFiles: true);
+        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            if (!Directory.Exists(extractPath) || !Directory.EnumerateFileSystemEntries(extractPath).Any()) {
+                ZipFile.ExtractToDirectory(nupkgPath, extractPath, overwriteFiles: true);
+            }
+
+            var libPath = Path.Combine(extractPath, "lib");
+            if (!Directory.Exists(libPath)) return [];
+
+            var frameworkReducer = new FrameworkReducer();
+            var availableFrameworks = Directory.EnumerateDirectories(libPath).Select(dir => NuGetFramework.Parse(Path.GetFileName(dir)));
+            var bestFramework = frameworkReducer.GetNearest(_currentTargetFramework, availableFrameworks);
+
+            if (bestFramework == null) return [];
+
+            var bestLibDir = Path.Combine(libPath, bestFramework.GetShortFolderName());
+            return Directory.EnumerateFiles(bestLibDir, "*.dll").ToList();
         }
-
-        var libPath = Path.Combine(extractPath, "lib");
-        if (!Directory.Exists(libPath)) return [];
-
-        var frameworkReducer = new FrameworkReducer();
-        var availableFrameworks = Directory.EnumerateDirectories(libPath).Select(dir => NuGetFramework.Parse(Path.GetFileName(dir)));
-        var bestFramework = frameworkReducer.GetNearest(_currentTargetFramework, availableFrameworks);
-
-        if (bestFramework == null) return [];
-
-        var bestLibDir = Path.Combine(libPath, bestFramework.GetShortFolderName());
-        return Directory.EnumerateFiles(bestLibDir, "*.dll").ToList();
     }
 
     private static string GetCurrentFrameworkName()
@@ -254,11 +276,10 @@ public class NuGetManager : INuGetManager {
 /// <summary>
 /// A custom AssemblyLoadContext for loading plugin assemblies and their dependencies.
 /// </summary>
-public class PluginLoadContext(Logging.ILogger logger, IProfiler profiler, string pluginPath) : AssemblyLoadContext {
+public class PluginLoadContext(IProfiler profiler, string pluginPath) : AssemblyLoadContext {
     private readonly AssemblyDependencyResolver _resolver = new(pluginPath);
     private readonly Dictionary<string, string> _dependencyMap = [];
 
-    private readonly Logging.ILogger _logger = logger;
     private readonly IProfiler _profiler = profiler;
 
     /// <summary>

@@ -1,5 +1,6 @@
 
 using Microsoft.Data.Sqlite;
+using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Caching;
@@ -28,7 +29,7 @@ public interface IFileHashCache {
     /// </summary>
     /// <param name="paths">A collection of file paths to check.</param>
     /// <returns>A collection of paths for the files that have changed.</returns>
-    Task<IEnumerable<string>> HasChangedAny(IEnumerable<string> paths);
+    Task<IEnumerable<string>> HasChangedAnyAsync(IEnumerable<string> paths);
 }
 
 /// <summary>
@@ -47,7 +48,7 @@ public class EmptyFileHashCache : IFileHashCache {
     }
 
     /// <inheritdoc/>
-    public Task<IEnumerable<string>> HasChangedAny(IEnumerable<string> paths) {
+    public Task<IEnumerable<string>> HasChangedAnyAsync(IEnumerable<string> paths) {
         return Task.FromResult(paths); // All paths are considered changed
     }
 }
@@ -59,20 +60,22 @@ public class FileHashCache : IFileHashCache {
     private readonly string _connectionString;
     private readonly string _root;
 
-    public FileHashCache(string file, string root) {
-        _root = root;
-        _connectionString = $"Data Source={file};Mode=ReadWriteCreate;";
+    public FileHashCache(IProfiler profiler, string file, string root) {
+        using (new ProfileScope(profiler, "Intializing FileHashCache")) {
+            _root = root;
+            _connectionString = $"Data Source={file};Mode=ReadWriteCreate;";
 
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = @"
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
             CREATE TABLE IF NOT EXISTS FileHashes (
                 Path TEXT PRIMARY KEY,
                 Hash TEXT NOT NULL
             );
         ";
-        _ = command.ExecuteNonQuery();
+            _ = command.ExecuteNonQuery();
+        }
     }
 
     /// <inheritdoc/>
@@ -114,15 +117,15 @@ public class FileHashCache : IFileHashCache {
         return existingHash != hash;
     }
 
-    public async Task<IEnumerable<string>> HasChangedAny(IEnumerable<string> paths) {
+    public async Task<IEnumerable<string>> HasChangedAnyAsync(IEnumerable<string> paths) {
         paths = [.. paths
             .Select(p => Path.IsPathFullyQualified(p) ? Path.GetRelativePath(_root, p) : p)
             .Distinct()];
 
-        var fileHahes = await HashUtils.CreateFileSetHashes(paths, _root);
+        var fileHahes = await HashUtils.CreateFileSetHashesAsync(paths, _root);
 
         using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
@@ -131,11 +134,10 @@ public class FileHashCache : IFileHashCache {
 
         var pathList = string.Join(",", paths.Select(p => $"'{p}'"));
         command.CommandText = command.CommandText.Replace("$paths", pathList);
-        using var reader = command.ExecuteReader();
-        var changedFiles = new List<string>();
+        using var reader = await command.ExecuteReaderAsync();
 
         var cachedHashes = new Dictionary<string, string>();
-        while (reader.Read()) {
+        while (await reader.ReadAsync()) {
             var path = reader.GetString(0);
             var hash = reader.GetString(1);
 

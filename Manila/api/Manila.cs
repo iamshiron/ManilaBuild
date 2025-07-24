@@ -200,7 +200,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public async Task runJob(string key) {
         var job = _services.JobRegistry.GetJob(key) ?? throw new Exception("Job not found: " + key);
-        await job.Execute();
+        await job.ExecuteAsync();
     }
 
     /// <summary>
@@ -212,7 +212,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
         var project = projectBridge._handle;
         var artifact = unresolvedArtifact.Resolve();
 
-        artifact = await _services.ArtifactManager.AppendCahedData(artifact, config, project);
+        artifact = await _services.ArtifactManager.AppendCahedDataAsync(artifact, config, project);
 
         using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
             var logCache = new LogCache();
@@ -228,7 +228,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
                 _baseServices.Logger.Info($"Build successful for {project.Name} with artifact {artifact.Name}");
                 artifact.LogCache = logCache;
 
-                await _services.ArtifactManager.CacheArtifact(artifact, config, project);
+                await _services.ArtifactManager.CacheArtifactAsync(artifact, config, project);
             } else if (res is BuildExitCodeCached cached) {
                 _baseServices.Logger.Info($"Loaded cached build for {project.Name} with artifact {artifact.Name}.");
 

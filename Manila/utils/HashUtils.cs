@@ -50,7 +50,7 @@ public static class HashUtils {
     /// <param name="files">The collection of file paths to hash.</param>
     /// <param name="root">The root directory to use for relative paths. If null, absolute paths are used.</param>
     /// <returns></returns>
-    public static async Task<Dictionary<string, string>> CreateFileSetHashes(IEnumerable<string> files, string? root = null, IProfiler? profiler = null) {
+    public static async Task<Dictionary<string, string>> CreateFileSetHashesAsync(IEnumerable<string> files, string? root = null, IProfiler? profiler = null) {
         ProfileScope? disposable = null;
         if (profiler is not null) disposable = new ProfileScope(profiler, MethodBase.GetCurrentMethod()!);
 

@@ -91,14 +91,10 @@ public class Profiler(ILogger logger) : IProfiler {
             string fileName = $"profile-{timestamp}.json";
             string filePath = Path.Combine(baseDir, fileName);
 
-            try {
-                var settings = new JsonSerializerSettings { Formatting = Formatting.None }; // Use no formatting for smaller file sizes
-                string jsonString = JsonConvert.SerializeObject(_events, settings);
-                File.WriteAllText(filePath, jsonString);
-                _logger.Debug($"Profiling data saved to: {filePath}");
-            } catch {
-                throw;
-            }
+            var settings = new JsonSerializerSettings { Formatting = Formatting.None }; // Use no formatting for smaller file sizes
+            string jsonString = JsonConvert.SerializeObject(_events, settings);
+            File.WriteAllText(filePath, jsonString);
+            _logger.Debug($"Profiling data saved to: {filePath}");
         }
     }
 }
@@ -111,7 +107,7 @@ public readonly struct ProfileCategory : IDisposable {
         Profiler._currentCategory.Value = categoryName;
     }
 
-    public readonly void Dispose() {
+    public void Dispose() {
         Profiler._currentCategory.Value = _previousCategory;
     }
 }
@@ -143,7 +139,7 @@ public readonly struct ProfileScope : IDisposable {
         _startTimestampMicroseconds = Utils.TimeNow();
     }
 
-    public readonly void Dispose() {
+    public void Dispose() {
         long endTimestampMicroseconds = Utils.TimeNow();
         long durationMicroseconds = endTimestampMicroseconds - _startTimestampMicroseconds;
 

@@ -136,7 +136,7 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
     /// <summary>
     /// Asynchronously loads environment variables from a .env file if it exists.
     /// </summary>
-    private async Task LoadEnvironmentVariables() {
+    private async Task LoadEnvironmentVariablesAsync() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             EnvironmentVariables.Clear();
 
@@ -199,12 +199,12 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
             _logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
 
             try {
-                await LoadEnvironmentVariables();
+                await LoadEnvironmentVariablesAsync();
 
                 var jobCompletion = new TaskCompletionSource<bool>();
                 SetupScriptEngine(jobCompletion);
 
-                await ExecuteScript(cache);
+                await ExecuteScriptAsync(cache);
 
                 // Await the script's completion signal.
                 _ = await jobCompletion.Task;
@@ -308,7 +308,7 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
     /// Wraps the script content in an async IIFE and executes it.
     /// </summary>
     /// <param name="scriptContent">The script code to execute.</param>
-    private async Task ExecuteScript(IFileHashCache cache) {
+    private async Task ExecuteScriptAsync(IFileHashCache cache) {
         using (new ProfileScope(_profiler, "Executing Script")) {
             var scriptContent = await File.ReadAllTextAsync(ScriptPath);
             var code = $@"
@@ -364,7 +364,7 @@ public sealed class ScriptContext(ILogger logger, IProfiler profiler, V8ScriptEn
     /// <typeparam name="T">The enum type</typeparam>
     /// <exception cref="Exception">The class is not tagged with the <see cref="ScriptEnum"/> attribute.</exception>
     public void ApplyEnum(Type t) {
-        if (t.GetType().GetCustomAttributes<ScriptEnum>() == null) throw new Exception($"Object '{t}' is not a script enum.");
+        if (t.GetCustomAttributes<ScriptEnum>() == null) throw new ManilaException($"Object '{t}' is not a script enum.");
 
         if (EnumComponents.Contains(t)) {
             _logger.Warning($"Enum '{t}' already applied.");

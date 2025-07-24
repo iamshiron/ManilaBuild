@@ -26,7 +26,7 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI;
 
-public static class ManilaCLI {
+public static class ManilaCli {
     public static CommandApp<DefaultCommand>? CommandApp { get; private set; }
     public static IDirectories? Directories { get; private set; }
     public static readonly long ProgramStartedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -36,13 +36,15 @@ public static class ManilaCLI {
     }
 
     private static async Task InitExtensions(BaseServiceCotnainer baseServices, ServiceContainer services) {
-        if (Directories == null) {
-            throw new UnableToInitializeEngineException("Directories are not initialized.");
-        }
+        using (new ProfileScope(baseServices.Profiler, "Initializing Extensons")) {
+            if (Directories == null) {
+                throw new UnableToInitializeEngineException("Directories are not initialized.");
+            }
 
-        using (new ProfileScope(baseServices.Profiler, "Initializing Plugins")) {
-            await services.ExtensionManager.LoadPlugins();
-            services.ExtensionManager.InitPlugins();
+            using (new ProfileScope(baseServices.Profiler, "Initializing Plugins")) {
+                await services.ExtensionManager.LoadPluginsAsync();
+                services.ExtensionManager.InitPlugins();
+            }
         }
     }
 
@@ -54,13 +56,15 @@ public static class ManilaCLI {
         };
     }
 
-    public static int RunJob(ServiceContainer services, ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
-        var graph = engine.CreateExecutionGraph(services, workspace);
+    public static async Task<int> RunJobAsync(ServiceContainer services, BaseServiceCotnainer baseServices, ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
+        var graph = engine.CreateExecutionGraph(services, baseServices, workspace);
 
-        return ErrorHandler.SafeExecute(() => {
-            engine.ExecuteBuildLogic(graph, job);
+        var task = ErrorHandler.SafeExecuteAsync(async () => {
+            await engine.ExecuteBuildLogicAsync(graph, job);
             return ExitCodes.SUCCESS;
         }, settings.ToLogOptions());
+
+        return task != null ? await task : ExitCodes.USER_COMMAND_ERROR;
     }
 
     public static async Task<int> Main(string[] args) {
@@ -95,7 +99,7 @@ public static class ManilaCLI {
             foreach (string line in Banner.Lines.Take(Banner.Lines.Length - 1)) {
                 AnsiConsole.MarkupLine(line);
             }
-            AnsiConsole.MarkupLine(string.Format(Banner.Lines.Last(), ManilaEngine.VERSION) + "\n");
+            AnsiConsole.MarkupLine(string.Format(Banner.Lines[Banner.Lines.Length - 1], ManilaEngine.VERSION) + "\n");
         }
 
         var manilaEngine = new ManilaEngine(baseServiceContainer, Directories);
@@ -116,44 +120,48 @@ public static class ManilaCLI {
             }
 
             if (shouldInitialize) {
-                Directory.CreateDirectory(Directories.DataDir);
+                using (new ProfileScope(baseServiceContainer.Profiler, "Initializing Manila Engine")) {
+                    Directory.CreateDirectory(Directories.DataDir);
 
-                var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
+                    var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
 
-                serviceContainer = new ServiceContainer(
-                    new JobRegistry(),
-                    new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
-                    new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
-                    nugetManager,
-                    new FileHashCache(Path.Join(Directories.DataDir, "cache", "filehashes.db"), Directories.RootDir)
-                );
-
-                serviceContainer.ArtifactManager.LoadCache();
-                await InitExtensions(baseServiceContainer, serviceContainer);
-
-                // Run engine and initialize projects
-                var workspace = await manilaEngine.RunWorkspaceScript(serviceContainer, new(
-                    baseServiceContainer.Logger, baseServiceContainer.Profiler,
-                    CreateScriptEngine(),
-                    Directories.RootDir, Path.Join(Directories.RootDir, "Manila.js")
-                ));
-
-                var workspaceBridge = new WorkspaceScriptBridge(baseServiceContainer.Logger, baseServiceContainer.Profiler, workspace);
-
-                List<Task<Project>> projectInitializationTasks = [];
-                foreach (var script in manilaEngine.DiscoverProjectScripts()) {
-                    projectInitializationTasks.Add(
-                        manilaEngine.RunProjectScript(serviceContainer, new(
-                            baseServiceContainer.Logger, baseServiceContainer.Profiler,
-                            CreateScriptEngine(),
-                            Directories.RootDir, script
-                        ), workspace, workspaceBridge)
+                    serviceContainer = new ServiceContainer(
+                        new JobRegistry(baseServiceContainer.Profiler),
+                        new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
+                        new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
+                        nugetManager,
+                        new FileHashCache(baseServiceContainer.Profiler, Path.Join(Directories.DataDir, "cache", "filehashes.db"), Directories.RootDir)
                     );
-                }
-                await Task.WhenAll(projectInitializationTasks);
 
-                _ = services.AddSingleton(serviceContainer)
-                    .AddSingleton(workspace);
+                    serviceContainer.ArtifactManager.LoadCache();
+                    await InitExtensions(baseServiceContainer, serviceContainer);
+
+                    // Run engine and initialize projects
+                    var workspace = await manilaEngine.RunWorkspaceScriptAsync(serviceContainer, new(
+                        baseServiceContainer.Logger, baseServiceContainer.Profiler,
+                        CreateScriptEngine(),
+                        Directories.RootDir, Path.Join(Directories.RootDir, "Manila.js")
+                    ));
+
+                    var workspaceBridge = new WorkspaceScriptBridge(baseServiceContainer.Logger, baseServiceContainer.Profiler, workspace);
+
+                    List<Task<Project>> projectInitializationTasks = [];
+                    foreach (var script in manilaEngine.DiscoverProjectScripts(baseServiceContainer.Profiler)) {
+                        projectInitializationTasks.Add(
+                            manilaEngine.RunProjectScriptAsync(serviceContainer, new(
+                                baseServiceContainer.Logger, baseServiceContainer.Profiler,
+                                CreateScriptEngine(),
+                                Directories.RootDir, script
+                            ), workspace, workspaceBridge)
+                        );
+                    }
+                    baseServiceContainer.Logger.Debug($"Discovered {projectInitializationTasks.Count} project scripts.");
+                    await Task.WhenAll(projectInitializationTasks);
+                    baseServiceContainer.Logger.Debug("All projects initialized successfully.");
+
+                    _ = services.AddSingleton(serviceContainer)
+                        .AddSingleton(workspace);
+                }
             } else {
                 baseServiceContainer.Logger.Debug("No workspace found. Continuing without workspace.");
             }
@@ -209,7 +217,7 @@ public static class ManilaCLI {
 
         logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ProgramStartedTime));
 
-        var exitCode = CommandApp.Run(args);
+        var exitCode = await CommandApp.RunAsync(args);
         serviceContainer?.ExtensionManager.ReleasePlugins();
 
         profiler.SaveToFile(Directories.Profiles);

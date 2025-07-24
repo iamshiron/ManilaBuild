@@ -13,8 +13,8 @@ namespace Shiron.Manila.Artifacts;
 
 public interface IArtifactManager {
     string GetArtifactRoot(BuildConfig config, Project project, Artifact artifact);
-    Task CacheArtifact(Artifact artifact, BuildConfig config, Project project);
-    Task<Artifact> AppendCahedData(Artifact artifact, BuildConfig config, Project project);
+    Task CacheArtifactAsync(Artifact artifact, BuildConfig config, Project project);
+    Task<Artifact> AppendCahedDataAsync(Artifact artifact, BuildConfig config, Project project);
     void LoadCache();
     void FlushCacheToDisk();
 }
@@ -48,14 +48,14 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         );
     }
 
-    public async Task CacheArtifact(Artifact artifact, BuildConfig config, Project project) {
+    public async Task CacheArtifactAsync(Artifact artifact, BuildConfig config, Project project) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
         _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
     }
 
-    public async Task<Artifact> AppendCahedData(Artifact artifact, BuildConfig config, Project project) {
+    public async Task<Artifact> AppendCahedDataAsync(Artifact artifact, BuildConfig config, Project project) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
@@ -69,11 +69,11 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
 
     public void LoadCache() {
-        _cacheLoadTask = PerformCacheLoad();
+        _cacheLoadTask = PerformCacheLoadAsync();
     }
 
-    private async Task<bool> PerformCacheLoad() {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+    private async Task<bool> PerformCacheLoadAsync() {
+        using (new ProfileScope(_profiler, "Background loading artifacts cache")) {
             try {
                 if (_cacheLoaded) _logger.Warning("Cache is already loaded. Overwriting existing cache.");
 

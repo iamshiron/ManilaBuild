@@ -23,16 +23,16 @@ public abstract class ExecutableObject {
     public virtual string GetID() { return ExecutableID.ToString(); }
 
     protected virtual void PreRun() { }
-    protected abstract Task Run();
+    protected abstract Task RunAsync();
     protected virtual void PostRun() { }
 
-    public async Task Execute() {
+    public async Task ExecuteAsync() {
         PreRun();
 
         if (IsBlocking()) {
-            await Run();
+            await RunAsync();
         } else {
-            await Task.Run(Run);
+            await Task.Run(RunAsync);
         }
 
         PostRun();
@@ -66,7 +66,7 @@ public abstract class ExecutableObject {
 /// </summary>
 public class NoOpExecutableObject : ExecutableObject {
     public override bool IsBlocking() { return true; }
-    protected override async Task Run() {
+    protected override async Task RunAsync() {
         await Task.Yield();
     }
 }
