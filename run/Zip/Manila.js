@@ -4,16 +4,16 @@ const workspace = Manila.getWorkspace()
 Manila.apply('shiron.manila:zip@1.0.0/zip')
 const config = Manila.getConfig()
 
-project.Version('1.0.0')
-project.Description('Demo Project Core')
+project.version('1.0.0')
+project.description('Demo Project Core')
 
 config.setSubFolder(Manila.getEnv('MANILA_SUB_FOLDER', 'sub'))
 
-project.SourceSets({
-	main: Manila.sourceSet(project.GetPath().join('main')).include('**/*')
+project.sourceSets({
+	main: Manila.sourceSet(project.getPath().join('main')).include('**/*')
 })
 
-project.Artifacts({
+project.artifacts({
 	main: Manila.artifact(artifact => {
 		Manila.job('build')
 			.description('Create the Zip File')

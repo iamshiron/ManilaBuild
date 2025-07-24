@@ -49,11 +49,14 @@ public static class ManilaCli {
     }
 
     private static V8ScriptEngine CreateScriptEngine() {
-        return new(
+        var engine = new V8ScriptEngine(
             V8ScriptEngineFlags.EnableTaskPromiseConversion
         ) {
             ExposeHostObjectStaticMembers = true,
+            CustomAttributeLoader = new JavaScriptAttributeLoader()
         };
+
+        return engine;
     }
 
     public static async Task<int> RunJobAsync(ServiceContainer services, BaseServiceCotnainer baseServices, ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {

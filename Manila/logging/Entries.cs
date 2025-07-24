@@ -98,7 +98,7 @@ public sealed class ComponentInfo {
     public ComponentInfo(Component component) {
         IsProject = component is Project;
         IsWorkspace = component is Workspace;
-        Root = component.Path.get();
+        Root = component.Path.Get();
         ID = component.GetIdentifier();
     }
 
@@ -134,7 +134,7 @@ public sealed class ProjectInfo {
         Version = project.Version;
         Group = project.Group;
         Description = project.Description;
-        Root = project.Path.get();
+        Root = project.Path.Get();
     }
 
     /// <summary>

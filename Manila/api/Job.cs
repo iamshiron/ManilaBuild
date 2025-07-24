@@ -63,7 +63,7 @@ public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) :
     public readonly ScriptContext Context = builder.ScriptContext;
     [JsonIgnore]
     public readonly Component Component = builder.Component;
-    public readonly string Description = builder.Description;
+    public readonly string Description = builder.JobDescription;
     public readonly bool Blocking = builder.Blocking;
     public readonly string? ArtiafactName = builder.ArtifactBuilder?.Name;
     public readonly string JobID = Guid.NewGuid().ToString();

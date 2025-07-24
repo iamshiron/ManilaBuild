@@ -51,47 +51,41 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Gets the current Manila project or throws if none exists.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public ProjectScriptBridge getProject() {
+    public ProjectScriptBridge GetProject() {
         return _projectBridge ?? throw new ContextException(Context.WORKSPACE, Context.PROJECT);
     }
 
     /// <summary>
     /// Creates an unresolved project reference by name.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public UnresolvedProject getProject(string name) {
+    public UnresolvedProject GetProject(string name) {
         return new UnresolvedProject(_workspace, name);
     }
 
     /// <summary>
     /// Gets the current Manila workspace.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public WorkspaceScriptBridge getWorkspace() {
+    public WorkspaceScriptBridge GetWorkspace() {
         return _workspaceBridge;
     }
 
     /// <summary>
     /// Gets the build configuration or throws if not set.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public object getConfig() {
+    public object GetConfig() {
         return BuildConfig ?? throw new ScriptingException("Cannot retreive build config before applying a language component!");
     }
 
     /// <summary>
     /// Creates a source set with the given origin.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public SourceSetBuilder sourceSet(string origin) {
+    public SourceSetBuilder SourceSet(string origin) {
         return new(origin);
     }
     /// <summary>
     /// Creates an artifact using the provided configuration lambda.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public ArtifactBuilder artifact(ScriptObject obj) {
+    public ArtifactBuilder Artifact(ScriptObject obj) {
         if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
         if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
         var builder = new ArtifactBuilder(_workspace, obj, this, (BuildConfig) BuildConfig, _project);
@@ -102,16 +96,14 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Pauses execution for the specified milliseconds.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public async Task sleep(int milliseconds) {
+    public async Task Sleep(int milliseconds) {
         await Task.Delay(milliseconds);
     }
 
     /// <summary>
     /// Creates a job with the given name.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public JobBuilder job(string name) {
+    public JobBuilder Job(string name) {
         var applyTo = _project ?? (Component) _workspace;
 
         if (CurrentArtifactBuilder != null) {
@@ -135,24 +127,21 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Creates a directory handle for the given path.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public DirHandle dir(string path) {
+    public DirHandle Dir(string path) {
         return new DirHandle(path);
     }
 
     /// <summary>
     /// Creates a file handle for the given path.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public FileHandle file(string path) {
+    public FileHandle File(string path) {
         return new FileHandle(path);
     }
 
     /// <summary>
     /// Registers an action to run on projects matching the given filter.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void onProject(object o, dynamic a) {
+    public void OnProject(object o, dynamic a) {
         using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
             var filter = ProjectFilter.From(_baseServices.Logger, o);
             _workspace.ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
@@ -162,8 +151,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Executes the job identified by the given key.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public async Task runJob(string key) {
+    public async Task RunJob(string key) {
         var job = _services.JobRegistry.GetJob(key) ?? throw new Exception("Job not found: " + key);
         await job.ExecuteAsync();
     }
@@ -171,8 +159,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Builds the project using its language component.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public async Task build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge unresolvedArtifact) {
+    public async Task Build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge unresolvedArtifact) {
         var workspace = workspaceBridge._handle;
         var project = projectBridge._handle;
         var artifact = unresolvedArtifact.Resolve();
@@ -213,16 +200,14 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Resolves and runs the specified unresolved project.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void run(UnresolvedProject project) {
-        run(project.Resolve());
+    public void Run(UnresolvedProject project) {
+        Run(project.Resolve());
     }
 
     /// <summary>
     /// Runs the specified project using its language component.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void run(Project project) {
+    public void Run(Project project) {
         using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
             project.GetLanguageComponent().Run(project);
         }
@@ -231,46 +216,41 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Retrieves the value of the specified environment variable.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public string getEnv(string key, string? defaultValue = null) {
+    public string GetEnv(string key, string? defaultValue = null) {
         return _context.GetEnvironmentVariable(key) ?? defaultValue ?? throw new Exception($"Environment variable {key} is not set.");
     }
 
     /// <summary>
     /// Retrieves the specified environment variable as a double or zero if unset.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public double getEnvNumber(string key, double? defaultValue = null) {
+    public double GetEnvNumber(string key, double? defaultValue = null) {
         var value = _context.GetEnvironmentVariable(key);
         return string.IsNullOrEmpty(value)
             ? 0
             : double.TryParse(value, out var result) ? result : defaultValue ?? throw new Exception($"Environment variable {key} is not a number: {value}");
     }
-
     /// <summary>
     /// Retrieves the specified environment variable as a boolean or false if unset.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public bool getEnvBool(string key, bool? defaultValue = null) {
+
+    public bool GetEnvBool(string key, bool? defaultValue = null) {
         var value = _context.GetEnvironmentVariable(key);
         return string.IsNullOrEmpty(value)
             ? false
             : bool.TryParse(value, out var result) ? result : defaultValue ?? throw new Exception($"Environment variable {key} is not a number: {value}");
     }
-
     /// <summary>
     /// Sets the specified environment variable to the given value.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void setEnv(string key, string value) {
+
+    public void SetEnv(string key, string value) {
         _context.SetEnvironmentVariable(key, value);
     }
 
     /// <summary>
     /// Imports an API type instance for the given key.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public object import(string key) {
+    public object Import(string key) {
         using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
             var t = Activator.CreateInstance(_services.ExtensionManager.GetAPIType(key));
             _baseServices.Logger.Debug($"Importing {key} as {t}");
@@ -285,8 +265,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Applies a language component by its URI.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public void apply(string uri) {
+    public void Apply(string uri) {
         if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
 
         var match = RegexUtils.MatchPluginComponent(uri) ?? throw new ScriptingException($"Invalid component URI: {uri}");
@@ -306,19 +285,16 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// <summary>
     /// Creates a shell-based job action with cmd.exe.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public IJobAction shell(string command) {
+    public static IJobAction Shell(string command) {
         return new JobShellAction(new(
             "cmd.exe",
             ["/c", .. command.Split(" ")]
         ));
     }
-
     /// <summary>
     /// Creates a job action to execute the given command.
     /// </summary>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public IJobAction execute(string command) {
+    public static IJobAction Execute(string command) {
         return new JobShellAction(new(
             command.Split(" ")[0],
             command.Split(" ")[1..]

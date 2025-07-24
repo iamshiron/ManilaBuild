@@ -25,7 +25,7 @@ public sealed class ArtifactBuilder(Workspace workspace, ScriptObject configurat
     /// <summary>
     /// Description of the artifact.
     /// </summary>
-    public string Description = string.Empty;
+    public string ArtifactDescription = string.Empty;
 
     /// <summary>
     /// Collection of job builders for this artifact.
@@ -54,36 +54,17 @@ public sealed class ArtifactBuilder(Workspace workspace, ScriptObject configurat
 
     private readonly Workspace _workspace = workspace;
 
-    /// <summary>
-    /// Sets the description for this artifact.
-    /// </summary>
-    /// <param name="description">The description text.</param>
-    /// <returns>This builder instance for method chaining.</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public ArtifactBuilder description(string description) {
-        Description = description;
+    public ArtifactBuilder Description(string description) {
+        ArtifactDescription = description;
         return this;
     }
-
-    /// <summary>
-    /// Applies plugin functionality to this artifact.
-    /// </summary>
-    /// <param name="plugin">The plugin to apply.</param>
-    /// <returns>This builder instance for method chaining.</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public ArtifactBuilder from(string key) {
+    public ArtifactBuilder From(string key) {
         var temp = RegexUtils.MatchPluginComponent(key) ?? throw new ArgumentException($"Invalid plugin component format: {key}");
         PluginComponent = temp;
 
         return this;
     }
-
-    /// <summary>
-    /// Configures dependencies for this artifact.
-    /// </summary>
-    /// <returns>This builder instance for method chaining.</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public ArtifactBuilder dependencies() {
+    public ArtifactBuilder Dependencies() {
         return this;
     }
 

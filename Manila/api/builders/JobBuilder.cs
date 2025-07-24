@@ -27,7 +27,7 @@ public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string 
     /// <summary>
     /// Description of what the job does.
     /// </summary>
-    public string Description { get; private set; } = "A generic job";
+    public string JobDescription { get; private set; } = "A generic job";
 
     /// <summary>
     /// Whether the job blocks execution flow until completion.
@@ -59,8 +59,7 @@ public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string 
     /// </summary>
     /// <param name="job">The dependents job ID</param>
     /// <returns>Job instance for chaining calls</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public JobBuilder after(string job) {
+    public JobBuilder After(string job) {
         if (job.Contains(":") || job.Contains("/")) {
             if (!RegexUtils.IsValidJob(job)) throw new ManilaException($"Invalid job regex {job}!");
             Dependencies.Add(job);
@@ -77,9 +76,8 @@ public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string 
     /// </summary>
     /// <param name="job">The dependents job ID</param>
     /// <returns>Job instance for chaining calls</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public JobBuilder after(string[] job) {
-        foreach (var t in job) after(t);
+    public JobBuilder After(string[] job) {
+        foreach (var t in job) _ = After(t);
         return this;
     }
     /// <summary>
@@ -87,8 +85,7 @@ public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string 
     /// </summary>
     /// <param name="action">The action</param>
     /// <returns>Job instance for chaining calls</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public JobBuilder execute(object o) {
+    public JobBuilder Execute(object o) {
         _logger.System($"Adding action to job {Name} in ({o.GetType().FullName})");
         if (o is IJobAction action) {
             _logger.Debug($"Found job action of type {action.GetType().FullName}");
@@ -108,9 +105,8 @@ public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string 
     /// </summary>
     /// <param name="description">The description</param>
     /// <returns>Job instance for chaining calls</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public JobBuilder description(string description) {
-        this.Description = description;
+    public JobBuilder Description(string description) {
+        this.JobDescription = description;
         return this;
     }
     /// <summary>
@@ -118,8 +114,7 @@ public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string 
     /// </summary>
     /// <param name="background">True: Non Blocking, False: Blocking</param>
     /// <returns></returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public JobBuilder background(bool background = true) {
+    public JobBuilder Background(bool background = true) {
         this.Blocking = !background;
         return this;
     }

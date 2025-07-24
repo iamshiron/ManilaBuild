@@ -20,8 +20,7 @@ public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
     /// </summary>
     /// <param name="globs">The pattern for the file matcher</param>
     /// <returns>SourceSet instance for chaining calls</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public SourceSetBuilder include(params string[] globs) {
+    public SourceSetBuilder Include(params string[] globs) {
         Includes.AddRange(globs);
         return this;
     }
@@ -30,8 +29,7 @@ public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
     /// </summary>
     /// <param name="globs">The pattern for the file matcher</param>
     /// <returns>SourceSet instance for chaining calls</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public SourceSetBuilder exclude(params string[] globs) {
+    public SourceSetBuilder Exclude(params string[] globs) {
         Excludes.AddRange(globs);
         return this;
     }
@@ -40,8 +38,7 @@ public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
     /// Return a list of files in the source set.
     /// </summary>
     /// <returns>List of files complying to the includes and excludes</returns>
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
-    public FileHandle[] files() {
+    public FileHandle[] Files() {
         var matcher = new Matcher();
         foreach (var include in Includes) {
             matcher.AddInclude(include);
@@ -66,8 +63,8 @@ public class SourceSet(SourceSetBuilder builder) {
     public readonly string Root = builder.Root;
     public readonly string[] Includes = [.. builder.Includes];
     public readonly string[] Excluded = [.. builder.Excludes];
-    public readonly FileHandle[] FileHandles = [.. builder.files()];
-    public readonly string[] Files = [.. builder.files().Select(f => f.Handle)];
+    public readonly FileHandle[] FileHandles = [.. builder.Files()];
+    public readonly string[] Files = [.. builder.Files().Select(f => f.Handle)];
 
     public long LastModified() {
         long lastModified = 0;

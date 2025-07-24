@@ -29,7 +29,6 @@ public class Webhook {
         }
     }
 
-    [SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Exposed to JavaScript context")]
     public static Impl create(string url) {
         return new Impl(url);
     }
