@@ -8,12 +8,12 @@ public class ZipBuildConfig : BuildConfig {
     [FingerprintItem]
     public string? SubFolder { get; set; } = string.Empty;
 
-    public string? getSubFolder() {
+    public string? GetSubFolder() {
         return SubFolder;
     }
 
     // Temporary till I am using reflection to set properties and add functions to the context
-    public void setSubFolder(string subFolder) {
+    public void SetSubFolder(string subFolder) {
         SubFolder = subFolder;
     }
 

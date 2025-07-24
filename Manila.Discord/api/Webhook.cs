@@ -29,7 +29,7 @@ public class Webhook {
         }
     }
 
-    public static Impl create(string url) {
+    public static Impl Create(string url) {
         return new Impl(url);
     }
 }
