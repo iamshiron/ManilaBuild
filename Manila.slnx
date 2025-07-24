@@ -5,7 +5,6 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="Manila.CLI/Manila.CLI.csproj" />
-  <Project Path="Manila.CPP/Manila.CPP.csproj" />
   <Project Path="Manila.Discord/Manila.Discord.csproj" />
   <Project Path="Manila.Logging/Manila.Logging.csproj" />
   <Project Path="Manila.Profiling/Manila.Profiling.csproj" />
