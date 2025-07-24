@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Shiron.Manila.Caching;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Spectre.Console;
 
@@ -52,7 +53,7 @@ public static class AnsiConsoleRenderer {
     public static void Init(ILogger logger, LogOptions options) {
         _options = options;
 
-        if (_options.Quiet && _options.Structured) throw new Exception("Cannot use quiet logging while structured logging is enabled!");
+        if (_options.Quiet && _options.Structured) throw new ManilaException("Cannot use quiet logging while structured logging is enabled!");
         _logger = logger;
 
         var jsonSerializerSettings = new JsonSerializerSettings {

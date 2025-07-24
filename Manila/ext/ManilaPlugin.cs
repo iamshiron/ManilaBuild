@@ -92,7 +92,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// <returns>The instance of the component</returns>
     /// <exception cref="Exception">Component was not found</exception>
     public PluginComponent GetComponent(string name) {
-        if (!Components.ContainsKey(name)) throw new Exception("Component with name " + name + " not registered");
+        if (!Components.ContainsKey(name)) throw new ManilaException("Component with name " + name + " not registered");
         return Components[name];
     }
 
@@ -103,7 +103,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// <returns>The type</returns>
     /// <exception cref="Exception">Class was not found</exception>
     public Type GetAPIClass(string name) {
-        if (!APIClasses.ContainsKey(name)) throw new Exception("API class with name " + name + " not registered");
+        if (!APIClasses.ContainsKey(name)) throw new ManilaException("API class with name " + name + " not registered");
         return APIClasses[name];
     }
 

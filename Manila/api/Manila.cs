@@ -152,7 +152,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Executes the job identified by the given key.
     /// </summary>
     public async Task RunJob(string key) {
-        var job = _services.JobRegistry.GetJob(key) ?? throw new Exception("Job not found: " + key);
+        var job = _services.JobRegistry.GetJob(key) ?? throw new ManilaException("Job not found: " + key);
         await job.ExecuteAsync();
     }
 
@@ -217,7 +217,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Retrieves the value of the specified environment variable.
     /// </summary>
     public string GetEnv(string key, string? defaultValue = null) {
-        return _context.GetEnvironmentVariable(key) ?? defaultValue ?? throw new Exception($"Environment variable {key} is not set.");
+        return _context.GetEnvironmentVariable(key) ?? defaultValue ?? throw new ManilaException($"Environment variable {key} is not set.");
     }
 
     /// <summary>
@@ -227,7 +227,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
         var value = _context.GetEnvironmentVariable(key);
         return string.IsNullOrEmpty(value)
             ? 0
-            : double.TryParse(value, out var result) ? result : defaultValue ?? throw new Exception($"Environment variable {key} is not a number: {value}");
+            : double.TryParse(value, out var result) ? result : defaultValue ?? throw new ManilaException($"Environment variable {key} is not a number: {value}");
     }
     /// <summary>
     /// Retrieves the specified environment variable as a boolean or false if unset.
@@ -237,7 +237,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
         var value = _context.GetEnvironmentVariable(key);
         return string.IsNullOrEmpty(value)
             ? false
-            : bool.TryParse(value, out var result) ? result : defaultValue ?? throw new Exception($"Environment variable {key} is not a number: {value}");
+            : bool.TryParse(value, out var result) ? result : defaultValue ?? throw new ManilaException($"Environment variable {key} is not a number: {value}");
     }
     /// <summary>
     /// Sets the specified environment variable to the given value.
@@ -256,7 +256,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
             _baseServices.Logger.Debug($"Importing {key} as {t}");
 
             if (t == null)
-                throw new Exception($"Failed to import API type for key: {key}");
+                throw new ManilaException($"Failed to import API type for key: {key}");
 
             return t;
         }
