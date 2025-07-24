@@ -152,6 +152,13 @@ public static partial class RegexUtils {
         }
 
         /// <summary>
+        /// Converts this PluginComponentMatch to a PluginMatch.
+        /// </summary>
+        public PluginMatch ToPluginMatch() {
+            return new PluginMatch(Group, Plugin, Version);
+        }
+
+        /// <summary>
         /// Returns a string representation of the PluginComponentMatch object.
         /// </summary>
         public override string ToString() {
@@ -199,14 +206,18 @@ public static partial class RegexUtils {
         public string Format() {
             var builder = new StringBuilder();
             if (Group != null) {
-                builder.Append(Group).Append(':');
+                _ = builder.Append(Group).Append(':');
             }
-            builder.Append(Plugin);
+            _ = builder.Append(Plugin);
             if (Version != null) {
-                builder.Append('@').Append(Version);
+                _ = builder.Append('@').Append(Version);
             }
-            builder.Append('/').Append(ApiClass);
+            _ = builder.Append('/').Append(ApiClass);
             return builder.ToString();
+        }
+
+        public PluginMatch ToPluginMatch() {
+            return new PluginMatch(Group, Plugin, Version);
         }
 
         /// <summary>

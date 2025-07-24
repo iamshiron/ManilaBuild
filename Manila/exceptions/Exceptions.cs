@@ -8,5 +8,5 @@ namespace Shiron.Manila.Exceptions;
 public class ManilaException : Exception {
     public ManilaException(string message) : base(message) { }
 
-    public ManilaException(string message, Exception innerException) : base(message, innerException) { }
+    public ManilaException(string message, Exception? innerException) : base(message, innerException) { }
 }

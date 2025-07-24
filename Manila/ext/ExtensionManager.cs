@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Shiron.Manila.Attributes;
@@ -13,12 +14,16 @@ public interface IExtensionManager {
     void InitPlugins();
     void ReleasePlugins();
     T GetPlugin<T>() where T : ManilaPlugin;
+
     ManilaPlugin GetPlugin(Type type);
-    ManilaPlugin GetPlugin(string group, string name, string? version = null);
-    ManilaPlugin GetPlugin(string key);
-    PluginComponent GetPluginComponent(string group, string name, string component, string? version = null);
-    PluginComponent GetPluginComponent(string key);
-    Type GetAPIType(string key);
+    ManilaPlugin GetPlugin(string uri);
+    ManilaPlugin GetPlugin(RegexUtils.PluginMatch match);
+
+    PluginComponent GetPluginComponent(string uri);
+    PluginComponent GetPluginComponent(RegexUtils.PluginComponentMatch match);
+
+    Type GetAPIType(string uri);
+    Type GetAPIType(RegexUtils.PluginApiClassMatch match);
 
     public List<ManilaPlugin> Plugins { get; }
 }
@@ -94,7 +99,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
 
     private async Task LoadPluginAsync(Type pluginType, string file, PluginLoadContext loadContext) {
         var plugin = (ManilaPlugin?) Activator.CreateInstance(pluginType)
-            ?? throw new ManilaException($"Failed to create instance of plugin {pluginType} from {file}.");
+            ?? throw new PluginLoadException(pluginType, file);
 
         plugin.SetLogger(_logger);
         plugin.File = file;
@@ -175,87 +180,46 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         }
     }
 
-    /// <summary>
-    /// Gets a loaded plugin by its type.
-    /// </summary>
-    /// <typeparam name="T">The type of the plugin to find.</typeparam>
-    /// <returns>The plugin instance.</returns>
-    /// <exception cref="Exception">Thrown if the plugin is not found.</exception>
     public T GetPlugin<T>() where T : ManilaPlugin {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            return (T) GetPlugin(typeof(T));
-        }
+        var plugin = Plugins.FirstOrDefault(p => p is T);
+        return plugin is T typedPlugin ? typedPlugin : throw new PluginTypeNotFoundException(typeof(T));
     }
-
     public ManilaPlugin GetPlugin(Type type) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            return Plugins.FirstOrDefault(plugin => plugin.GetType() == type) ??
-                throw new ManilaException($"Plugin of type {type} not found.");
-        }
+        var plugin = Plugins.FirstOrDefault(p => p.GetType() == type);
+        return plugin ?? throw new PluginTypeNotFoundException(type);
     }
 
-    public ManilaPlugin GetPlugin(string group, string name, string? version = null) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            if (version == string.Empty) version = null;
-            foreach (var plugin in Plugins) {
-                if (plugin.Group == group && plugin.Name == name && (version == null || plugin.Version == version)) {
-                    return plugin;
-                }
-            }
-            throw new ManilaException($"Plugin not found: {group}:{name}{(version == null ? "" : "@" + version)}");
-        }
+    public ManilaPlugin GetPlugin(string uri) {
+        return GetPlugin(RegexUtils.MatchPlugin(uri) ?? throw new InvalidPluginURIException(uri));
+    }
+    public ManilaPlugin GetPlugin(RegexUtils.PluginMatch match) {
+        var plugin = Plugins.FirstOrDefault(p =>
+            p.Group == match.Group && p.Name == match.Plugin && (p.Version == match.Version || match.Version == null)
+        );
+        return plugin ?? throw new PluginNotFoundException(match);
     }
 
-    /// <summary>
-    /// Gets a plugin by its string key.
-    /// </summary>
-    /// <param name="key">The key, compliant to the format specified in <see cref="PluginPattern"/>.</param>
-    /// <returns>The plugin instance.</returns>
-    /// <exception cref="Exception">Thrown if the key is invalid or plugin is not found.</exception>
-    public ManilaPlugin GetPlugin(string key) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            var match = PluginPattern.Match(key);
-            if (!match.Success) throw new ManilaException("Invalid plugin key: " + key);
-            // This calls another GetPlugin overload, which is already profiled.
-            return GetPlugin(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["version"].Value);
-        }
+    public PluginComponent GetPluginComponent(string uri) {
+        return GetPluginComponent(RegexUtils.MatchPluginComponent(uri) ?? throw new InvalidPluginComponentURIException(uri));
+    }
+    public PluginComponent GetPluginComponent(RegexUtils.PluginComponentMatch match) {
+        var plugin = GetPlugin(match.ToPluginMatch());
+        var component = plugin.Components.FirstOrDefault(c =>
+            c.Value.Name == match.Component
+        );
+
+        return component.Value ?? throw new PluginComponentNotFoundException(match);
     }
 
-    public PluginComponent GetPluginComponent(string group, string name, string component, string? version = null) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            // This calls GetPlugin, which is already profiled.
-            // The GetComponent call itself is internal to ManilaPlugin and its complexity is managed there.
-            return GetPlugin(group, name, version).GetComponent(component);
-        }
+    public Type GetAPIType(string uri) {
+        return GetAPIType(RegexUtils.MatchPluginApiClass(uri) ?? throw new InvalidPluginAPIClassURIException(uri));
     }
+    public Type GetAPIType(RegexUtils.PluginApiClassMatch match) {
+        var plugin = GetPlugin(match.ToPluginMatch());
+        var apiType = plugin.APIClasses.FirstOrDefault(a =>
+            a.Key == match.ApiClass
+        );
 
-    /// <summary>
-    /// Gets a plugin component by its string key.
-    /// </summary>
-    /// <param name="key">The key, compliant to the format specified in <see cref="ComponentPattern"/>.</param>
-    /// <returns>The component instance.</returns>
-    /// <exception cref="Exception">Thrown if the key is invalid or component is not found.</exception>
-    public PluginComponent GetPluginComponent(string key) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            var match = ComponentPattern.Match(key);
-            if (!match.Success) throw new ManilaException("Invalid component key: " + key);
-            // This calls GetPluginComponent, which is already profiled.
-            return GetPluginComponent(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["component"].Value, match.Groups["version"].Value);
-        }
-    }
-
-    /// <summary>
-    /// Gets a plugin's exported API type by its string key.
-    /// </summary>
-    /// <param name="key">The key, compliant to the format specified in <see cref="APIClassPattern"/>.</param>
-    /// <returns>The API type.</returns>
-    /// <exception cref="Exception">Thrown if the key is invalid or the class is not found.</exception>
-    public Type GetAPIType(string key) {
-        using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
-            var match = APIClassPattern.Match(key);
-            if (!match.Success) throw new ManilaException("Invalid API class key: " + key);
-            // This calls GetPlugin, which is already profiled.
-            return GetPlugin(match.Groups["group"].Value, match.Groups["name"].Value, match.Groups["version"].Value).GetAPIClass(match.Groups["class"].Value);
-        }
+        return apiType.Value ?? throw new PluginAPIClassNotFoundException(match);
     }
 }

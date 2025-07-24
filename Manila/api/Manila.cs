@@ -268,8 +268,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     public void Apply(string uri) {
         if (_project == null) throw new ContextException(Context.WORKSPACE, Context.PROJECT);
 
-        var match = RegexUtils.MatchPluginComponent(uri) ?? throw new ScriptingException($"Invalid component URI: {uri}");
-        var component = _services.ExtensionManager.GetPluginComponent(match.Group ?? "shiron.manila", match.Plugin, match.Component, match.Version);
+        var component = _services.ExtensionManager.GetPluginComponent(uri);
         if (component is not LanguageComponent) throw new ScriptingException($"Component {uri} is not a language component.");
 
         var langComp = (LanguageComponent) component;

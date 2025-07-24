@@ -9,27 +9,3 @@ public class ConfigurationException : ManilaException {
 
     public ConfigurationException(string message, Exception innerException) : base(message, innerException) { }
 }
-
-/// <summary>
-/// Thrown when a requested plugin cannot be found by the ExtensionManager.
-/// </summary>
-public class PluginNotFoundException : ConfigurationException {
-    public string PluginKey { get; }
-
-    public PluginNotFoundException(string pluginKey)
-        : base($"Plugin with key '{pluginKey}' was not found.") {
-        PluginKey = pluginKey;
-    }
-}
-
-/// <summary>
-/// Thrown when a specific component of a plugin cannot be found.
-/// </summary>
-public class PluginComponentNotFoundException : ConfigurationException {
-    public string ComponentKey { get; }
-
-    public PluginComponentNotFoundException(string componentKey)
-        : base($"Plugin component with key '{componentKey}' was not found.") {
-        ComponentKey = componentKey;
-    }
-}
