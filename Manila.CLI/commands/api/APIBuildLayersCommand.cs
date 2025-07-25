@@ -9,7 +9,7 @@ namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retrieve the execution graph layers for a specific job in json format.")]
 public class APIBuildLayersCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null, ManilaEngine? engine = null, Workspace? workspace = null) :
-    BaseManilaCommand<APIBuildLayersCommand.Settings>(baseServices.Logger) {
+    BaseManilaCommand<APIBuildLayersCommand.Settings>(baseServices) {
 
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly ServiceContainer? _services = services;

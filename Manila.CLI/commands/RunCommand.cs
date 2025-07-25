@@ -10,7 +10,7 @@ namespace Shiron.Manila.CLI.Commands;
 
 [Description("Runs a job in the current workspace")]
 internal sealed class RunCommand(BaseServiceCotnainer baseServices, ManilaEngine? engine = null, ServiceContainer? services = null, Workspace? workspace = null) :
-    BaseAsyncManilaCommand<RunCommand.Settings>(baseServices.Logger) {
+    BaseAsyncManilaCommand<RunCommand.Settings>(baseServices) {
 
     private readonly ManilaEngine? _engine = engine;
     private readonly ServiceContainer? _services = services;

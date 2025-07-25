@@ -9,7 +9,7 @@ namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available projects in the current workspace")]
 internal sealed class ProjectsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
-    BaseManilaCommand<ProjectsCommand.Settings>(baseServices.Logger) {
+    BaseManilaCommand<ProjectsCommand.Settings>(baseServices) {
 
     private readonly Workspace? _workspace = workspace;
     private readonly BaseServiceCotnainer _baseServices = baseServices;

@@ -9,7 +9,7 @@ namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retreive jobs information")]
 internal sealed class APIJobsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
-    BaseManilaCommand<APIJobsCommand.Settings>(baseServices.Logger) {
+    BaseManilaCommand<APIJobsCommand.Settings>(baseServices) {
 
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly Workspace? _workspace = workspace;
