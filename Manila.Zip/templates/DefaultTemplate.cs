@@ -1,4 +1,5 @@
-using Shiron.Manila.API;
+using Shiron.Manila.Ext;
+using Spectre.Console;
 
 namespace Shiron.Manila.Zip.Templates;
 
@@ -7,6 +8,9 @@ public static class DefaultTemplate {
         return new ProjectTemplateBuilder("default", "Default Zip Template")
             .WithFile(
                 new TemplateFileBuilder("/Manila.js", (args) => {
+                    var description = AnsiConsole.Ask<string>("What is the description of the project?") ??
+                        "A Default Zip project.";
+
                     return [
                         "const project = Manila.getProject()",
                         "const workspace = Manila.getWorkspace()",
@@ -15,7 +19,7 @@ public static class DefaultTemplate {
                         "const config = Manila.getConfig()",
                         "",
                         "project.version('1.0.0')",
-                        $"project.description('Default Zip Project')",
+                        $"project.description('{description}')",
                         "",
                         "project.sourceSets({",
                         "    main: Manila.sourceSet(project.getPath().join('main')).include('**/*')",
