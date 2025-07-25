@@ -31,6 +31,7 @@ public static class ManilaCli {
     public static CommandApp<DefaultCommand>? CommandApp { get; private set; }
     public static IDirectories? Directories { get; private set; }
     public static readonly long ProgramStartedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    public static ExecutionStage? ExecutionStage { get; private set; }
 
     public static void SetupBaseComponents(ILogger logger, LogOptions logOptions) {
         AnsiConsoleRenderer.Init(logger, logOptions);
@@ -93,10 +94,10 @@ public static class ManilaCli {
         var logger = isApiCommand ? (ILogger) new EmptyLogger() : new Logger(null);
         var profiler = new Profiler(logger);
         var services = new ServiceCollection();
-        var executionStage = new ExecutionStage(logger);
+        ExecutionStage = new ExecutionStage(logger);
 
         var baseServiceContainer = new BaseServiceCotnainer(
-            logger, profiler, executionStage
+            logger, profiler, ExecutionStage
         );
 
         SetupBaseComponents(logger, logOptions);
@@ -119,11 +120,6 @@ public static class ManilaCli {
                 shouldInitialize = false;
                 baseServiceContainer.Logger.Debug("Data directory does not exist. Skipping workspace initialization.");
             }
-            if (!File.Exists(Path.Join(Directories.RootDir, "Manila.config.json"))) {
-                shouldInitialize = false;
-                baseServiceContainer.Logger.Debug("Workspace configuration file (Manila.config.json) does not exist. Skipping workspace initialization.");
-            }
-
             if (!File.Exists(Path.Join(Directories.RootDir, "Manila.js"))) {
                 shouldInitialize = false;
                 baseServiceContainer.Logger.Debug("Workspace script file (Manila.js) does not exist. Skipping workspace initialization.");
@@ -131,7 +127,7 @@ public static class ManilaCli {
 
             if (shouldInitialize) {
                 using (new ProfileScope(baseServiceContainer.Profiler, "Initializing Manila Engine")) {
-                    executionStage.ChangeState(ExecutionStages.Discovery);
+                    ExecutionStage.ChangeState(ExecutionStages.Discovery);
 
                     Directory.CreateDirectory(Directories.DataDir);
 
@@ -149,7 +145,7 @@ public static class ManilaCli {
                     await InitExtensions(baseServiceContainer, serviceContainer);
 
                     // Run engine and initialize projects
-                    executionStage.ChangeState(ExecutionStages.Configuration);
+                    ExecutionStage.ChangeState(ExecutionStages.Configuration);
                     var workspace = await manilaEngine.RunWorkspaceScriptAsync(serviceContainer, new(
                         baseServiceContainer.Logger, baseServiceContainer.Profiler,
                         CreateScriptEngine(),
@@ -230,15 +226,14 @@ public static class ManilaCli {
 
         logger.Log(new ProjectsInitializedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ProgramStartedTime));
 
-        executionStage.ChangeState(ExecutionStages.Runtime);
+        ExecutionStage.ChangeState(ExecutionStages.Runtime);
         var exitCode = await CommandApp.RunAsync(args);
-        executionStage.ChangeState(ExecutionStages.Shutdown);
+        ExecutionStage.ChangeState(ExecutionStages.Shutdown);
 
         serviceContainer?.ExtensionManager.ReleasePlugins();
 
         profiler.SaveToFile(Directories.Profiles);
         serviceContainer?.ArtifactManager.FlushCacheToDisk();
-
         return exitCode;
     }
 }

@@ -1,5 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Shiron.Manila.API.Bridges;
@@ -11,291 +12,277 @@ using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Registries;
-using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
 /// <summary>
-/// Primary API class exposing global Manila functions.
+/// Defines the primary, script-facing API for interacting with the Manila build system.
 /// </summary>
-public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer services, ScriptContext context, WorkspaceScriptBridge workspaceBridge, Workspace workspace, ProjectScriptBridge? projectBridge, Project? project) {
+public sealed class Manila(
+    BaseServiceCotnainer baseServices,
+    ServiceContainer services,
+    ScriptContext context,
+    WorkspaceScriptBridge workspaceBridge,
+    Workspace workspace,
+    ProjectScriptBridge? projectBridge,
+    Project? project) {
     private readonly ServiceContainer _services = services;
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly ScriptContext _context = context;
-
     private readonly Project? _project = project;
     private readonly Workspace _workspace = workspace;
     private readonly ProjectScriptBridge? _projectBridge = projectBridge;
     private readonly WorkspaceScriptBridge _workspaceBridge = workspaceBridge;
 
-    /// <summary>
-    /// The current build configuration for this Manila instance.
-    /// </summary>
-    public object? BuildConfig { get; private set; } = null;
+    // A private record for storing project filters and their associated actions.
+    private record ProjectHook(ProjectFilter Filter, Action<Project> Action);
 
-    /// <summary>
-    /// The list of job builders in this Manila instance.
-    /// </summary>
+    /// <summary>Gets or sets the current language-specific build configuration.</summary>
+    public object? BuildConfig { get; private set; }
+
+    /// <summary>Gets the list of job builders defined at the project or workspace level.</summary>
     public List<JobBuilder> JobBuilders { get; } = [];
 
-    /// <summary>
-    /// The list of artifact builders in this Manila instance.
-    /// </summary>
+    /// <summary>Gets the list of artifact builders defined in the current context.</summary>
     public List<ArtifactBuilder> ArtifactBuilders { get; } = [];
 
     /// <summary>
-    /// The active artifact builder context.
+    /// Gets or sets the active artifact builder. This is used implicitly by `Job()` calls
+    /// to associate jobs with the correct artifact.
     /// </summary>
-    public ArtifactBuilder? CurrentArtifactBuilder { get; set; } = null;
+    internal ArtifactBuilder? CurrentArtifactBuilder { get; set; }
+
+    #region Context & Configuration
+
+    /// <summary>Gets a bridge to the current project context.</summary>
+    /// <exception cref="InvalidOperationException">Thrown if not currently in a project context.</exception>
+    public ProjectScriptBridge GetProject() => _projectBridge
+        ?? throw new InvalidOperationException("This operation is only valid within a project context (e.g., a project's Manila.js file).");
+
+    /// <summary>Creates a lazy-loading reference to another project in the workspace.</summary>
+    /// <param name="name">The name (identifier) of the project to reference.</param>
+    public UnresolvedProject GetProject(string name) => new(_workspace, name);
+
+    /// <summary>Gets a bridge to the current workspace context.</summary>
+    public WorkspaceScriptBridge GetWorkspace() => _workspaceBridge;
+
+    /// <summary>Gets the active build configuration provided by a language plugin.</summary>
+    /// <exception cref="InvalidOperationException">Thrown if a language plugin has not yet been applied.</exception>
+    public object GetConfig() => BuildConfig
+        ?? throw new InvalidOperationException("A language component must be applied before accessing the build configuration.");
 
     /// <summary>
-    /// Gets the current Manila project or throws if none exists.
+    /// Applies a language component to the current project, enabling language-specific tasks.
     /// </summary>
-    public ProjectScriptBridge GetProject() {
-        return _projectBridge ?? throw new ManilaException("Not in a project context.");
+    /// <param name="uri">The URI of the language component (e.g., "manila-dotnet:language").</param>
+    /// <exception cref="InvalidOperationException">Thrown if not in a project context.</exception>
+    /// <exception cref="PluginException">Thrown if the component cannot be found or is not a language component.</exception>
+    public void Apply(string uri) {
+        if (_project is null)
+            throw new InvalidOperationException("`Apply` can only be used within a project context.");
+
+        var component = _services.ExtensionManager.GetPluginComponent(uri);
+        if (component is not LanguageComponent langComp)
+            throw new PluginException($"The component '{uri}' is not a valid language component.");
+
+        _project.PluginComponents.Add(langComp.GetType(), langComp);
+
+        try {
+            BuildConfig = Activator.CreateInstance(langComp.BuildConfigType)
+                ?? throw new PluginException($"Failed to create build configuration of type '{langComp.BuildConfigType.Name}'.");
+        } catch (Exception e) {
+            throw new PluginException($"Failed to instantiate build configuration for '{langComp.Name}'.", e);
+        }
     }
 
-    /// <summary>
-    /// Creates an unresolved project reference by name.
-    /// </summary>
-    public UnresolvedProject GetProject(string name) {
-        return new UnresolvedProject(_workspace, name);
+    /// <summary>Imports a C# type registered by a plugin, making it available to the script.</summary>
+    /// <param name="key">The key the API type was registered with.</param>
+    /// <exception cref="PluginException">Thrown if the key is not found or the type cannot be instantiated.</exception>
+    public object Import(string key) {
+        var type = _services.ExtensionManager.GetAPIType(key);
+        try {
+            return Activator.CreateInstance(type)
+                ?? throw new PluginException($"Activator failed to create an instance of '{type.Name}' for key '{key}'.");
+        } catch (Exception e) {
+            throw new PluginException($"Failed to import API for key '{key}'. See inner exception for details.", e);
+        }
     }
 
-    /// <summary>
-    /// Gets the current Manila workspace.
-    /// </summary>
-    public WorkspaceScriptBridge GetWorkspace() {
-        return _workspaceBridge;
-    }
+    #endregion
 
-    /// <summary>
-    /// Gets the build configuration or throws if not set.
-    /// </summary>
-    public object GetConfig() {
-        return BuildConfig ?? throw new ManilaException("Cannot retreive build config before applying a language component!");
-    }
+    #region Builders
 
-    /// <summary>
-    /// Creates a source set with the given origin.
-    /// </summary>
-    public SourceSetBuilder SourceSet(string origin) {
-        return new(origin);
-    }
-    /// <summary>
-    /// Creates an artifact using the provided configuration lambda.
-    /// </summary>
-    public ArtifactBuilder Artifact(ScriptObject obj) {
-        if (_project == null) throw new ManilaException("Not in a project context.");
-        if (BuildConfig == null) throw new ManilaException("Cannot apply artifact when no language has been applied!");
-        var builder = new ArtifactBuilder(_workspace, obj, this, (BuildConfig) BuildConfig, _project);
+    /// <summary>Begins the definition of an artifact.</summary>
+    /// <param name="name">The name of the artifact.</param>
+    /// <param name="configurator">A script function that configures the artifact.</param>
+    /// <exception cref="InvalidOperationException">Thrown if not in a project context or if a language has not been applied.</exception>
+    public ArtifactBuilder Artifact(ScriptObject configurator) {
+        if (_project is null)
+            throw new InvalidOperationException("Artifacts can only be defined within a project context.");
+        if (BuildConfig is null)
+            throw new InvalidOperationException("A language must be applied with `apply()` before defining an artifact.");
+
+        var builder = new ArtifactBuilder(_workspace, configurator, this, (BuildConfig) BuildConfig, _project);
         ArtifactBuilders.Add(builder);
         return builder;
     }
 
-    /// <summary>
-    /// Pauses execution for the specified milliseconds.
-    /// </summary>
-    public async Task Sleep(int milliseconds) {
-        await Task.Delay(milliseconds);
-    }
-
-    /// <summary>
-    /// Creates a job with the given name.
-    /// </summary>
+    /// <summary>Begins the definition of a job.</summary>
+    /// <param name="name">The name of the job, unique within its scope (artifact or project).</param>
     public JobBuilder Job(string name) {
-        var applyTo = _project ?? (Component) _workspace;
+        var component = _project ?? (Component) _workspace;
 
-        if (CurrentArtifactBuilder != null) {
-            var jobBuilder = new JobBuilder(_baseServices.Logger, _services.JobRegistry, name, _context, applyTo, CurrentArtifactBuilder);
-            CurrentArtifactBuilder.JobBuilders.Add(jobBuilder);
-            return jobBuilder;
+        // If we are inside an artifact's configuration block, associate this job with it.
+        if (CurrentArtifactBuilder is not null) {
+            var artifactJobBuilder = new JobBuilder(_baseServices.Logger, _services.JobRegistry, name, _context, component, CurrentArtifactBuilder);
+            CurrentArtifactBuilder.JobBuilders.Add(artifactJobBuilder);
+            return artifactJobBuilder;
         }
 
-        try {
-            var builder = new JobBuilder(_baseServices.Logger, _services.JobRegistry, name, _context, applyTo, null);
-            JobBuilders.Add(builder);
-            return builder;
-        } catch (Exception e) {
-            throw new ManilaException($"Failed to create job '{name}': {e.Message}", e);
-        }
+        // Otherwise, it's a project- or workspace-level job.
+        var jobBuilder = new JobBuilder(_baseServices.Logger, _services.JobRegistry, name, _context, component, null);
+        JobBuilders.Add(jobBuilder);
+        return jobBuilder;
     }
 
-    /// <summary>
-    /// Creates a directory handle for the given path.
-    /// </summary>
-    public DirHandle Dir(string path) {
-        return new DirHandle(path);
+    /// <summary>Creates a file set builder for defining collections of files.</summary>
+    /// <param name="origin">The root directory for the source set, relative to the project root.</param>
+    public SourceSetBuilder SourceSet(string origin) => new(origin);
+
+    #endregion
+
+    #region Job Actions
+
+    /// <summary>Creates a job action that executes a command via the default system shell (e.g., cmd.exe, /bin/sh).</summary>
+    /// <param name="command">The command to execute.</param>
+    /// <param name="args">The arguments to pass to the command.</param>
+    public static IJobAction Shell(string command) {
+        var shell = Environment.OSVersion.Platform == PlatformID.Win32NT ? "cmd.exe" : "/bin/sh";
+        var shellArg = Environment.OSVersion.Platform == PlatformID.Win32NT ? "/c" : "-c";
+
+        return new JobShellAction(new(shell, [shellArg, .. command.Split(' ')]));
     }
 
-    /// <summary>
-    /// Creates a file handle for the given path.
-    /// </summary>
-    public FileHandle File(string path) {
-        return new FileHandle(path);
+    /// <summary>Creates a job action that executes a program directly.</summary>
+    /// <param name="executable">The program or script to execute.</param>
+    /// <param name="args">The arguments to pass to the program.</param>
+    public static IJobAction Execute(string command) => new JobShellAction(new(
+            command.Split(" ")[0],
+            command.Split(" ")[1..]
+        ));
+
+    #endregion
+
+    #region Execution & Hooks
+
+    /// <summary>Registers an action to run on all projects that match the given filter.</summary>
+    /// <param name="filterObject">A filter (e.g., "*", "my-project", a RegExp) to select projects.</param>
+    /// <param name="action">A script function that receives a project bridge object.</param>
+    public void OnProject(object filterObject, dynamic action) {
+        var filter = ProjectFilter.From(filterObject);
+        _workspace.ProjectFilters.Add(new ProjectFilterHook(filter, project => action(new ProjectScriptBridge(project))));
     }
 
-    /// <summary>
-    /// Registers an action to run on projects matching the given filter.
-    /// </summary>
-    public void OnProject(object o, dynamic a) {
-        using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
-            var filter = ProjectFilter.From(o);
-            _workspace.ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
-        }
-    }
+    /// <summary>Runs a specific, fully-resolved project's default `run` task.</summary>
+    public void Run(Project project) => project.GetLanguageComponent().Run(project);
 
-    /// <summary>
-    /// Executes the job identified by the given key.
-    /// </summary>
+    /// <summary>Resolves and runs a project's default `run` task.</summary>
+    public void Run(UnresolvedProject project) => Run(project.Resolve());
+
+    /// <summary>Executes a single job by its fully qualified identifier.</summary>
+    /// <param name="key">The unique identifier of the job to run.</param>
+    /// <exception cref="ConfigurationException">Thrown if the job is not found.</exception>
     public async Task RunJob(string key) {
-        var job = _services.JobRegistry.GetJob(key) ?? throw new ManilaException("Job not found: " + key);
+        var job = _services.JobRegistry.GetJob(key)
+            ?? throw new ConfigurationException($"The job '{key}' was not found in the registry.");
         await job.ExecuteAsync();
     }
 
-    /// <summary>
-    /// Builds the project using its language component.
-    /// </summary>
+    /// <summary>Executes the build process for a given artifact.</summary>
+    /// <exception cref="BuildProcessException">Thrown if the build fails.</exception>
     public async Task Build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge unresolvedArtifact) {
         var workspace = workspaceBridge._handle;
         var project = projectBridge._handle;
-        var artifact = unresolvedArtifact.Resolve();
+        var artifact = await _services.ArtifactManager.AppendCachedDataAsync(
+            unresolvedArtifact.Resolve(), config, project
+        );
 
-        artifact = await _services.ArtifactManager.AppendCahedDataAsync(artifact, config, project);
-
-        using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
-            var logCache = new LogCache();
-
-            using var logInjector = new LogInjector(
-                _baseServices.Logger,
-                logCache.Entries.Add
+        var logCache = new LogCache();
+        using (new LogInjector(_baseServices.Logger, logCache.Entries.Add)) {
+            var result = project.GetLanguageComponent().Build(
+                workspace, artifact.Project, config, artifact, _services.ArtifactManager
             );
 
-            var res = project.GetLanguageComponent().Build(workspace, project, config, artifact, _services.ArtifactManager);
+            switch (result) {
+                case BuildExitCodeSuccess:
+                    artifact.LogCache = logCache;
+                    await _services.ArtifactManager.CacheArtifactAsync(artifact, config, artifact.Project);
+                    break;
 
-            if (res is BuildExitCodeSuccess) {
-                _baseServices.Logger.Info($"Build successful for {project.Name} with artifact {artifact.Name}");
-                artifact.LogCache = logCache;
+                case BuildExitCodeCached:
+                    if (artifact.LogCache is { } cache) {
+                        cache.Replay(_baseServices.Logger, _baseServices.Logger.LogContext.CurrentContextID ?? Guid.Empty);
+                    } else {
+                        _baseServices.Logger.Warning($"Cached artifact '{artifact.Name}' was missing its log cache.");
+                    }
+                    break;
 
-                await _services.ArtifactManager.CacheArtifactAsync(artifact, config, project);
-            } else if (res is BuildExitCodeCached cached) {
-                _baseServices.Logger.Info($"Loaded cached build for {project.Name} with artifact {artifact.Name}.");
-
-                if (artifact.LogCache is null) {
-                    _baseServices.Logger.Error($"Artifact '{artifact.Name}' has no log cache, this is unexpected!");
-                    return;
-                }
-
-                _baseServices.Logger.Debug($"Current context ID: {_baseServices.Logger.LogContext.CurrentContextID}");
-                artifact.LogCache.Replay(_baseServices.Logger, _baseServices.Logger.LogContext.CurrentContextID ?? Guid.Empty);
-            } else if (res is BuildExitCodeFailed failed) {
-                _baseServices.Logger.Error($"Build failed for {project.Name} with artifact {artifact.Name}: {failed.Exception.Message}");
+                case BuildExitCodeFailed failed:
+                    throw new BuildProcessException(
+                        $"Build failed for artifact '{artifact.Name}' in project '{artifact.Project.Identifier}'.",
+                        failed.Exception
+                    );
             }
         }
     }
 
-    /// <summary>
-    /// Resolves and runs the specified unresolved project.
-    /// </summary>
-    public void Run(UnresolvedProject project) {
-        Run(project.Resolve());
-    }
+    #endregion
 
-    /// <summary>
-    /// Runs the specified project using its language component.
-    /// </summary>
-    public void Run(Project project) {
-        using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
-            project.GetLanguageComponent().Run(project);
-        }
-    }
+    #region Environment & Utilities
 
-    /// <summary>
-    /// Retrieves the value of the specified environment variable.
-    /// </summary>
-    public string GetEnv(string key, string? defaultValue = null) {
-        return _context.GetEnvironmentVariable(key) ?? defaultValue ?? throw new ManilaException($"Environment variable {key} is not set.");
-    }
+    /// <summary>Gets an environment variable as a string.</summary>
+    /// <param name="key">The name of the environment variable.</param>
+    /// <param name="defaultValue">An optional value to return if the variable is not set.</param>
+    /// <exception cref="ConfigurationException">Thrown if the variable is not set and no default value is provided.</exception>
+    public string GetEnv(string key, string? defaultValue = null) => _context.GetEnvironmentVariable(key)
+        ?? defaultValue
+        ?? throw new ConfigurationException($"Required environment variable '{key}' is not set.");
 
-    /// <summary>
-    /// Retrieves the specified environment variable as a double or zero if unset.
-    /// </summary>
+    /// <summary>Gets an environment variable as a number.</summary>
+    /// <param name="key">The name of the environment variable.</param>
+    /// <param name="defaultValue">An optional value to return if the variable is not set or invalid.</param>
+    /// <exception cref="ConfigurationException">Thrown if the variable is not a valid number and no default is provided.</exception>
     public double GetEnvNumber(string key, double? defaultValue = null) {
         var value = _context.GetEnvironmentVariable(key);
-        return string.IsNullOrEmpty(value)
-            ? 0
-            : double.TryParse(value, out var result) ? result : defaultValue ?? throw new ManilaException($"Environment variable {key} is not a number: {value}");
-    }
-    /// <summary>
-    /// Retrieves the specified environment variable as a boolean or false if unset.
-    /// </summary>
+        if (string.IsNullOrEmpty(value)) return defaultValue ?? 0.0;
 
+        return double.TryParse(value, out var result) ? result : defaultValue
+            ?? throw new ConfigurationException($"Environment variable '{key}' is not a valid number: '{value}'.");
+    }
+
+    /// <summary>Gets an environment variable as a boolean.</summary>
+    /// <param name="key">The name of the environment variable.</param>
+    /// <param name="defaultValue">An optional value to return if the variable is not set or invalid.</param>
+    /// <exception cref="ConfigurationException">Thrown if the variable is not a valid boolean and no default is provided.</exception>
     public bool GetEnvBool(string key, bool? defaultValue = null) {
         var value = _context.GetEnvironmentVariable(key);
-        return string.IsNullOrEmpty(value)
-            ? false
-            : bool.TryParse(value, out var result) ? result : defaultValue ?? throw new ManilaException($"Environment variable {key} is not a number: {value}");
-    }
-    /// <summary>
-    /// Sets the specified environment variable to the given value.
-    /// </summary>
+        if (string.IsNullOrEmpty(value)) return defaultValue ?? false;
 
-    public void SetEnv(string key, string value) {
-        _context.SetEnvironmentVariable(key, value);
+        return bool.TryParse(value, out var result) ? result : defaultValue
+            ?? throw new ConfigurationException($"Environment variable '{key}' is not a valid boolean: '{value}'.");
     }
 
-    /// <summary>
-    /// Imports an API type instance for the given key.
-    /// </summary>
-    public object Import(string key) {
-        using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
-            var t = Activator.CreateInstance(_services.ExtensionManager.GetAPIType(key));
-            _baseServices.Logger.Debug($"Importing {key} as {t}");
+    /// <summary>Sets an environment variable for the current execution context.</summary>
+    public void SetEnv(string key, string value) => _context.SetEnvironmentVariable(key, value);
 
-            if (t == null)
-                throw new ManilaException($"Failed to import API type for key: {key}");
+    /// <summary>Pauses execution for the specified duration.</summary>
+    public Task Sleep(int milliseconds) => Task.Delay(milliseconds);
 
-            return t;
-        }
-    }
+    /// <summary>Creates a handle to a directory path.</summary>
+    public DirHandle Dir(string path) => new(path);
 
-    /// <summary>
-    /// Applies a language component by its URI.
-    /// </summary>
-    public void Apply(string uri) {
-        if (_project == null) throw new ManilaException("Not in a project context.");
-
-        var component = _services.ExtensionManager.GetPluginComponent(uri);
-        if (component is not LanguageComponent) throw new ManilaException($"Component {uri} is not a language component.");
-
-        var langComp = (LanguageComponent) component;
-        _baseServices.Logger.Debug($"Applying language component {langComp.Name} from {langComp._plugin}");
-        _project.PluginComponents.Add(langComp.GetType(), langComp);
-
-        var buildConfig = Activator.CreateInstance(langComp.BuildConfigType) ?? throw new ManilaException($"Failed to create build config for language component {langComp.Name}.");
-        BuildConfig = buildConfig;
-    }
-
-    #region Job Actions
-
-    /// <summary>
-    /// Creates a shell-based job action with cmd.exe.
-    /// </summary>
-    public static IJobAction Shell(string command) {
-        return new JobShellAction(new(
-            "cmd.exe",
-            ["/c", .. command.Split(" ")]
-        ));
-    }
-    /// <summary>
-    /// Creates a job action to execute the given command.
-    /// </summary>
-    public static IJobAction Execute(string command) {
-        return new JobShellAction(new(
-            command.Split(" ")[0],
-            command.Split(" ")[1..]
-        ));
-    }
+    /// <summary>Creates a handle to a file path.</summary>
+    public FileHandle File(string path) => new(path);
 
     #endregion
 }

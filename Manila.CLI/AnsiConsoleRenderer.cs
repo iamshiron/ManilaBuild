@@ -37,9 +37,9 @@ public static class AnsiConsoleRenderer {
 
     // --- State Management for Live Display ---
     private static Tree? _executionTree;
-    private static Action? _refresh; // Action to refresh the LiveDisplay
-    private static TaskCompletionSource<bool>? _buildCompletion; // Controls the LiveDisplay lifetime
-    private static readonly Dictionary<string, TaskCompletionSource> _nodeCompletiosn = [];
+    private static Action? _refresh;
+    private static TaskCompletionSource<bool>? _buildCompletion;
+    private static LiveDisplay? _liveDisplay = null;
 
     private static LogOptions _options { get; set; } = new(false, false, false, false);
 
@@ -191,7 +191,7 @@ public static class AnsiConsoleRenderer {
     }
     private static void PushLog(string msg, string? parentID = null, string? contextID = null) {
         // Fallback for when the live display isn't active.
-        if (_executionTree is null) {
+        if (_buildCompletion == null || (_buildCompletion != null && _buildCompletion.Task.IsCompleted)) {
             AnsiConsole.MarkupLine(msg);
             return;
         }
@@ -226,14 +226,15 @@ public static class AnsiConsoleRenderer {
         _buildCompletion = new TaskCompletionSource<bool>();
         _executionTree = new Tree($"[green]{Emoji.Known.Rocket} Build Started![/]");
 
-        AnsiConsole.Live(_executionTree)
-            .AutoClear(false)
-            .Overflow(VerticalOverflow.Ellipsis)
-            .StartAsync(async ctx => {
-                _refresh = ctx.Refresh;
-                _ = await _buildCompletion.Task;
-                ctx.Refresh();
-            });
+        _liveDisplay = AnsiConsole.Live(_executionTree)
+             .AutoClear(false)
+             .Overflow(VerticalOverflow.Ellipsis);
+
+        _ = _liveDisplay.StartAsync(async ctx => {
+            _refresh = ctx.Refresh;
+            _ = await _buildCompletion.Task;
+            ctx.Refresh();
+        });
     }
 
     private static void HandleBuildLayerStartedLogEntry(BuildLayerStartedLogEntry entry) {

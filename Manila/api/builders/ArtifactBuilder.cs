@@ -1,6 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.ClearScript;
-using NuGet.Common;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.Exceptions;
@@ -9,82 +10,88 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila.API.Builders;
 
 /// <summary>
-/// Builder for creating artifacts within a Manila build configuration.
+/// A fluent builder for defining and creating an <see cref="Artifact"/>.
 /// </summary>
-public sealed class ArtifactBuilder(Workspace workspace, ScriptObject configurator, Manila manilaAPI, BuildConfig buildConfig, Project project) : IBuildable<Artifact> {
-    /// <summary>
-    /// The build configuration associated with this artifact.
-    /// </summary>
+public sealed class ArtifactBuilder(
+    Workspace workspace,
+    ScriptObject configurator,
+    Manila manilaAPI,
+    BuildConfig buildConfig,
+    Project project
+) : IBuildable<Artifact> {
+    /// <summary>Gets the build configuration this artifact is a part of.</summary>
     public readonly BuildConfig BuildConfig = buildConfig;
 
-    /// <summary>
-    /// The name of the project this artifact belongs to.
-    /// </summary>
+    /// <summary>Gets the project this artifact belongs to.</summary>
     public readonly Project Project = project;
 
-    /// <summary>
-    /// Description of the artifact.
-    /// </summary>
-    public string ArtifactDescription = string.Empty;
+    /// <summary>Gets the user-defined description of the artifact.</summary>
+    public string ArtifactDescription { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Collection of job builders for this artifact.
-    /// </summary>
+    /// <summary>Gets the collection of job builders defined for this artifact.</summary>
     public readonly List<JobBuilder> JobBuilders = [];
 
-    /// <summary>
-    /// Lambda function that defines the artifact configuration.
-    /// </summary>
+    /// <summary>Gets the script function that configures this artifact.</summary>
     public readonly ScriptObject Lambda = configurator;
 
-    /// <summary>
-    /// Reference to the Manila API instance.
-    /// </summary>
+    /// <summary>Gets a reference to the top-level Manila API.</summary>
     public readonly Manila ManilaAPI = manilaAPI;
 
-    /// <summary>
-    /// Plugin component match for this artifact.
-    /// </summary>
-    public RegexUtils.PluginComponentMatch? PluginComponent;
+    /// <summary>Gets the matched plugin component this artifact is based on, if any.</summary>
+    public RegexUtils.PluginComponentMatch? PluginComponent { get; private set; }
 
-    /// <summary>
-    /// The name of the artifact.
-    /// </summary>
-    public string? Name = null;
+    /// <summary>Gets the name of the artifact.</summary>
+    public string? Name { get; internal set; }
 
     private readonly Workspace _workspace = workspace;
 
+    /// <summary>
+    /// Sets the description for the artifact.
+    /// </summary>
+    /// <param name="description">A brief description of the artifact's purpose.</param>
+    /// <returns>The current builder instance for chaining.</returns>
     public ArtifactBuilder Description(string description) {
         ArtifactDescription = description;
         return this;
     }
-    public ArtifactBuilder From(string key) {
-        var temp = RegexUtils.MatchPluginComponent(key) ?? throw new ManilaException($"Invalid plugin component format: {key}");
-        PluginComponent = temp;
 
-        return this;
-    }
-    public ArtifactBuilder Dependencies() {
+    /// <summary>
+    /// Specifies a plugin component as the source for this artifact's jobs.
+    /// </summary>
+    /// <param name="key">The plugin component identifier (e.g., "plugin-name:component-name").</param>
+    /// <returns>The current builder instance for chaining.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the key format is invalid.</exception>
+    public ArtifactBuilder From(string key) {
+        PluginComponent = RegexUtils.MatchPluginComponent(key)
+            ?? throw new ConfigurationException($"Invalid plugin component format: '{key}'. Expected 'plugin:component'.");
+
         return this;
     }
 
     /// <summary>
-    /// Builds the artifact by executing the lambda configuration and creating an Artifact instance.
+    /// Executes the configuration lambda to define jobs and constructs the final <see cref="Artifact"/>.
     /// </summary>
-    /// <returns>The built artifact.</returns>
+    /// <returns>The built <see cref="Artifact"/> instance.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the artifact name is not set.</exception>
+    /// <exception cref="ScriptExecutionException">Thrown if an error occurs within the configuration script.</exception>
+    /// <exception cref="BuildProcessException">Thrown for other unexpected errors during the build.</exception>
+    [MemberNotNull(nameof(Name))]
     public Artifact Build() {
-        if (Name == null) throw new ManilaException("Artifact name must be set before building.");
+        if (string.IsNullOrWhiteSpace(Name)) {
+            throw new ConfigurationException("Artifact name must be set before building.");
+        }
 
         ManilaAPI.CurrentArtifactBuilder = this;
         try {
-            _ = Lambda.InvokeAsFunction(new UnresolvedArtifactScriptBridge(
-                Project, Name
-            ));
-        } catch (Exception ex) {
-            throw new ManilaException($"Error while building artifact '{Name}': {ex.Message}", ex);
+            _ = Lambda.InvokeAsFunction(new UnresolvedArtifactScriptBridge(Project, Name));
+        } catch (ScriptEngineException se) {
+            throw new ScriptExecutionException($"A script error occurred while configuring artifact '{Name}'.", se);
+        } catch (Exception e) {
+            throw new BuildProcessException($"An unexpected error occurred while building artifact '{Name}'.", e);
+        } finally {
+            ManilaAPI.CurrentArtifactBuilder = null;
         }
 
-        ManilaAPI.CurrentArtifactBuilder = null;
-        return new(_workspace, this);
+        return new Artifact(_workspace, this);
     }
 }

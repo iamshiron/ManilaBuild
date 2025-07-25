@@ -76,7 +76,7 @@ public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories
             _baseServices.Logger.Log(new ProjectDiscoveredLogEntry(projectRoot, context.ScriptPath));
 
             var project = new Project(_baseServices.Logger, projectName, projectRoot, _directories.RootDir, workspace);
-            var projectBridge = new ProjectScriptBridge(_baseServices.Logger, _baseServices.Profiler, project);
+            var projectBridge = new ProjectScriptBridge(project);
 
             workspace.Projects.Add(projectName, project);
 

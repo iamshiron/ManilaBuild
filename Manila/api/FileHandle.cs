@@ -17,7 +17,7 @@ public class FileHandle {
     /// <param name="dir">The directory path.</param>
     /// <param name="name">The file name.</param>
     public FileHandle(string dir, string name) {
-        this.Handle = Path.Combine(dir, name);
+        Handle = Path.Combine(dir, name);
     }
 
     /// <summary>
@@ -25,7 +25,7 @@ public class FileHandle {
     /// </summary>
     /// <param name="path">The file path relative to current directory.</param>
     public FileHandle(string path) {
-        this.Handle = Path.Combine(Directory.GetCurrentDirectory(), path);
+        Handle = Path.Combine(Directory.GetCurrentDirectory(), path);
     }
 
     /// <summary>
@@ -33,7 +33,7 @@ public class FileHandle {
     /// </summary>
     /// <returns>A directory handle for the parent directory.</returns>
     public DirHandle GetDir() {
-        var dirName = Path.GetDirectoryName(this.Handle) ?? string.Empty;
+        var dirName = Path.GetDirectoryName(Handle) ?? string.Empty;
         return new DirHandle(dirName);
     }
 
@@ -42,7 +42,7 @@ public class FileHandle {
     /// </summary>
     /// <returns>True if the path is absolute, false otherwise.</returns>
     public bool IsAbsolute() {
-        return Path.IsPathRooted(this.Handle);
+        return Path.IsPathRooted(Handle);
     }
 
     /// <summary>
@@ -50,14 +50,14 @@ public class FileHandle {
     /// </summary>
     /// <returns>True if the file exists, false otherwise.</returns>
     public bool Exists() {
-        return File.Exists(this.Handle);
+        return File.Exists(Handle);
     }
 
     /// <summary>
     /// Creates the file on disk.
     /// </summary>
     public void Create() {
-        File.Create(this.Handle);
+        File.Create(Handle);
     }
 
     /// <summary>
@@ -65,7 +65,7 @@ public class FileHandle {
     /// </summary>
     /// <returns>The file path.</returns>
     public string Get() {
-        return this.Handle;
+        return Handle;
     }
 
     /// <summary>

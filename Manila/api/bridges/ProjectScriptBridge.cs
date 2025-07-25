@@ -8,9 +8,7 @@ using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.API.Bridges;
 
-public class ProjectScriptBridge(ILogger logger, IProfiler profiler, Project project) : ScriptBridge {
-    private readonly ILogger _logger = logger;
-    private readonly IProfiler _profiler = profiler;
+public class ProjectScriptBridge(Project project) : ScriptBridge {
     internal readonly Project _handle = project;
 
     public void Version(string version) {

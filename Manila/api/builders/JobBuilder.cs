@@ -1,4 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.ClearScript;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
@@ -8,121 +10,124 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila.API.Builders;
 
 /// <summary>
-/// Builder for creating jobs within a Manila build configuration.
+/// A fluent builder for defining and creating a <see cref="Job"/>.
 /// </summary>
-public sealed class JobBuilder(ILogger logger, IJobRegistry jobRegistry, string name, ScriptContext context, Component component, ArtifactBuilder? artifactBuilder) : IBuildable<Job> {
+public sealed class JobBuilder(
+    ILogger logger,
+    IJobRegistry jobRegistry,
+    string name,
+    ScriptContext context,
+    Component component,
+    ArtifactBuilder? artifactBuilder
+) : IBuildable<Job> {
     private readonly ILogger _logger = logger;
     private readonly IJobRegistry _jobRegistry = jobRegistry;
 
-    /// <summary>
-    /// The name of the job.
-    /// </summary>
+    /// <summary>Gets the simple name of the job.</summary>
     public readonly string Name = name;
 
-    /// <summary>
-    /// The artifact builder this job belongs to, if any.
-    /// </summary>
+    /// <summary>Gets the artifact builder this job belongs to, if any.</summary>
     public readonly ArtifactBuilder? ArtifactBuilder = artifactBuilder;
 
-    /// <summary>
-    /// Description of what the job does.
-    /// </summary>
-    public string JobDescription { get; private set; } = "A generic job";
+    /// <summary>Gets the user-provided description of what the job does.</summary>
+    public string JobDescription { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Whether the job blocks execution flow until completion.
-    /// </summary>
+    /// <summary>Gets a value indicating whether this job must run serially, blocking other jobs.</summary>
     public bool Blocking { get; private set; } = true;
 
-    /// <summary>
-    /// List of job dependencies that must execute before this job.
-    /// </summary>
+    /// <summary>Gets the list of job identifiers that this job depends on.</summary>
     public readonly List<string> Dependencies = [];
 
-    /// <summary>
-    /// Array of actions to be executed by this job.
-    /// </summary>
+    /// <summary>Gets the collection of actions to be executed by this job.</summary>
     public IJobAction[] Actions { get; private set; } = [];
 
-    /// <summary>
-    /// The script context for this job.
-    /// </summary>
+    /// <summary>Gets the script context in which this job was defined.</summary>
     public readonly ScriptContext ScriptContext = context;
 
-    /// <summary>
-    /// The component this job belongs to.
-    /// </summary>
+    /// <summary>Gets the component (e.g., Project or Workspace) this job belongs to.</summary>
     public readonly Component Component = component;
 
     /// <summary>
-    /// Add a dependency to the job.
+    /// Adds a dependency on another job. This job will not start until the specified job has completed.
     /// </summary>
-    /// <param name="job">The dependents job ID</param>
-    /// <returns>Job instance for chaining calls</returns>
-    public JobBuilder After(string job) {
-        if (job.Contains(":") || job.Contains("/")) {
-            if (!RegexUtils.IsValidJob(job)) throw new ManilaException($"Invalid job regex {job}!");
-            Dependencies.Add(job);
-            return this;
-        }
-
-        var match = new RegexUtils.JobMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtifactBuilder?.Name, job);
-        Dependencies.Add(match.Format());
-
-        return this;
-    }
-    /// <summary>
-    /// Add a dependency to the job.
-    /// </summary>
-    /// <param name="job">The dependents job ID</param>
-    /// <returns>Job instance for chaining calls</returns>
-    public JobBuilder After(string[] job) {
-        foreach (var t in job) _ = After(t);
-        return this;
-    }
-    /// <summary>
-    /// The action to be executed by the job.
-    /// </summary>
-    /// <param name="action">The action</param>
-    /// <returns>Job instance for chaining calls</returns>
-    public JobBuilder Execute(object o) {
-        _logger.System($"Adding action to job {Name} in ({o.GetType().FullName})");
-        if (o is IJobAction action) {
-            _logger.Debug($"Found job action of type {action.GetType().FullName}");
-            Actions = [action];
-        } else if (o is IList<object> list) {
-            _logger.Debug($"Found {list.Count} chained actions!");
-            Actions = list.Cast<IJobAction>().ToArray();
-        } else {
-            var obj = (ScriptObject) o;
-            Actions = [new JobScriptAction(obj)];
+    /// <param name="dependency">The unique identifier of the job to depend on.</param>
+    /// <returns>The current builder instance for chaining.</returns>
+    /// <exception cref="ConfigurationException">Thrown if a fully qualified dependency identifier is invalid.</exception>
+    public JobBuilder After(string dependency) {
+        // If the identifier is fully qualified (e.g., "project/artifact:job" or "plugin:component:job")
+        if (dependency.Contains(':') || dependency.Contains('/')) {
+            if (!RegexUtils.IsValidJob(dependency)) {
+                throw new ConfigurationException($"Invalid job dependency format: '{dependency}'.");
+            }
+            Dependencies.Add(dependency);
+        } else // Otherwise, resolve it relative to the current context.
+          {
+            var contextId = (Component is Workspace) ? null : Component.GetIdentifier();
+            var match = new RegexUtils.JobMatch(contextId, ArtifactBuilder?.Name, dependency);
+            Dependencies.Add(match.Format());
         }
 
         return this;
     }
+
     /// <summary>
-    /// Set the description of the job.
+    /// Adds multiple job dependencies.
     /// </summary>
-    /// <param name="description">The description</param>
-    /// <returns>Job instance for chaining calls</returns>
+    /// <param name="dependencies">The unique identifiers of the jobs to depend on.</param>
+    /// <returns>The current builder instance for chaining.</returns>
+    public JobBuilder After(params string[] dependencies) {
+        foreach (var dep in dependencies) {
+            After(dep); // Reuse the logic from the single-item overload.
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// Defines the action(s) to be executed by this job. This method can only be called once.
+    /// </summary>
+    /// <param name="action">A script function, a native <see cref="IJobAction"/>, or an array of these types.</param>
+    /// <returns>The current builder instance for chaining.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the provided action or list contains an invalid type.</exception>
+    public JobBuilder Execute(object action) {
+        Actions = action switch {
+            ScriptObject scriptObj => [new JobScriptAction(scriptObj)],
+            IJobAction nativeAction => [nativeAction],
+            IList<object> list => list.Select((item, index) => (IJobAction) (item switch {
+                ScriptObject s => new JobScriptAction(s),
+                IJobAction a => a,
+                _ => throw new ConfigurationException(
+                    $"Invalid action type '{item?.GetType().Name ?? "null"}' at index {index} for job '{Name}'.")
+            })).ToArray(),
+            _ => throw new ConfigurationException(
+                $"Unsupported action type '{action?.GetType().Name ?? "null"}' for job '{Name}'.")
+        };
+        return this;
+    }
+
+    /// <summary>
+    /// Sets a human-readable description for the job.
+    /// </summary>
+    /// <param name="description">The description of the job.</param>
+    /// <returns>The current builder instance for chaining.</returns>
     public JobBuilder Description(string description) {
-        this.JobDescription = description;
-        return this;
-    }
-    /// <summary>
-    /// Sets a job's blocking mode, meaning if it will block the execution flow or is running in the background
-    /// </summary>
-    /// <param name="background">True: Non Blocking, False: Blocking</param>
-    /// <returns></returns>
-    public JobBuilder Background(bool background = true) {
-        this.Blocking = !background;
+        JobDescription = description;
         return this;
     }
 
     /// <summary>
-    /// Builds the job using the configured properties and actions.
+    /// Configures the job to run in the background (non-blocking). By default, jobs are blocking.
     /// </summary>
-    /// <returns>The built job instance.</returns>
+    /// <param name="isBackground">If <c>true</c>, the job will be non-blocking.</param>
+    /// <returns>The current builder instance for chaining.</returns>
+    public JobBuilder Background(bool isBackground = true) {
+        Blocking = !isBackground;
+        return this;
+    }
+
+    /// <summary>
+    /// Builds the final <see cref="Job"/> instance and registers it with the job registry.
+    /// </summary>
+    /// <returns>The built and registered job.</returns>
     public Job Build() {
         var job = new Job(_logger, _jobRegistry, this);
         _jobRegistry.RegisterJob(job);

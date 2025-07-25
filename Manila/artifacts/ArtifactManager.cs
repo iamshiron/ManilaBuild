@@ -14,7 +14,7 @@ namespace Shiron.Manila.Artifacts;
 public interface IArtifactManager {
     string GetArtifactRoot(BuildConfig config, Project project, Artifact artifact);
     Task CacheArtifactAsync(Artifact artifact, BuildConfig config, Project project);
-    Task<Artifact> AppendCahedDataAsync(Artifact artifact, BuildConfig config, Project project);
+    Task<Artifact> AppendCachedDataAsync(Artifact artifact, BuildConfig config, Project project);
     void LoadCache();
     void FlushCacheToDisk();
 }
@@ -55,7 +55,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
     }
 
-    public async Task<Artifact> AppendCahedDataAsync(Artifact artifact, BuildConfig config, Project project) {
+    public async Task<Artifact> AppendCachedDataAsync(Artifact artifact, BuildConfig config, Project project) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 

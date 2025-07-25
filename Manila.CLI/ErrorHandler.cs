@@ -1,5 +1,3 @@
-using System;
-using Shiron.Manila.CLI.Commands;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Spectre.Console;
@@ -63,6 +61,7 @@ public static class ErrorHandler {
     private static int HandleConfigurationException(ILogger logger, ConfigurationException e, LogOptions settings) {
         logger.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Configuration Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         logger.MarkupLine("[grey]There is a problem with the configuration. Please check your project files and settings.[/]");
+        logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");
         logger.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
 
         if (settings.StackTrace) {
@@ -83,8 +82,9 @@ public static class ErrorHandler {
             }
         }
 
-        logger.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Script Error:[/] [white]{Markup.Escape(errorMessage)}[/]");
+        logger.MarkupLine($"Error happened during {ManilaCli.ExecutionStage?.Stage} stage.");
         logger.MarkupLine("[grey]This error occurred while executing a script. Check the script for syntax errors or logic issues.[/]");
+        logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");
         logger.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
 
         if (settings.StackTrace) {
@@ -97,6 +97,7 @@ public static class ErrorHandler {
     private static int HandleBuildProcessException(ILogger logger, BuildProcessException e, LogOptions settings) {
         logger.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Build Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         logger.MarkupLine("[grey]The project failed to build. Review the build configuration and source files for errors.[/]");
+        logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");
         logger.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
 
         if (settings.StackTrace) {
@@ -109,6 +110,7 @@ public static class ErrorHandler {
     private static int HandleInternalLogicException(ILogger logger, InternalLogicException e, LogOptions settings) {
         logger.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Configuration Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         logger.MarkupLine("[grey]There is a problem with a configuration file or setting. Please verify it is correct.[/]");
+        logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");
         logger.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
 
         if (settings.StackTrace) {
@@ -121,6 +123,7 @@ public static class ErrorHandler {
     private static int HandlePluginException(ILogger logger, PluginException e, LogOptions settings) {
         logger.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Plugin Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         logger.MarkupLine("[grey]An error occurred in a plugin. Please check the plugin configuration or report this issue.[/]");
+        logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");
         logger.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
 
         if (settings.StackTrace) {
@@ -133,6 +136,7 @@ public static class ErrorHandler {
     private static int HandleManilaException(ILogger logger, ManilaException e, LogOptions settings) {
         logger.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Application Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         logger.MarkupLine($"[grey]A known issue ('{e.GetType().Name}') occurred. This is a handled error condition.[/]");
+        logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");
         logger.MarkupLine("[grey]Run with --stack-trace for more technical details.[/]");
 
         if (settings.StackTrace) {
@@ -145,6 +149,7 @@ public static class ErrorHandler {
     private static int HandleException(ILogger logger, Exception e, LogOptions settings) {
         logger.MarkupLine($"\n[red]{Emoji.Known.Collision} Unexpected System Exception:[/] [white]{Markup.Escape(e.GetType().Name)}[/]");
         logger.MarkupLine("[red]This may indicate a bug in the application. Please report this issue.[/]");
+        logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");
         logger.MarkupLine("[grey]Run with --stack-trace for a detailed error log.[/]");
 
         if (settings.StackTrace) {

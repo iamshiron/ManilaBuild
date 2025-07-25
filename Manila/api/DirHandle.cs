@@ -16,8 +16,7 @@ public class DirHandle {
     /// </summary>
     /// <param name="path">The directory path (relative or absolute).</param>
     public DirHandle(string path) {
-        if (System.IO.Path.IsPathFullyQualified(path)) Handle = path;
-        else Handle = Path.Join(Directory.GetCurrentDirectory(), path);
+        Handle = Path.IsPathFullyQualified(path) ? path : Path.Join(Directory.GetCurrentDirectory(), path);
     }
 
     /// <summary>
@@ -25,7 +24,7 @@ public class DirHandle {
     /// </summary>
     /// <returns>Array of file handles for all files in the directory.</returns>
     public FileHandle[] Files() {
-        string[] files = Directory.GetFiles(this.Handle);
+        string[] files = Directory.GetFiles(Handle);
         FileHandle[] result = new FileHandle[files.Length];
         for (int i = 0; i < files.Length; i++) {
             result[i] = new FileHandle(files[i]);
@@ -39,7 +38,7 @@ public class DirHandle {
     /// <param name="name">The name of the file.</param>
     /// <returns>A file handle for the specified file.</returns>
     public FileHandle File(string name) {
-        return new FileHandle(System.IO.Path.Combine(this.Handle, name));
+        return new FileHandle(Path.Combine(Handle, name));
     }
 
     /// <summary>
@@ -48,12 +47,12 @@ public class DirHandle {
     /// <param name="path">Path segments to join.</param>
     /// <returns>A new directory handle with the combined path.</returns>
     public DirHandle Join(params object[] path) {
-        var newPath = this.Handle;
+        var newPath = Handle;
         foreach (var p in path) {
             if (p != null) {
                 var pStr = p.ToString();
                 if (!string.IsNullOrEmpty(pStr))
-                    newPath = System.IO.Path.Combine(newPath, pStr);
+                    newPath = Path.Combine(newPath, pStr);
             }
         }
         return new DirHandle(newPath);
@@ -64,7 +63,7 @@ public class DirHandle {
     /// <param name="dir">The directory handle to join with.</param>
     /// <returns>A new directory handle with the combined path.</returns>
     public DirHandle Join(DirHandle dir) {
-        return new DirHandle(System.IO.Path.Combine(this.Handle, dir.Handle));
+        return new DirHandle(Path.Combine(Handle, dir.Handle));
     }
 
     /// <summary>
@@ -72,20 +71,20 @@ public class DirHandle {
     /// </summary>
     /// <returns>True if the path is absolute, false otherwise.</returns>
     public bool IsAbsolute() {
-        return System.IO.Path.IsPathRooted(this.Handle);
+        return Path.IsPathRooted(Handle);
     }
     /// <summary>
     /// Checks if this directory exists on the file system.
     /// </summary>
     /// <returns>True if the directory exists, false otherwise.</returns>
     public bool Exists() {
-        return Directory.Exists(this.Handle);
+        return Directory.Exists(Handle);
     }
     /// <summary>
     /// Creates this directory on the file system.
     /// </summary>
     public void Create() {
-        _ = Directory.CreateDirectory(this.Handle);
+        _ = Directory.CreateDirectory(Handle);
     }
 
     /// <summary>
@@ -93,7 +92,7 @@ public class DirHandle {
     /// </summary>
     /// <returns>The directory path.</returns>
     public string Get() {
-        return this.Handle;
+        return Handle;
     }
 
     /// <summary>
