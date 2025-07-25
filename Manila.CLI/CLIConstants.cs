@@ -28,6 +28,7 @@ public static class CLIConstants {
         public static readonly string Path = "[yellow]Path[/]";
         public static readonly string Author = "[red]Author[/]";
         public static readonly string Artifact = "[cyan]Artifact[/]";
+        public static readonly string Template = "[magenta]Template[/]";
     }
 
     // Common messages and titles

@@ -185,6 +185,7 @@ public static class ManilaCli {
                 // Base Commands
                 .AddTransient<RunCommand>()
                 .AddTransient<PluginsCommand>()
+                .AddTransient<TemplatesCommand>()
                 .AddTransient<JobsCommand>()
                 .AddTransient<ArtifactsCommand>()
                 .AddTransient<ProjectsCommand>()
@@ -210,6 +211,7 @@ public static class ManilaCli {
             c.AddCommand<JobsCommand>("jobs");
             c.AddCommand<ArtifactsCommand>("artifacts");
             c.AddCommand<ProjectsCommand>("projects");
+            c.AddCommand<TemplatesCommand>("templates");
             c.AddCommand<PluginsCommand>("plugins");
 
             c.AddBranch<APICommandSettings>("api", api => {
