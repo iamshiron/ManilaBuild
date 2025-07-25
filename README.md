@@ -21,78 +21,26 @@ If you want to see a real-world example, look at the `Zip` project under the `/r
 
 Ready to dive in? Here’s how to set up your first project with ManilaBuild. This example will create a simple zip archive.
 
-### 1. Project Structure
+### 1. Project Setup
 
-First, create the following directory structure for your project.
+First, create a new empty folder that will contain your workspace.
+Inside this folder, run `manila init` to initialize a new empty workspace.
 
-```
-/my-awesome-workspace
-|-- /zip
-|   |-- Manila.js       # Project-level configuration
-|   `-- /src
-|       `-- /main       # Your source set
-|           |-- somefile.txt
-|           `-- another.txt
-`-- Manila.js           # Workspace-level configuration
-```
+### 2. Project Creation
 
-### 2. The Source Code
+To create your first project, we will use the *Zip project template* as an example.
+To create this project, just type `manila new your_project zip:default`.
+You will now see a new directory with the name of your project, containing a build script to creat the zip file and a test file.
 
-Go ahead and create some files and sub-folders inside `src/main`. Their contents will be included in the final zip archive.
-
-### 3. The Build Script
-
-Now, let's create the project-level build script. In the root of your `zip` project (`my-awesome-workspace/zip/`), create a file named `Manila.js`. This file tells ManilaBuild how to build your project.
-
-```javascript
-const project = Manila.getProject();
-const workspace = Manila.getWorkspace();
-
-// Apply the zip plugin
-Manila.apply('shiron.manila:zip/zip');
-const config = Manila.getConfig();
-
-project.version('1.0.0');
-project.description('Demo Project Core');
-
-project.sourceSets({
-    main: Manila.sourceSet(project.GetPath().join('src/main')).include('**/*.*')
-});
-
-// Define the project's artifacts
-project.Artifacts({
-    // Define the 'main' artifact
-    main: Manila.artifact((artifact) => { // The 'artifact' object is passed to the callback
-        Manila.job('build').execute(async () => {
-            // This is where the project is built
-            await Manila.build(workspace, project, config, artifact);
-            print('Zip file created!');
-        });
-    })
-    .from('shiron.manila:zip/zip')
-    .description('Awesome Zip Artifact')
-});
-```
-
-### 4. The Workspace Script
-
-Finally, add a workspace-level script to the root of your workspace (`my-awesome-workspace/Manila.js`). This file is used for global configurations that apply to all projects. For now, it can be minimal.
-
-**Keep in mind:** This file also acts as a marker that identifies the directory as a ManilaBuild workspace. You must create this file, even if it's empty.
-
-```javascript
-const workspace = Manila.getWorkspace();
-```
-
-### 5. Build and Run!
+### 3. Build!
 
 That's it! Now you can build your project from the command line:
 
 ```bash
-manila run zip/main:build
+manila run your_project/main:build
 ```
 
-This command follows the format `manila run <project-name>/<artifact-name>:<job-name>`. In our case, we're executing the `build` job defined in the `main` artifact of the `zip` project.
+This command follows the format `manila run <project-name>/<artifact-name>:<job-name>`. In our case, we're executing the `build` job defined in the `main` artifact of the `your_project` project.
 
 You should see output as the zip file is built, followed by your `Zip file created!` message and a final confirmation that the build was successful.
 
