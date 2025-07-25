@@ -128,7 +128,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         var package = match.Groups["package"].Value;
         var version = match.Groups["version"].Value;
 
-        _logger.Info($"Plugin {plugin.Name} requires dependency: {package}@{version}");
+        _logger.Debug($"Plugin {plugin.Name} requires dependency: {package}@{version}");
         var nugetContextID = Guid.NewGuid();
         _logger.Log(new NuGetPackageLoadingLogEntry(package, version, plugin, nugetContextID));
 
@@ -144,7 +144,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             }
         }
 
-        _logger.Info($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
+        _logger.Debug($"Resolved and registered {nugetPackages.Count} assemblies for {package}.");
     }
 
     private static void InjectPluginInstance(ManilaPlugin plugin, Type pluginType) {

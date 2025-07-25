@@ -9,7 +9,7 @@ namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retrieve artifacts information")]
 internal sealed class APIArtifactsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
-    BaseManilaCommand<APIArtifactsCommand.Settings>(baseServices.Logger) {
+    BaseManilaCommand<APIArtifactsCommand.Settings>(baseServices) {
 
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly Workspace? _workspace = workspace;

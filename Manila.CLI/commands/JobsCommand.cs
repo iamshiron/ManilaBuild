@@ -10,7 +10,7 @@ namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available jobs in the current workspace")]
 internal sealed class JobsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
-    BaseManilaCommand<JobsCommand.Settings>(baseServices.Logger) {
+    BaseManilaCommand<JobsCommand.Settings>(baseServices) {
 
     private readonly Workspace? _workspace = workspace;
     private readonly BaseServiceCotnainer _baseServices = baseServices;

@@ -9,7 +9,7 @@ namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retrieve projects information")]
 internal sealed class APIProjectsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
-    BaseManilaCommand<APIProjectsCommand.Settings>(baseServices.Logger) {
+    BaseManilaCommand<APIProjectsCommand.Settings>(baseServices) {
 
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly Workspace? _workspace = workspace;

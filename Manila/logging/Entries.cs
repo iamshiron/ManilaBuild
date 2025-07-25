@@ -357,7 +357,7 @@ public class BuildFailedLogEntry : BaseLogEntry {
 /// Logged when projects have been fully initialized.
 /// </summary>
 public class ProjectsInitializedLogEntry : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Info;
+    public override LogLevel Level => LogLevel.System;
     public long Duration { get; }
 
     [JsonConstructor]

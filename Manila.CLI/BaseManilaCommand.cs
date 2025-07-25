@@ -9,9 +9,10 @@ namespace Shiron.Manila.CLI;
 /// Base class for all Manila CLI commands that provides centralized error handling.
 /// </summary>
 /// <typeparam name="TSettings">The settings type for the command</typeparam>
-public abstract class BaseManilaCommand<TSettings>(ILogger logger) : Command<TSettings>
+public abstract class BaseManilaCommand<TSettings>(BaseServiceCotnainer baseServers) : Command<TSettings>
     where TSettings : DefaultCommandSettings {
-    private readonly ILogger _logger = logger;
+
+    private readonly ILogger _logger = baseServers.Logger;
 
     /// <summary>
     /// Final execute method that wraps the command execution with error handling.
@@ -35,9 +36,10 @@ public abstract class BaseManilaCommand<TSettings>(ILogger logger) : Command<TSe
 /// Base class for all Manila CLI commands that provides centralized error handling.
 /// </summary>
 /// <typeparam name="TSettings">The settings type for the command</typeparam>
-public abstract class BaseAsyncManilaCommand<TSettings>(ILogger logger) : AsyncCommand<TSettings>
+public abstract class BaseAsyncManilaCommand<TSettings>(BaseServiceCotnainer container) : AsyncCommand<TSettings>
     where TSettings : DefaultCommandSettings {
-    private readonly ILogger _logger = logger;
+
+    private readonly ILogger _logger = container.Logger;
 
     /// <summary>
     /// Final execute method that wraps the command execution with error handling.

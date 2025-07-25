@@ -10,7 +10,7 @@ namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retrieve plugins information")]
 internal sealed class APIPluginsCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null) :
-    BaseManilaCommand<APIPluginsCommand.Settings>(baseServices.Logger) {
+    BaseManilaCommand<APIPluginsCommand.Settings>(baseServices) {
 
     private readonly BaseServiceCotnainer _baseServices = baseServices;
     private readonly ServiceContainer? _services = services;

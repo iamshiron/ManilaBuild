@@ -10,7 +10,7 @@ namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available artifacts in the current workspace")]
 internal sealed class ArtifactsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
-    BaseManilaCommand<ArtifactsCommand.Settings>(baseServices.Logger) {
+    BaseManilaCommand<ArtifactsCommand.Settings>(baseServices) {
 
     private readonly Workspace? _workspace = workspace;
     private readonly BaseServiceCotnainer _baseServices = baseServices;
