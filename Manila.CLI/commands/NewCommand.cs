@@ -13,7 +13,7 @@ namespace Shiron.Manila.CLI.Commands;
 
 [Description("Creates a new project based on a template.")]
 public class NewCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null) :
-    BaseAsyncManilaCommand<NewCommand.Settings>(baseServices.Logger) {
+    BaseAsyncManilaCommand<NewCommand.Settings>(baseServices) {
 
     private readonly ServiceContainer? _services = services;
     private readonly BaseServiceCotnainer _baseServices = baseServices;
