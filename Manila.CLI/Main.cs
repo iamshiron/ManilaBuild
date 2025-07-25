@@ -180,13 +180,15 @@ public static class ManilaCli {
 
         _ = services.AddSingleton(manilaEngine)
                 .AddSingleton(baseServiceContainer)
-                .AddSingleton(Directories);
+                .AddSingleton(Directories)
+                .AddSingleton(baseServiceContainer.Logger);
         _ = services
                 // Base Commands
                 .AddTransient<RunCommand>()
                 .AddTransient<PluginsCommand>()
                 .AddTransient<TemplatesCommand>()
                 .AddTransient<JobsCommand>()
+                .AddTransient<NewCommand>()
                 .AddTransient<ArtifactsCommand>()
                 .AddTransient<ProjectsCommand>()
                 .AddTransient<InitCommand>()
@@ -207,6 +209,7 @@ public static class ManilaCli {
             c.SetApplicationVersion(ManilaEngine.VERSION);
 
             c.AddCommand<InitCommand>("init");
+            c.AddCommand<NewCommand>("new");
             c.AddCommand<RunCommand>("run");
             c.AddCommand<JobsCommand>("jobs");
             c.AddCommand<ArtifactsCommand>("artifacts");

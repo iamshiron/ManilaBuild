@@ -254,6 +254,56 @@ public static partial class RegexUtils {
     private static partial Regex PluginApiClassRegexGenerator();
 
     /// <summary>
+    /// Regex for the format: plugin:template
+    /// </summary>
+    public static readonly Regex TemplateRegex = TemplateRegexGenerator();
+
+    /// <summary>
+    /// Represents a successful match for a template string.
+    /// </summary>
+    public record TemplateMatch(string Plugin, string Template) {
+        /// <summary>
+        /// Reconstructs the string identifier from this TemplateMatch object.
+        /// </summary>
+        /// <returns>The formatted template string.</returns>
+        public string Format() {
+            return $"{Plugin}:{Template}";
+        }
+
+        /// <summary>
+        /// Returns a string representation of the TemplateMatch object.
+        /// </summary>
+        public override string ToString() {
+            return $"TemplateMatch(Plugin: {Plugin}, Template: {Template})";
+        }
+    }
+
+    /// <summary>
+    /// Matches a string against the TemplateRegex.
+    /// </summary>
+    /// <param name="s">The input string.</param>
+    /// <returns>A <see cref="TemplateMatch"/> record if the match is successful; otherwise, null.</returns>
+    public static TemplateMatch? MatchTemplate(string s) {
+        var match = TemplateRegex.Match(s.Trim());
+        if (!match.Success) return null;
+
+        return new TemplateMatch(
+            match.Groups["plugin"].Value,
+            match.Groups["template"].Value
+        );
+    }
+
+    /// <summary>
+    /// Checks if a string is a valid template identifier.
+    /// </summary>
+    /// <param name="s">The string to validate.</param>
+    /// <returns>True if the string matches the template format; otherwise, false.</returns>
+    public static bool IsValidTemplate(string s) => TemplateRegex.IsMatch(s.Trim());
+
+    [GeneratedRegex(@"^(?<plugin>[^:@/]+):(?<template>[\w-]+)$", RegexOptions.Compiled)]
+    private static partial Regex TemplateRegexGenerator();
+
+    /// <summary>
     /// Helper to get a group's value, or null if the group was not captured.
     /// </summary>
     private static string? GetValueOrNull(Group group) => group.Success ? group.Value : null;

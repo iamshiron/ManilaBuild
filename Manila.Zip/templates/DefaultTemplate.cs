@@ -15,7 +15,7 @@ public static class DefaultTemplate {
                         "const config = Manila.getConfig()",
                         "",
                         "project.version('1.0.0')",
-                        $"project.description('{args["description"]!}')",
+                        $"project.description('Default Zip Project')",
                         "",
                         "project.sourceSets({",
                         "    main: Manila.sourceSet(project.getPath().join('main')).include('**/*')",
@@ -32,7 +32,13 @@ public static class DefaultTemplate {
                         "        .from('shiron.manila:zip/zip')",
                         "        .description('Zip Main Artifact')",
                         "})",
+                        ""
                     ];
+                })
+            )
+            .WithFile(
+                new TemplateFileBuilder("/main/test.txt", (args) => {
+                    return ["This is a test file for the default zip template."];
                 })
             )
             .WithProperty("description", "The description of the project", false, "Manila Zip Project")

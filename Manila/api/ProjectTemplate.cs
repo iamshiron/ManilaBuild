@@ -1,4 +1,5 @@
 
+using System.Threading.Tasks;
 using Shiron.Manila.Exceptions;
 
 namespace Shiron.Manila.API;
@@ -76,3 +77,21 @@ public record ProjectTemplate(
         IReadOnlyDictionary<string, PropertyEntry> Properties,
         IReadOnlyDictionary<string, ITemplateFile> Files
 );
+
+public static class ProjectCreator {
+    public static async Task Create(string root, ProjectTemplate template, Dictionary<string, object?> properties) {
+        List<Task> tasks = [];
+
+        foreach (var (_, file) in template.Files) {
+            var filePath = Path.Join(root, file.RelativePath.TrimStart('/'));
+            var directory = Path.GetDirectoryName(filePath);
+
+            if (directory != null && !Directory.Exists(directory)) _ = Directory.CreateDirectory(directory);
+
+            var fileContent = string.Join(Environment.NewLine, file.Create(properties));
+            tasks.Add(File.WriteAllTextAsync(filePath, fileContent));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+}
