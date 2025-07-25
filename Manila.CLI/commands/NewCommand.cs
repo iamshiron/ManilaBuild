@@ -45,6 +45,8 @@ public class NewCommand(BaseServiceCotnainer baseServices, ServiceContainer? ser
         var root = Path.Join(".", projectName);
         await ProjectCreator.Create(root, template, []);
 
+        _baseServices.Logger.MarkupLine(Messages.ProjectCreatedSuccessfully);
+
         return ExitCodes.SUCCESS;
     }
 }

@@ -43,6 +43,8 @@ public static class CLIConstants {
         public static readonly string AvailablePlugins = "Available Plugins";
         public static readonly string WorkspaceJobs = "Workspace Jobs";
 
+        public static readonly string ProjectCreatedSuccessfully = "[green]Project created successfully![/]";
+
         public static class InvalidSubCommand {
             public static readonly string ApiSubcommand = "Invalid or unknown API subcommand! Run 'manila api --help' to see available subcommands.";
         }

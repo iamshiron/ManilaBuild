@@ -4,9 +4,6 @@ using Shiron.Manila.Exceptions;
 
 namespace Shiron.Manila.API;
 
-public record ProjectTemplateProperty(string Name, string? Description = null, bool IsRequired = true, object? DefaultValue = default);
-public record PropertyEntry(ProjectTemplateProperty Property, Type PropertyType);
-
 public interface ITemplateFile {
     string RelativePath { get; }
     bool Validate(Dictionary<string, object?> properties) => true;
@@ -47,13 +44,7 @@ public class ProjectTemplateBuilder(string name, string? description = null) {
 
     public string Name { get; } = name;
     public string? Description { get; } = description;
-    public Dictionary<string, PropertyEntry> Properties { get; } = [];
     public Dictionary<string, ITemplateFile> Files { get; } = [];
-
-    public ProjectTemplateBuilder WithProperty<T>(string name, string? description = null, bool isRequired = true, T? defaultValue = default) {
-        Properties[name] = new PropertyEntry(new(name, description, isRequired, defaultValue), typeof(T));
-        return this;
-    }
 
     public ProjectTemplateBuilder WithFile(TemplateFileBuilder builder) {
         return WithFile(builder.Build());
@@ -67,14 +58,13 @@ public class ProjectTemplateBuilder(string name, string? description = null) {
     }
 
     public ProjectTemplate Build() {
-        return new ProjectTemplate(Name, Description, Properties, Files);
+        return new ProjectTemplate(Name, Description, Files);
     }
 }
 
 public record ProjectTemplate(
         string Name,
         string? Description,
-        IReadOnlyDictionary<string, PropertyEntry> Properties,
         IReadOnlyDictionary<string, ITemplateFile> Files
 );
 

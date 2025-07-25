@@ -41,7 +41,6 @@ public static class DefaultTemplate {
                     return ["This is a test file for the default zip template."];
                 })
             )
-            .WithProperty("description", "The description of the project", false, "Manila Zip Project")
         .Build();
     }
 }
