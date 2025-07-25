@@ -187,7 +187,7 @@ public static class AnsiConsoleRenderer {
         PushLog(string.Join(" ", msg), parentID, contextID);
     }
     private static void PushLog(string msg, string? parentID = null, string? contextID = null) {
-        if (_buildCompletion == null || (_buildCompletion != null && _buildCompletion.Task.IsCompleted)) {
+        if (_executionTree == null || _buildCompletion == null || (_buildCompletion != null && _buildCompletion.Task.IsCompleted)) {
             AnsiConsole.MarkupLine(msg);
             return;
         }
