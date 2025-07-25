@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Shiron.Manila.Exceptions;
 
-namespace Shiron.Manila.API;
+namespace Shiron.Manila.Ext;
 
 public interface ITemplateFile {
     string RelativePath { get; }
