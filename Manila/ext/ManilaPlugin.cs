@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Shiron.Manila.API;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
@@ -20,6 +21,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public readonly List<Type> Dependencies = [];
     public string? File { get; internal set; } = null;
     public readonly Dictionary<string, Type> APIClasses = [];
+    public readonly Dictionary<string, ProjectTemplate> ProjectTemplates = [];
 
     internal ILogger? _logger { get; private set; }
 
@@ -84,6 +86,13 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     }
     public void RegisterAPIType<T>(string name) {
         APIClasses.Add(name, typeof(T));
+    }
+    public void RegisterProjectTemplate(ProjectTemplate template) {
+        var name = template.Name;
+        if (ProjectTemplates.ContainsKey(name)) {
+            throw new ManilaException($"Project template with name '{name}' already registered in plugin '{Group}.{Name}'.");
+        }
+        ProjectTemplates[name] = template;
     }
 
     /// <summary>
