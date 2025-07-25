@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Spectre.Console.Cli;
 

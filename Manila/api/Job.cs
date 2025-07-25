@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Newtonsoft.Json;
 using Shiron.Manila.API.Builders;
@@ -8,109 +11,136 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
+/// <summary>
+/// Defines a single, executable step within a <see cref="Job"/>.
+/// </summary>
 public interface IJobAction {
+    /// <summary>
+    /// Executes the action asynchronously.
+    /// </summary>
     Task ExecuteAsync();
 }
 
-public class JobScriptAction(ScriptObject obj) : IJobAction {
-    private readonly ScriptObject _scriptObject = obj;
-    public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
+/// <summary>
+/// An action that executes a JavaScript function provided as a <see cref="ScriptObject"/>.
+/// </summary>
+/// <param name="scriptObject">The script object representing the function to invoke.</param>
+public class JobScriptAction(ScriptObject scriptObject) : IJobAction {
+    private readonly ScriptObject _scriptObject = scriptObject;
 
+    /// <inheritdoc/>
     public async Task ExecuteAsync() {
         try {
-            var res = _scriptObject.InvokeAsFunction();
-            if (res is Task task) {
+            var result = _scriptObject.InvokeAsFunction();
+            // If the script function returns a Task (e.g., it's an async function), await it.
+            if (result is Task task) {
                 await task;
             }
-        } catch (Exception e) {
-            throw new ManilaException("Error executing job script action", e);
+        } catch (ScriptEngineException e) {
+            // Wrap script engine errors in a more specific exception type.
+            throw new ScriptExecutionException("A script error occurred during job execution.", e);
         }
-    }
-}
-public class JobShellAction(ShellUtils.CommandInfo info) : IJobAction {
-    private readonly ShellUtils.CommandInfo _commandInfo = info;
-    public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
-
-    public async Task ExecuteAsync() {
-        ShellUtils.Run(_commandInfo);
-        await Task.Yield();
-    }
-}
-public class PrintAction(ILogger logger, string message, string scriptPath, Guid scriptContextID) : IJobAction {
-    private readonly ILogger _logger = logger;
-    private readonly string _message = message;
-    private readonly string _scriptPath = scriptPath;
-    private readonly Guid _scriptContextID = scriptContextID;
-    public string Type => this.GetType().FullName ?? "UnknownJobScriptActionType";
-
-    public async Task ExecuteAsync() {
-        _logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextID));
-        await Task.Yield();
     }
 }
 
 /// <summary>
-/// Represents a job in the build script.
+/// An action that executes a command in the system's shell.
+/// </summary>
+/// <param name="commandInfo">The details of the command to execute.</param>
+public class JobShellAction(ShellUtils.CommandInfo commandInfo) : IJobAction {
+    private readonly ShellUtils.CommandInfo _commandInfo = commandInfo;
+
+    /// <inheritdoc/>
+    public Task ExecuteAsync() {
+        try {
+            // Offload the synchronous, potentially long-running shell command to a thread pool thread.
+            return Task.Run(() => ShellUtils.Run(_commandInfo));
+        } catch (Exception e) {
+            // Wrap any process execution errors in a BuildProcessException.
+            throw new BuildProcessException($"Shell command failed: '{_commandInfo.Command}'", e);
+        }
+    }
+}
+
+/// <summary>
+/// An action that logs a message using the Manila logging system.
+/// </summary>
+/// <param name="logger">The logger instance.</param>
+/// <param name="message">The message to log.</param>
+/// <param name="scriptPath">The path of the script that generated this action.</param>
+/// <param name="scriptContextId">The context ID of the script execution.</param>
+public class PrintAction(ILogger logger, string message, string scriptPath, Guid scriptContextId) : IJobAction {
+    private readonly ILogger _logger = logger;
+    private readonly string _message = message;
+    private readonly string _scriptPath = scriptPath;
+    private readonly Guid _scriptContextId = scriptContextId;
+
+    /// <inheritdoc/>
+    public Task ExecuteAsync() {
+        // Logging is a fast, synchronous operation; no need for a real async task.
+        _logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextId));
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Represents an executable unit of work with defined dependencies and actions.
 /// </summary>
 public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) : ExecutableObject {
-    private readonly ILogger _logger = logger;
     private readonly IJobRegistry _jobRegistry = jobRegistry;
+    private readonly ILogger _logger = logger;
 
+    /// <summary>Gets the simple name of the job.</summary>
     public readonly string Name = builder.Name;
+
+    /// <summary>Gets the list of identifiers for jobs that must be completed before this one.</summary>
     public readonly List<string> Dependencies = builder.Dependencies;
+
+    /// <summary>Gets the sequence of actions this job will perform when executed.</summary>
     public readonly IJobAction[] Actions = builder.Actions;
+
+    /// <summary>Gets the script context in which this job was defined.</summary>
     [JsonIgnore]
     public readonly ScriptContext Context = builder.ScriptContext;
+
+    /// <summary>Gets the component (e.g., Project or Workspace) this job belongs to.</summary>
     [JsonIgnore]
     public readonly Component Component = builder.Component;
+
+    /// <summary>Gets the user-provided description of the job.</summary>
     public readonly string Description = builder.JobDescription;
+
+    /// <summary>Gets a value indicating whether this job must run serially.</summary>
     public readonly bool Blocking = builder.Blocking;
-    public readonly string? ArtiafactName = builder.ArtifactBuilder?.Name;
+
+    /// <summary>Gets the name of the artifact this job contributes to, if any.</summary>
+    public readonly string? ArtifactName = builder.ArtifactBuilder?.Name;
+
+    /// <summary>Gets the unique runtime ID for an instance of this job execution.</summary>
     public readonly string JobID = Guid.NewGuid().ToString();
 
     /// <summary>
-    /// Get the identifier of the job.
+    /// Generates the canonical, unique identifier for the job.
     /// </summary>
-    /// <returns>The unique identifier of the job</returns>
+    /// <returns>A unique string identifier for the job definition.</returns>
     public string GetIdentifier() {
-        return new RegexUtils.JobMatch(Component is Workspace ? null : Component.GetIdentifier(), ArtiafactName, Name).Format();
+        var componentId = (Component is Workspace) ? null : Component.GetIdentifier();
+        return new RegexUtils.JobMatch(componentId, ArtifactName, Name).Format();
     }
 
-    /// <summary>
-    /// Gets the execution order of the job and its dependencies.
-    /// </summary>
-    /// <returns>A ascending list of the job execution order</returns>
-    public List<string> GetExecutionOrder() {
-        List<string> result = [];
-        foreach (string dependency in Dependencies) {
-            Job? dependentJob = _jobRegistry.GetJob(dependency);
-            if (dependentJob == null) { _logger.Warning("Job not found: " + dependency); continue; }
-            List<string> dependencyOrder = dependentJob.GetExecutionOrder();
-            foreach (string depJob in dependencyOrder) {
-                if (!result.Contains(depJob)) {
-                    result.Add(depJob);
-                }
-            }
-
-        }
-        if (!result.Contains(GetIdentifier())) {
-            result.Add(GetIdentifier());
-        }
-
-        return result;
-    }
-
+    /// <inheritdoc/>
     public override bool IsBlocking() {
         return Blocking;
     }
 
+    /// <inheritdoc/>
     protected override async Task RunAsync() {
-        _logger.Debug($"Executing job: {ExecutableID}");
-
         _logger.Log(new JobExecutionStartedLogEntry(this, ExecutableID));
         using (_logger.LogContext.PushContext(ExecutableID)) {
             try {
-                foreach (var a in Actions) await a.ExecuteAsync();
+                foreach (var action in Actions) {
+                    await action.ExecuteAsync();
+                }
             } catch (Exception e) {
                 _logger.Log(new JobExecutionFailedLogEntry(this, ExecutableID, e));
                 throw;
@@ -118,10 +148,13 @@ public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) :
             _logger.Log(new JobExecutionFinishedLogEntry(this, ExecutableID));
         }
     }
+
+    /// <inheritdoc/>
     public override string GetID() {
         return GetIdentifier();
     }
 
+    /// <inheritdoc/>
     public override string ToString() {
         return $"Job({GetIdentifier()})";
     }

@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using NUnit.Framework;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Tests;
@@ -63,7 +64,7 @@ public class FunctionUtilsTests {
     public void ManilaException() {
         var instance = new TestClass();
         var method = typeof(TestClass).GetMethod("TooManyParams");
-        Assert.Throws<ArgumentException>(() => FunctionUtils.ToDelegate(instance, method!));
+        Assert.Throws<ManilaException>(() => FunctionUtils.ToDelegate(instance, method!));
     }
 
     [Test]

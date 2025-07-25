@@ -182,9 +182,6 @@ public sealed class ScriptContext : IScriptContext {
         jobCompletion.TrySetException(exceptionToThrow);
     }
 
-    // This method has been removed as its logic is now inside ExecuteScriptAsync,
-    // which simplifies the flow and exception handling for compilation.
-
     private async Task ExecuteScriptAsync(IFileHashCache cache) {
         using (new ProfileScope(_profiler, "Executing Script")) {
             string scriptContent;

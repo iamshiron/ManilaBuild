@@ -26,7 +26,7 @@ public class JobRegistry(IProfiler profiler) : IJobRegistry {
     public void RegisterJob(Job job) {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             lock (_lock) {
-                var uri = new RegexUtils.JobMatch(job.Component is Project ? ((Project) job.Component).Name : null, job.ArtiafactName, job.Name).Format();
+                var uri = new RegexUtils.JobMatch(job.Component is Project ? ((Project) job.Component).Name : null, job.ArtifactName, job.Name).Format();
 
                 if (_jobs.ContainsKey(uri)) {
                     throw new ManilaException($"Job with uri '{uri}' is already registered.");

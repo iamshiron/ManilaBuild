@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using Shiron.Manila.Exceptions;
 
 namespace Shiron.Manila.Utils;
 

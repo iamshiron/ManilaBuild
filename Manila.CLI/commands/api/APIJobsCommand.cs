@@ -78,7 +78,7 @@ internal sealed class APIJobsCommand(BaseServiceCotnainer baseServices, Workspac
                         jobData.project,
                         jobData.artifact,
                         jobData.blocking,
-                        executionOrder = job.GetExecutionOrder(),
+                        executionOrder = job.Dependencies.ToArray(),
                         jobId = job.JobID,
                         component = job.Component?.GetIdentifier()
                     });
@@ -115,7 +115,7 @@ internal sealed class APIJobsCommand(BaseServiceCotnainer baseServices, Workspac
                         jobData.project,
                         jobData.artifact,
                         jobData.blocking,
-                        executionOrder = job.GetExecutionOrder(),
+                        executionOrder = job.Dependencies.ToArray(),
                         jobId = job.JobID,
                         component = job.Component?.GetIdentifier()
                     });
@@ -148,7 +148,7 @@ internal sealed class APIJobsCommand(BaseServiceCotnainer baseServices, Workspac
                             jobData.project,
                             jobData.artifact,
                             jobData.blocking,
-                            executionOrder = job.GetExecutionOrder(),
+                            executionOrder = job.Dependencies.ToArray(),
                             jobId = job.JobID,
                             component = job.Component?.GetIdentifier()
                         });

@@ -116,11 +116,8 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
             var builder = new JobBuilder(_baseServices.Logger, _services.JobRegistry, name, _context, applyTo, null);
             JobBuilders.Add(builder);
             return builder;
-        } catch (ContextException e) {
-            if (e.Is != Context.WORKSPACE) throw;
-            var builder = new JobBuilder(_baseServices.Logger, _services.JobRegistry, name, _context, _workspace, null);
-            JobBuilders.Add(builder);
-            return builder;
+        } catch (Exception e) {
+            throw new ManilaException($"Failed to create job '{name}': {e.Message}", e);
         }
     }
 
@@ -143,7 +140,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// </summary>
     public void OnProject(object o, dynamic a) {
         using (new ProfileScope(_baseServices.Profiler, MethodBase.GetCurrentMethod()!)) {
-            var filter = ProjectFilter.From(_baseServices.Logger, o);
+            var filter = ProjectFilter.From(o);
             _workspace.ProjectFilters.Add(new Tuple<ProjectFilter, Action<Project>>(filter, (project) => a(project)));
         }
     }
@@ -266,7 +263,7 @@ public sealed class Manila(BaseServiceCotnainer baseServices, ServiceContainer s
     /// Applies a language component by its URI.
     /// </summary>
     public void Apply(string uri) {
-        if (_project == null) throw new ManilaException(Context.WORKSPACE, Context.PROJECT);
+        if (_project == null) throw new ManilaException("Not in a project context.");
 
         var component = _services.ExtensionManager.GetPluginComponent(uri);
         if (component is not LanguageComponent) throw new ManilaException($"Component {uri} is not a language component.");

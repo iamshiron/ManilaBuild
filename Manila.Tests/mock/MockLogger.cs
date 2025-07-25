@@ -1,5 +1,6 @@
 
 using System.Diagnostics.CodeAnalysis;
+using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 
 namespace Shiron.Manila.Mock;

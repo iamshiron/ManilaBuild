@@ -19,19 +19,19 @@ public class ExceptionTests {
 
     private static IEnumerable<TestCaseData> ExceptionTestCases {
         get {
-            yield return new TestCaseData(new ManilaException("Test"), ExitCodes.SCRIPTING_ERROR)
+            yield return new TestCaseData(new ScriptExecutionException("Test"), ExitCodes.SCRIPT_EXECUTION_ERROR)
                 .SetName("HandleException_ScriptingException_ReturnsCorrectCode");
 
-            yield return new TestCaseData(new ManilaException("Test"), ExitCodes.PLUGIN_ERROR)
+            yield return new TestCaseData(new PluginException("Test"), ExitCodes.PLUGIN_ERROR)
                 .SetName("HandleException_PluginException_ReturnsCorrectCode");
 
-            yield return new TestCaseData(new ManilaException("Test"), ExitCodes.BUILD_ERROR)
+            yield return new TestCaseData(new BuildProcessException("Test"), ExitCodes.BUILD_PROCESS_ERROR)
                 .SetName("HandleException_BuildTimeException_ReturnsCorrectCode");
 
-            yield return new TestCaseData(new ManilaException("Test"), ExitCodes.CONFIGURATION_ERROR)
+            yield return new TestCaseData(new ConfigurationException("Test"), ExitCodes.CONFIGURATION_ERROR)
                 .SetName("HandleException_ConfigurationTimeException_ReturnsCorrectCode");
 
-            yield return new TestCaseData(new ManilaException("Test"), ExitCodes.RUNTIME_ERROR)
+            yield return new TestCaseData(new InternalLogicException("Test"), ExitCodes.INTERNAL_LOGIC_ERROR)
                 .SetName("HandleException_RuntimeException_ReturnsCorrectCode");
 
             yield return new TestCaseData(new ManilaException("Test"), ExitCodes.ANY_KNOWN_ERROR)
@@ -45,7 +45,7 @@ public class ExceptionTests {
     [Test]
     [TestCaseSource(nameof(ExceptionTestCases))]
     public void HandleException_Returns_CorrectExitCode(Exception ex, int expectedExitCode) {
-        var actualExitCode = ErrorHandler.ManilaException(Logger, ex, LogOptions.None);
+        var actualExitCode = ErrorHandler.Handle(Logger, ex, LogOptions.None);
 
         Assert.That(actualExitCode, Is.EqualTo(expectedExitCode));
     }

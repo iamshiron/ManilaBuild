@@ -10,9 +10,9 @@ public static class ExceptionUtils {
     /// it will fall back to the standard <see cref="Console.WriteLine(object)"/> to ensure the exception is still logged.
     /// </remarks>
     /// <param name="e">The exception to be written to the console.</param>
-    public static void ManilaException(Exception e) {
+    public static void PrintException(Exception e) {
         try {
-            AnsiConsole.ManilaException(e);
+            AnsiConsole.WriteException(e);
         } catch {
             Console.WriteLine(e);
         }

@@ -1,155 +1,120 @@
+using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.ClearScript;
 using Shiron.Manila.Exceptions;
-using Shiron.Manila.Logging;
 
 namespace Shiron.Manila.API;
 
 /// <summary>
-/// Base class for filtering projects to create targeted configurations.
+/// Defines a base class for filtering projects to create targeted configurations.
 /// </summary>
 public abstract class ProjectFilter {
     /// <summary>
-    /// Determines if a project matches the filter criteria.
+    /// When overridden in a derived class, determines if a project matches the filter's criteria.
     /// </summary>
     /// <param name="p">The project to evaluate.</param>
-    /// <returns>True if the project matches the filter.</returns>
+    /// <returns><see langword="true"/> if the project matches the filter; otherwise, <see langword="false"/>.</returns>
     public abstract bool Predicate(Project p);
 
     /// <summary>
-    /// Creates a ProjectFilter from various input types including strings, arrays, and script objects.
+    /// Creates a <see cref="ProjectFilter"/> from various input types.
     /// </summary>
-    /// <param name="o">The input object to convert to a filter.</param>
-    /// <returns>A ProjectFilter instance based on the input type.</returns>
-    /// <exception cref="ManilaException">Thrown when the input cannot be converted to a valid filter.</exception>
-    public static ProjectFilter From(ILogger logger, object o) {
-        logger.Debug("From " + o.GetType());
+    /// <remarks>
+    /// This factory method supports:
+    /// <list type="bullet">
+    /// <item><c>"*"</c> (string) - Matches all projects.</item>
+    /// <item>Any other string - Matches a project by its exact identifier.</item>
+    /// <item>An array of filters - Matches if any filter in the array matches.</item>
+    /// <item>A JavaScript RegExp object - Matches a project's identifier against the pattern.</item>
+    /// </list>
+    /// </remarks>
+    /// <param name="o">The input object, typically from a script.</param>
+    /// <returns>A <see cref="ProjectFilter"/> instance.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the input object cannot be converted to a valid filter.</exception>
+    public static ProjectFilter From(object o) => o switch {
+        null => throw new ConfigurationException("Project filter cannot be null."),
+        string s when s == "*" => new ProjectFilterAll(),
+        string s => new ProjectFilterName(s),
+        IList<object> list => new ProjectFilterArray(list.Select(From).ToArray()),
+        ScriptObject obj => CreateFilterFromScriptObject(obj),
+        _ => throw new ConfigurationException($"Unsupported filter type: '{o.GetType().Name}'. Must be a string, array, or RegExp object."),
+    };
 
-        if (o is string) {
-            var s = (string) o;
-            if (s == "*") return new ProjectFilterAll();
-            return new ProjectFilterName(s);
+    /// <summary>
+    /// Handles the conversion of a <see cref="ScriptObject"/> to a <see cref="ProjectFilterRegex"/>.
+    /// </summary>
+    private static ProjectFilterRegex CreateFilterFromScriptObject(ScriptObject obj) {
+        try {
+            dynamic dyn = obj;
+            if (dyn.constructor?.name == "RegExp") {
+                string pattern = dyn.source;
+                string flags = dyn.flags ?? "";
+                var options = flags.Contains('i') ? RegexOptions.IgnoreCase : RegexOptions.None;
+                return new ProjectFilterRegex(new Regex(pattern, options));
+            }
+        } catch {
+            // Property access on the dynamic object failed; fall through to the string parsing method.
         }
 
-        if (o is IList<object> list) {
-            logger.Debug("Array");
-
-            var filters = new ProjectFilter[list.Count];
-            for (var i = 0; i < list.Count; i++) filters[i] = From(logger, list[i]);
-            return new ProjectFilterArray(filters);
+        var str = obj.ToString();
+        var match = Regex.Match(str!, @"^\/(.+?)\/([a-z]*)$");
+        if (match.Success) {
+            var pattern = match.Groups[1].Value;
+            var flags = match.Groups[2].Value;
+            var options = flags.Contains('i') ? RegexOptions.IgnoreCase : RegexOptions.None;
+            return new ProjectFilterRegex(new Regex(pattern, options));
         }
 
-        if (o is ScriptObject obj) {
-            foreach (var key in obj.PropertyNames) {
-                try {
-                    var value = obj.GetProperty(key);
-                    logger.Debug($"Property: {key}, Value: {value}, Type: {value?.GetType()}");
-                } catch (Exception ex) {
-                    logger.Debug($"Error accessing property {key}: {ex.Message}");
-                }
-            }
-
-            string objString = o?.ToString() ?? string.Empty;
-            if (objString.StartsWith("/") && objString.Contains("/")) {
-                int lastSlashIndex = objString.LastIndexOf('/');
-                string pattern = objString.Substring(1, lastSlashIndex - 1);
-                string flags = lastSlashIndex < objString.Length - 1 ? objString.Substring(lastSlashIndex + 1) : "";
-
-                logger.Debug($"Detected regex pattern: '{pattern}', flags: '{flags}'");
-                return new ProjectFilterRegex(new Regex(pattern));
-            }
-
-            try {
-                dynamic dyn = obj;
-                var constructorName = dyn.constructor.name;
-                if (constructorName == "RegExp") {
-                    string pattern = dyn.source;
-                    string flags = dyn.flags;
-                    logger.Debug($"Detected RegExp object with pattern: '{pattern}', flags: '{flags}'");
-                    return new ProjectFilterRegex(new Regex(pattern));
-                }
-            } catch (Exception ex) {
-                logger.Debug($"Error checking constructor: {ex.Message}");
-            }
-        }
-
-        throw new ManilaException("Invalid project filter. " + o);
+        throw new ConfigurationException("ScriptObject could not be interpreted as a filter. It must be a RegExp object.");
     }
 }
 
 /// <summary>
-/// Filters projects by exact name match.
+/// A filter that matches a project by its exact identifier.
 /// </summary>
-public class ProjectFilterName : ProjectFilter {
-    private readonly string _name;
+public class ProjectFilterName(string name) : ProjectFilter {
+    private readonly string _name = name;
 
-    /// <summary>
-    /// Initializes a new instance with the specified project name.
-    /// </summary>
-    /// <param name="name">The exact project name to match.</param>
-    public ProjectFilterName(string name) {
-        this._name = name;
-    }
-
+    /// <inheritdoc/>
     public override bool Predicate(Project p) {
         return p.GetIdentifier() == _name;
     }
 }
 
 /// <summary>
-/// Matches all projects without any filtering.
+/// A filter that matches all projects.
 /// </summary>
 public class ProjectFilterAll : ProjectFilter {
-    /// <summary>
-    /// Always returns true for any project.
-    /// </summary>
-    /// <param name="p">The project to evaluate.</param>
-    /// <returns>Always true.</returns>
+    /// <inheritdoc/>
     public override bool Predicate(Project p) {
         return true;
     }
 }
 
 /// <summary>
-/// Filters projects using regular expression pattern matching.
+/// A filter that matches a project's identifier against a regular expression.
 /// </summary>
-public class ProjectFilterRegex : ProjectFilter {
-    private readonly Regex _regex;
+public class ProjectFilterRegex(Regex regex) : ProjectFilter {
+    private readonly Regex _regex = regex;
 
-    /// <summary>
-    /// Initializes a new instance with the specified regex pattern.
-    /// </summary>
-    /// <param name="regex">The regex pattern to match against project names.</param>
-    public ProjectFilterRegex(Regex regex) {
-        this._regex = regex;
-    }
-
+    /// <inheritdoc/>
     public override bool Predicate(Project p) {
-        return _regex.IsMatch(p.Name);
+        return _regex.IsMatch(p.GetIdentifier());
     }
 }
 
 /// <summary>
-/// Filters projects using a collection of multiple filters with OR logic.
+/// A composite filter that matches a project if any of its contained filters match (OR logic).
 /// </summary>
-public class ProjectFilterArray : ProjectFilter {
-    private readonly ProjectFilter[] _filters;
+public class ProjectFilterArray(ProjectFilter[] filters) : ProjectFilter {
+    private readonly ProjectFilter[] _filters = filters;
 
     /// <summary>
-    /// Initializes a new instance with the specified array of filters.
-    /// </summary>
-    /// <param name="filters">The collection of filters to apply.</param>
-    public ProjectFilterArray(ProjectFilter[] filters) {
-        this._filters = filters;
-    }
-
-    /// <summary>
-    /// Returns true if any of the contained filters matches the project.
+    /// Determines if a project matches any of the filters in the collection.
     /// </summary>
     /// <param name="p">The project to evaluate.</param>
-    /// <returns>True if any filter matches the project.</returns>
+    /// <returns><see langword="true"/> if any filter matches; otherwise, <see langword="false"/>.</returns>
     public override bool Predicate(Project p) {
-        foreach (var filter in _filters) if (filter.Predicate(p)) return true;
-        return false;
+        return _filters.Any(filter => filter.Predicate(p));
     }
 }

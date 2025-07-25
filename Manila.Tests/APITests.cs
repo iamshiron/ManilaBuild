@@ -17,19 +17,19 @@ public class ProjectFilterTests {
 
     [Test]
     public void From_String_CreatesProjectFilterName() {
-        var filter = ProjectFilter.From(Logger, "my-project");
+        var filter = ProjectFilter.From("my-project");
         Assert.That(filter, Is.InstanceOf<ProjectFilterName>());
     }
 
     [Test]
     public void From_WildcardString_CreatesProjectFilterAll() {
-        var filter = ProjectFilter.From(Logger, "*");
+        var filter = ProjectFilter.From("*");
         Assert.That(filter, Is.InstanceOf<ProjectFilterAll>());
     }
 
     [Test]
     public void From_ListOfObjects_CreatesProjectFilterArray() {
-        var filter = ProjectFilter.From(Logger, new List<object> { "proj1", "proj2" });
+        var filter = ProjectFilter.From(new List<object> { "proj1", "proj2" });
         Assert.That(filter, Is.InstanceOf<ProjectFilterArray>());
     }
 

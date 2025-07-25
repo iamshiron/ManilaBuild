@@ -99,7 +99,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
 
     private async Task LoadPluginAsync(Type pluginType, string file, PluginLoadContext loadContext) {
         var plugin = (ManilaPlugin?) Activator.CreateInstance(pluginType)
-            ?? throw new ManilaException(pluginType, file);
+            ?? throw new ManilaException($"Failed to create instance of plugin type {pluginType.FullName} from file {file}.");
 
         plugin.SetLogger(_logger);
         plugin.File = file;
@@ -182,11 +182,11 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
 
     public T GetPlugin<T>() where T : ManilaPlugin {
         var plugin = Plugins.FirstOrDefault(p => p is T);
-        return plugin is T typedPlugin ? typedPlugin : throw new ManilaException(typeof(T));
+        return plugin is T typedPlugin ? typedPlugin : throw new ManilaException($"Plugin of type {typeof(T).FullName} not found.");
     }
     public ManilaPlugin GetPlugin(Type type) {
         var plugin = Plugins.FirstOrDefault(p => p.GetType() == type);
-        return plugin ?? throw new ManilaException(type);
+        return plugin ?? throw new ManilaException($"Plugin of type {type.FullName} not found.");
     }
 
     public ManilaPlugin GetPlugin(string uri) {
@@ -196,7 +196,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         var plugin = Plugins.FirstOrDefault(p =>
             p.Group == match.Group && p.Name == match.Plugin && (p.Version == match.Version || match.Version == null)
         );
-        return plugin ?? throw new ManilaException(match);
+        return plugin ?? throw new ManilaException($"Plugin not found for match: {match}");
     }
 
     public PluginComponent GetPluginComponent(string uri) {
@@ -208,7 +208,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             c.Value.Name == match.Component
         );
 
-        return component.Value ?? throw new ManilaException(match);
+        return component.Value ?? throw new ManilaException($"Component '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
     }
 
     public Type GetAPIType(string uri) {
@@ -220,6 +220,6 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             a.Key == match.ApiClass
         );
 
-        return apiType.Value ?? throw new ManilaException(match);
+        return apiType.Value ?? throw new ManilaException($"API class '{match.ApiClass}' not found in plugin '{plugin.Name}' with match: {match}");
     }
 }

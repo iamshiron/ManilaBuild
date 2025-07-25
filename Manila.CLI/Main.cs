@@ -179,7 +179,7 @@ public static class ManilaCli {
                 baseServiceContainer.Logger.Debug("No workspace found. Continuing without workspace.");
             }
         } catch (Exception e) {
-            return ErrorHandler.ManilaException(baseServiceContainer.Logger, e, logOptions);
+            return ErrorHandler.Handle(baseServiceContainer.Logger, e, logOptions);
         }
 
         _ = services.AddSingleton(manilaEngine)
