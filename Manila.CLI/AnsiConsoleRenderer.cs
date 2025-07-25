@@ -73,7 +73,6 @@ public static class AnsiConsoleRenderer {
                 return;
             }
 
-            // Filter logs based on the quiet flag and log level.
             if ((_options.Quiet && entry.Level < LogLevel.Error) || (!_options.Verbose && entry.Level < LogLevel.Info)) {
                 return;
             }
@@ -91,7 +90,6 @@ public static class AnsiConsoleRenderer {
     /// </summary>
     /// <param name="entry">The log entry to render.</param>
     private static void RenderLog(ILogEntry entry) {
-        // Dispatch to the correct handler based on the concrete log entry type.
         switch (entry) {
             case BasicLogEntry log:
                 HandleBasicLogEntry(log);
@@ -179,7 +177,6 @@ public static class AnsiConsoleRenderer {
                 logEntry.ParentContextID = log.ContextID;
                 RenderLog(log.Entry);
                 break;
-            // Default fallback for any unhandled log types
             default:
                 AnsiConsole.MarkupLine($"[dim]Unhandled Log Event: {entry.GetType().Name}[/]");
                 break;
@@ -190,7 +187,6 @@ public static class AnsiConsoleRenderer {
         PushLog(string.Join(" ", msg), parentID, contextID);
     }
     private static void PushLog(string msg, string? parentID = null, string? contextID = null) {
-        // Fallback for when the live display isn't active.
         if (_buildCompletion == null || (_buildCompletion != null && _buildCompletion.Task.IsCompleted)) {
             AnsiConsole.MarkupLine(msg);
             return;
@@ -198,23 +194,16 @@ public static class AnsiConsoleRenderer {
 
         TreeNode newNode;
 
-        // Check if a parentID is provided and if that parent exists in our node map.
         if (parentID != null && _executionNodes.TryGetValue(parentID, out var parentNode)) {
-            // A valid parent was found, so attach this log as a child node.
             newNode = parentNode.AddNode(msg);
         } else {
-            // If no parent is specified or the parentID is invalid, attach the log
-            // to the root of the tree to prevent it from being lost.
             newNode = _executionTree.AddNode(msg);
         }
 
-        // If this log entry has its own contextID, register its new node so that
-        // subsequent logs can attach to it.
         if (contextID != null) {
             _executionNodes[contextID] = newNode;
         }
 
-        // Trigger a refresh of the live display to show the new node.
         _refresh?.Invoke();
     }
 
