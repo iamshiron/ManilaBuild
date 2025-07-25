@@ -61,7 +61,7 @@ public class FileHashCache : IFileHashCache {
     private readonly string _root;
 
     public FileHashCache(IProfiler profiler, string file, string root) {
-        using (new ProfileScope(profiler, "Intializing FileHashCache")) {
+        using (new ProfileScope(profiler, "Initializing FileHashCache")) {
             _root = root;
             _connectionString = $"Data Source={file};Mode=ReadWriteCreate;";
 
@@ -122,7 +122,7 @@ public class FileHashCache : IFileHashCache {
             .Select(p => Path.IsPathFullyQualified(p) ? Path.GetRelativePath(_root, p) : p)
             .Distinct()];
 
-        var fileHahes = await HashUtils.CreateFileSetHashesAsync(paths, _root);
+        var fileHashes = await HashUtils.CreateFileSetHashesAsync(paths, _root);
 
         using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
@@ -144,7 +144,7 @@ public class FileHashCache : IFileHashCache {
             cachedHashes[path] = hash;
         }
 
-        return fileHahes
+        return fileHashes
             .Where(kvp => !cachedHashes.TryGetValue(kvp.Key, out var cachedHash) || cachedHash != kvp.Value)
             .Select(kvp => kvp.Key);
     }

@@ -9,10 +9,10 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retrieve plugins information")]
-internal sealed class APIPluginsCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null) :
+internal sealed class APIPluginsCommand(BaseServiceContainer baseServices, ServiceContainer? services = null) :
     BaseManilaCommand<APIPluginsCommand.Settings>(baseServices) {
 
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
     private readonly ServiceContainer? _services = services;
 
     public class Settings : APICommandSettings {

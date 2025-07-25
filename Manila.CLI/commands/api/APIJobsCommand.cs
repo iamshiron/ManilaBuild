@@ -7,11 +7,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands.API;
 
-[Description("Retreive jobs information")]
-internal sealed class APIJobsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
+[Description("Retrieve jobs information")]
+internal sealed class APIJobsCommand(BaseServiceContainer baseServices, Workspace? workspace = null) :
     BaseManilaCommand<APIJobsCommand.Settings>(baseServices) {
 
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
     private readonly Workspace? _workspace = workspace;
 
     public class Settings : APICommandSettings {

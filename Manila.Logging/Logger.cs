@@ -97,7 +97,7 @@ public class Logger(string? loggerPrefix) : ILogger {
     }
 
     /// <summary>
-    /// Unregisters a log injector, preventing it from receiving future log entries.
+    /// Removes a log injector, preventing it from receiving future log entries.
     /// </summary>
     /// <param name="id">The unique identifier of the injector to remove.</param>
     /// <exception cref="InvalidOperationException">Thrown if no injector with the specified ID is found.</exception>

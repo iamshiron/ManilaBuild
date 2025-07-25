@@ -9,11 +9,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available jobs in the current workspace")]
-internal sealed class JobsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
+internal sealed class JobsCommand(BaseServiceContainer baseServices, Workspace? workspace = null) :
     BaseManilaCommand<JobsCommand.Settings>(baseServices) {
 
     private readonly Workspace? _workspace = workspace;
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
 
     public sealed class Settings : DefaultCommandSettings { }
 

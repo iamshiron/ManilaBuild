@@ -15,7 +15,7 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
-public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories directories) {
+public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories directories) {
     #region Properties
 
     /// <summary>
@@ -29,7 +29,7 @@ public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories
     public static readonly string VERSION = "0.0.1";
 
     private readonly IDirectories _directories = directories;
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
 
     #endregion
 
@@ -131,7 +131,7 @@ public sealed class ManilaEngine(BaseServiceCotnainer baseServices, IDirectories
         }
     }
 
-    public ExecutionGraph CreateExecutionGraph(ServiceContainer services, BaseServiceCotnainer baseServices, Workspace workspace) {
+    public ExecutionGraph CreateExecutionGraph(ServiceContainer services, BaseServiceContainer baseServices, Workspace workspace) {
         var graph = new ExecutionGraph(_baseServices.Logger, _baseServices.Profiler);
 
         using (new ProfileScope(_baseServices.Profiler, "Building Dependency Tree")) {

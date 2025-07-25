@@ -9,11 +9,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists available project templates.")]
-public class TemplatesCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null) :
+public class TemplatesCommand(BaseServiceContainer baseServices, ServiceContainer? services = null) :
     BaseManilaCommand<TemplatesCommand.Settings>(baseServices) {
 
     private readonly ServiceContainer? _services = services;
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
 
     public sealed class Settings : DefaultCommandSettings { }
 

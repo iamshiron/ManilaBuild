@@ -88,7 +88,7 @@ public static class FunctionUtils {
     /// <param name="method">The method to check</param>
     /// <param name="args">The list of the arguments</param>
     /// <returns>True if the method parameters match the provided arguments, otherwise false.</returns>
-    public static bool SameParametes(MethodInfo method, object?[] args) {
+    public static bool SameParameters(MethodInfo method, object?[] args) {
         var methodParams = method.GetParameters();
         if (methodParams.Length != args.Length) return false;
 

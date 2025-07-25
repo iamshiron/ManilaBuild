@@ -19,7 +19,7 @@ namespace Shiron.Manila.API;
 /// Defines the primary, script-facing API for interacting with the Manila build system.
 /// </summary>
 public sealed class Manila(
-    BaseServiceCotnainer baseServices,
+    BaseServiceContainer baseServices,
     ServiceContainer services,
     ScriptContext context,
     WorkspaceScriptBridge workspaceBridge,
@@ -27,7 +27,7 @@ public sealed class Manila(
     ProjectScriptBridge? projectBridge,
     Project? project) {
     private readonly ServiceContainer _services = services;
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
     private readonly ScriptContext _context = context;
     private readonly Project? _project = project;
     private readonly Workspace _workspace = workspace;

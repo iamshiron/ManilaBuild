@@ -8,11 +8,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Initializes a new Manila workspace")]
-internal sealed class InitCommand(IDirectories directories, BaseServiceCotnainer baseServices) :
+internal sealed class InitCommand(IDirectories directories, BaseServiceContainer baseServices) :
     BaseManilaCommand<InitCommand.Settings>(baseServices) {
 
     private readonly IDirectories _directories = directories;
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
 
     public sealed class Settings : DefaultCommandSettings {
         [CommandOption("--force")]

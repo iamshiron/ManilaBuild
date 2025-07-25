@@ -44,7 +44,7 @@ public abstract class ScriptBridge : DynamicObject, IScriptableObject {
 
         if (DynamicMethods.TryGetValue(binder.Name, out var methods)) {
             foreach (var method in methods) {
-                if (!FunctionUtils.SameParametes(method.Method, args)) continue;
+                if (!FunctionUtils.SameParameters(method.Method, args)) continue;
 
                 var methodParams = method.Method.GetParameters();
                 for (int i = 0; i < methodParams.Length; ++i) {

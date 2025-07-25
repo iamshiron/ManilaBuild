@@ -68,24 +68,24 @@ public class FunctionUtilsTests {
     }
 
     [Test]
-    public void SameParametes_MatchingParams_ReturnsTrue() {
+    public void SameParameters_MatchingParams_ReturnsTrue() {
         var method = typeof(TestClass).GetMethod("ActionWithParams");
         object[] args = { 1, "hello" };
-        Assert.That(FunctionUtils.SameParametes(method!, args), Is.True);
+        Assert.That(FunctionUtils.SameParameters(method!, args), Is.True);
     }
 
     [Test]
-    public void SameParametes_MismatchedParamCount_ReturnsFalse() {
+    public void SameParameters_MismatchedParamCount_ReturnsFalse() {
         var method = typeof(TestClass).GetMethod("ActionWithParams");
         object[] args = { 1 };
-        Assert.That(FunctionUtils.SameParametes(method!, args), Is.False);
+        Assert.That(FunctionUtils.SameParameters(method!, args), Is.False);
     }
 
     [Test]
-    public void SameParametes_MismatchedParamType_ReturnsFalse() {
+    public void SameParameters_MismatchedParamType_ReturnsFalse() {
         var method = typeof(TestClass).GetMethod("ActionWithParams");
         object[] args = { 1, true };
-        Assert.That(FunctionUtils.SameParametes(method!, args), Is.False);
+        Assert.That(FunctionUtils.SameParameters(method!, args), Is.False);
     }
 }
 

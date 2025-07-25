@@ -8,10 +8,10 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands.API;
 
 [Description("Retrieve the execution graph layers for a specific job in json format.")]
-public class APIBuildLayersCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null, ManilaEngine? engine = null, Workspace? workspace = null) :
+public class APIBuildLayersCommand(BaseServiceContainer baseServices, ServiceContainer? services = null, ManilaEngine? engine = null, Workspace? workspace = null) :
     BaseManilaCommand<APIBuildLayersCommand.Settings>(baseServices) {
 
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
     private readonly ServiceContainer? _services = services;
     private readonly Workspace? _workspace = workspace;
     private readonly ManilaEngine? _engine = engine;

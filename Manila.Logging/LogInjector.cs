@@ -26,7 +26,7 @@ public class LogInjector : IDisposable {
     }
 
     /// <summary>
-    /// Unregisters this injector from the logger, stopping it from receiving future log entries.
+    /// Removes this injector from the logger, stopping it from receiving future log entries.
     /// </summary>
     public void Dispose() {
         _logger.RemoveInjector(ID);

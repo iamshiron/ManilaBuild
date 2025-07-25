@@ -98,7 +98,7 @@ public static class CLIConstants {
         ];
     }
 
-    public static string[] IgnoreBannerOnCommaands => [
+    public static string[] IgnoreBannerOnCommands => [
         "api"
     ];
 

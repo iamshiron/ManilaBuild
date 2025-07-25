@@ -13,7 +13,7 @@ namespace Shiron.Manila;
 /// <summary>
 /// Base container for services used by the Manila engine.
 /// </summary>
-public record BaseServiceCotnainer(
+public record BaseServiceContainer(
             ILogger Logger,
             IProfiler Profiler,
             IExecutionStage ExecutionStage

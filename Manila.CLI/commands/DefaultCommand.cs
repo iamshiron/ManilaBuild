@@ -5,7 +5,7 @@ using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Commands;
 
-public sealed class DefaultCommand(BaseServiceCotnainer baseServices) : BaseManilaCommand<DefaultCommandSettings>(baseServices) {
+public sealed class DefaultCommand(BaseServiceContainer baseServices) : BaseManilaCommand<DefaultCommandSettings>(baseServices) {
     protected override int ExecuteCommand(CommandContext context, DefaultCommandSettings settings) {
         return ManilaCli.CommandApp == null
             ? throw new ManilaException("CommandApp is not initialized.")

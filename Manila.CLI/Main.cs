@@ -37,8 +37,8 @@ public static class ManilaCli {
         AnsiConsoleRenderer.Init(logger, logOptions);
     }
 
-    private static async Task InitExtensions(BaseServiceCotnainer baseServices, ServiceContainer services) {
-        using (new ProfileScope(baseServices.Profiler, "Initializing Extensons")) {
+    private static async Task InitExtensions(BaseServiceContainer baseServices, ServiceContainer services) {
+        using (new ProfileScope(baseServices.Profiler, "Initializing Extensions")) {
             if (Directories == null) {
                 throw new ManilaException("Directories are not initialized.");
             }
@@ -61,7 +61,7 @@ public static class ManilaCli {
         return engine;
     }
 
-    public static async Task<int> RunJobAsync(ServiceContainer services, BaseServiceCotnainer baseServices, ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
+    public static async Task<int> RunJobAsync(ServiceContainer services, BaseServiceContainer baseServices, ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
         var graph = engine.CreateExecutionGraph(services, baseServices, workspace);
 
         var task = ErrorHandler.SafeExecuteAsync(baseServices.Logger, async () => {
@@ -96,7 +96,7 @@ public static class ManilaCli {
         var services = new ServiceCollection();
         ExecutionStage = new ExecutionStage(logger);
 
-        var baseServiceContainer = new BaseServiceCotnainer(
+        var baseServiceContainer = new BaseServiceContainer(
             logger, profiler, ExecutionStage
         );
 

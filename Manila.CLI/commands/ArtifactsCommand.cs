@@ -9,11 +9,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Lists all available artifacts in the current workspace")]
-internal sealed class ArtifactsCommand(BaseServiceCotnainer baseServices, Workspace? workspace = null) :
+internal sealed class ArtifactsCommand(BaseServiceContainer baseServices, Workspace? workspace = null) :
     BaseManilaCommand<ArtifactsCommand.Settings>(baseServices) {
 
     private readonly Workspace? _workspace = workspace;
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
 
     public sealed class Settings : DefaultCommandSettings { }
 

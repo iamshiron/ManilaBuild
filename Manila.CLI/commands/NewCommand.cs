@@ -12,11 +12,11 @@ using static Shiron.Manila.CLI.CLIConstants;
 namespace Shiron.Manila.CLI.Commands;
 
 [Description("Creates a new project based on a template.")]
-public class NewCommand(BaseServiceCotnainer baseServices, ServiceContainer? services = null) :
+public class NewCommand(BaseServiceContainer baseServices, ServiceContainer? services = null) :
     BaseAsyncManilaCommand<NewCommand.Settings>(baseServices) {
 
     private readonly ServiceContainer? _services = services;
-    private readonly BaseServiceCotnainer _baseServices = baseServices;
+    private readonly BaseServiceContainer _baseServices = baseServices;
 
     public sealed class Settings : DefaultCommandSettings {
         [CommandArgument(0, "<name>")]
