@@ -90,14 +90,14 @@ public sealed class JobBuilder(
     /// <exception cref="ConfigurationException">Thrown if the provided action or list contains an invalid type.</exception>
     public JobBuilder Execute(object action) {
         Actions = action switch {
-            ScriptObject scriptObj => [new JobScriptAction(scriptObj)],
-            IJobAction nativeAction => [nativeAction],
-            IList<object> list => list.Select((item, index) => (IJobAction) (item switch {
-                ScriptObject s => new JobScriptAction(s),
+            IList<object> list => [.. list.Select((item, index) => (item switch {
                 IJobAction a => a,
+                ScriptObject s => new JobScriptAction(s),
                 _ => throw new ConfigurationException(
                     $"Invalid action type '{item?.GetType().Name ?? "null"}' at index {index} for job '{Name}'.")
-            })).ToArray(),
+            }))],
+            ScriptObject scriptObj => [new JobScriptAction(scriptObj)],
+            IJobAction nativeAction => [nativeAction],
             _ => throw new ConfigurationException(
                 $"Unsupported action type '{action?.GetType().Name ?? "null"}' for job '{Name}'.")
         };

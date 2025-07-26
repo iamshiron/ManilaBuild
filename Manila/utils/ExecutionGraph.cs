@@ -22,21 +22,7 @@ public abstract class ExecutableObject {
     // Returns the cached ID for the object.
     public virtual string GetID() { return ExecutableID.ToString(); }
 
-    protected virtual void PreRun() { }
-    protected abstract Task RunAsync();
-    protected virtual void PostRun() { }
-
-    public async Task ExecuteAsync() {
-        PreRun();
-
-        if (IsBlocking()) {
-            await RunAsync();
-        } else {
-            await Task.Run(RunAsync);
-        }
-
-        PostRun();
-    }
+    public abstract Task RunAsync();
 
     /// <summary>
     /// Provides a string representation of the executable object.
@@ -47,8 +33,7 @@ public abstract class ExecutableObject {
     }
 
     public override bool Equals(object? obj) {
-        if (obj is ExecutableObject o) return o.GetID() == GetID();
-        return false;
+        return obj is ExecutableObject o && o.GetID() == GetID();
     }
 
     /// <summary>
@@ -66,7 +51,7 @@ public abstract class ExecutableObject {
 /// </summary>
 public class NoOpExecutableObject : ExecutableObject {
     public override bool IsBlocking() { return true; }
-    protected override async Task RunAsync() {
+    public override async Task RunAsync() {
         await Task.Yield();
     }
 }

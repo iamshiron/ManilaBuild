@@ -47,14 +47,16 @@ public class JobScriptAction(ScriptObject scriptObject) : IJobAction {
 /// An action that executes a command in the system's shell.
 /// </summary>
 /// <param name="commandInfo">The details of the command to execute.</param>
-public class JobShellAction(ShellUtils.CommandInfo commandInfo) : IJobAction {
+public class JobShellAction(ILogger logger, ShellUtils.CommandInfo commandInfo) : IJobAction {
+    private readonly ILogger _logger = logger;
     private readonly ShellUtils.CommandInfo _commandInfo = commandInfo;
 
     /// <inheritdoc/>
-    public Task ExecuteAsync() {
+    public async Task ExecuteAsync() {
         try {
             // Offload the synchronous, potentially long-running shell command to a thread pool thread.
-            return Task.Run(() => ShellUtils.Run(_commandInfo));
+            _ = ShellUtils.Run(_commandInfo, _logger);
+            await Task.Yield();
         } catch (Exception e) {
             // Wrap any process execution errors in a BuildProcessException.
             throw new BuildProcessException($"Shell command failed: '{_commandInfo.Command}'", e);
@@ -134,7 +136,7 @@ public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) :
     }
 
     /// <inheritdoc/>
-    protected override async Task RunAsync() {
+    public override async Task RunAsync() {
         _logger.Log(new JobExecutionStartedLogEntry(this, ExecutableID));
         using (_logger.LogContext.PushContext(ExecutableID)) {
             try {

@@ -156,17 +156,18 @@ public sealed class Manila(
     /// <summary>Creates a job action that executes a command via the default system shell (e.g., cmd.exe, /bin/sh).</summary>
     /// <param name="command">The command to execute.</param>
     /// <param name="args">The arguments to pass to the command.</param>
-    public static IJobAction Shell(string command) {
+    public IJobAction Shell(string command) {
         var shell = Environment.OSVersion.Platform == PlatformID.Win32NT ? "cmd.exe" : "/bin/sh";
         var shellArg = Environment.OSVersion.Platform == PlatformID.Win32NT ? "/c" : "-c";
 
-        return new JobShellAction(new(shell, [shellArg, .. command.Split(' ')]));
+        return new JobShellAction(_baseServices.Logger, new(shell, [shellArg, .. command.Split(' ')]));
     }
 
     /// <summary>Creates a job action that executes a program directly.</summary>
     /// <param name="executable">The program or script to execute.</param>
     /// <param name="args">The arguments to pass to the program.</param>
-    public static IJobAction Execute(string command) => new JobShellAction(new(
+    public IJobAction Execute(string command) =>
+        new JobShellAction(_baseServices.Logger, new(
             command.Split(" ")[0],
             command.Split(" ")[1..]
         ));
@@ -195,7 +196,7 @@ public sealed class Manila(
     public async Task RunJob(string key) {
         var job = _services.JobRegistry.GetJob(key)
             ?? throw new ConfigurationException($"The job '{key}' was not found in the registry.");
-        await job.ExecuteAsync();
+        await job.RunAsync();
     }
 
     /// <summary>Executes the build process for a given artifact.</summary>
