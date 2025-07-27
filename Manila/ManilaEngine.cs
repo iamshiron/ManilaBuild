@@ -181,6 +181,8 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             _baseServices.Logger.Log(new BuildLayersLogEntry(layers));
 
+            List<Task> backgroundJobs = [];
+
             try {
                 int layerIndex = 0;
                 foreach (var layer in layers) {
@@ -191,15 +193,21 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
                             List<Task> layerJobs = [];
 
                             foreach (var o in layer.Items) {
-                                layerJobs.Add(Task.Run(() => o.ExecuteAsync()));
+                                _baseServices.Logger.Debug($"Blocking: {o.IsBlocking()}");
+
+                                if (o.IsBlocking()) layerJobs.Add(Task.Run(o.RunAsync));
+                                else backgroundJobs.Add(Task.Run(o.RunAsync));
                             }
 
+                            _baseServices.Logger.Debug($"Waiting for {layerJobs.Count} blocking jobs in layer {layerIndex} to complete.");
                             await Task.WhenAll(layerJobs);
                             _baseServices.Logger.Log(new BuildLayerCompletedLogEntry(layer, layerContextID, layerIndex));
                         }
                         layerIndex++;
                     }
                 }
+
+                await Task.WhenAll(backgroundJobs);
                 _baseServices.Logger.Log(new BuildCompletedLogEntry(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime));
             } catch (Exception e) {
                 var finalException = e;

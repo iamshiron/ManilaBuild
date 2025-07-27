@@ -2,7 +2,7 @@ const workspace = Manila.getWorkspace()
 const Webhook = Manila.import('shiron.manila:discord/webhook')
 
 const hook = Webhook.create(Manila.getEnv('DISCORD_WEBHOOK_URL'))
-//await hook.send('Hello from Manila!')
+await hook.send('Hello from Manila!')
 
 print('Hello from Manila!')
 if (Manila.getEnvBool('ENABLE')) {
@@ -15,11 +15,36 @@ Manila.job('build').execute(() => {
 	print('Building...')
 })
 
+Manila.job('forever')
+	.execute(async () => {
+		print('0')
+		await Manila.sleep(1000)
+		print('1')
+		await Manila.sleep(1000)
+		print('2')
+		await Manila.sleep(1000)
+		print('3')
+		await Manila.sleep(1000)
+		print('4')
+		await Manila.sleep(1000)
+		print('5')
+		await Manila.sleep(1000)
+		print('6')
+		await Manila.sleep(1000)
+		print('7')
+	})
+	.background()
+
 Manila.job('run')
 	.after('build')
+	.after('forever')
 	.execute(() => {
 		print('Running...')
 	})
+
+Manila.job('send')
+	.execute(async () => {})
+	.background()
 
 Manila.job('shell').after('build').execute(Manila.shell('echo From Shell!'))
 Manila.job('chained')
