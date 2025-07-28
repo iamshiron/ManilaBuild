@@ -71,7 +71,11 @@ public sealed class ScriptContext : IScriptContext {
         return @$"
             {string.Join("\n", usings.Select(u => $"using {u};"))}
 
-            {await File.ReadAllTextAsync(ScriptPath)}
+            public class Script : IScriptEntry {{
+                public async Task ExecuteAsync(Shiron.Manila.API.Manila Manila) {{
+                    {await File.ReadAllTextAsync(ScriptPath)}
+                }}
+            }}
         ";
     }
 

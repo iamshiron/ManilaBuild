@@ -49,6 +49,9 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
     public List<ManilaPlugin> Plugins { get; } = [];
     public List<Assembly> Assemblies { get; } = [];
 
+    /// <summary>
+    /// Lists all types that are exposed by plugins.
+    /// </summary>
     public List<Type> ExposedTypes { get; } = [];
 
     /// <summary>
