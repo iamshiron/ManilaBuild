@@ -37,9 +37,6 @@ public sealed class Manila(
     // A private record for storing project filters and their associated actions.
     private record ProjectHook(ProjectFilter Filter, Action<Project> Action);
 
-    /// <summary>Gets or sets the current language-specific build configuration.</summary>
-    public object? BuildConfig { get; private set; }
-
     /// <summary>Gets the list of job builders defined at the project or workspace level.</summary>
     public List<JobBuilder> JobBuilders { get; } = [];
 
@@ -68,31 +65,21 @@ public sealed class Manila(
 
     /// <summary>Gets the active build configuration provided by a language plugin.</summary>
     /// <exception cref="InvalidOperationException">Thrown if a language plugin has not yet been applied.</exception>
-    public object GetConfig() => BuildConfig
-        ?? throw new InvalidOperationException("A language component must be applied before accessing the build configuration.");
+    public object GetConfig(UnresolvedArtifactScriptBridge artifact) {
+        var componentMatch = artifact.PluginComponent
+            ?? throw new InvalidOperationException("Artifact must specify a plugin component to get its build configuration.");
+        var component = _services.ExtensionManager.GetPluginComponent(componentMatch)
+            ?? throw new ConfigurationException($"Plugin component '{componentMatch}' not found for artifact '{artifact.ArtifactID}'.");
 
-    /// <summary>
-    /// Applies a language component to the current project, enabling language-specific tasks.
-    /// </summary>
-    /// <param name="uri">The URI of the language component (e.g., "manila-dotnet:language").</param>
-    /// <exception cref="InvalidOperationException">Thrown if not in a project context.</exception>
-    /// <exception cref="PluginException">Thrown if the component cannot be found or is not a language component.</exception>
-    public void Apply(string uri) {
-        if (_project is null)
-            throw new InvalidOperationException("`Apply` can only be used within a project context.");
-
-        var component = _services.ExtensionManager.GetPluginComponent(uri);
-        if (component is not LanguageComponent langComp)
-            throw new PluginException($"The component '{uri}' is not a valid language component.");
-
-        _project.PluginComponents.Add(langComp.GetType(), langComp);
-
-        try {
-            BuildConfig = Activator.CreateInstance(langComp.BuildConfigType)
-                ?? throw new PluginException($"Failed to create build configuration of type '{langComp.BuildConfigType.Name}'.");
-        } catch (Exception e) {
-            throw new PluginException($"Failed to instantiate build configuration for '{langComp.Name}'.", e);
+        if (component is not LanguageComponent languageComponent) {
+            throw new ConfigurationException(
+                $"The plugin component '{componentMatch.Format()}' is not a valid language component for artifact '{artifact.ArtifactID}'.");
         }
+
+        var config = Activator.CreateInstance(languageComponent.BuildConfigType) ??
+            throw new PluginException($"Activator failed to create an instance of '{languageComponent.BuildConfigType.Name}' for artifact '{artifact.ArtifactID}'.");
+
+        return (BuildConfig) config;
     }
 
     /// <summary>Imports a C# type registered by a plugin, making it available to the script.</summary>
@@ -116,13 +103,11 @@ public sealed class Manila(
     /// <param name="name">The name of the artifact.</param>
     /// <param name="configurator">A script function that configures the artifact.</param>
     /// <exception cref="InvalidOperationException">Thrown if not in a project context or if a language has not been applied.</exception>
-    public ArtifactBuilder Artifact(ScriptObject configurator) {
+    public ArtifactBuilder Artifact(string baseComponent, ScriptObject configurator) {
         if (_project is null)
             throw new InvalidOperationException("Artifacts can only be defined within a project context.");
-        if (BuildConfig is null)
-            throw new InvalidOperationException("A language must be applied with `apply()` before defining an artifact.");
 
-        var builder = new ArtifactBuilder(_workspace, configurator, this, (BuildConfig) BuildConfig, _project);
+        var builder = new ArtifactBuilder(_workspace, baseComponent, configurator, this, _project);
         ArtifactBuilders.Add(builder);
         return builder;
     }
@@ -147,7 +132,7 @@ public sealed class Manila(
 
     /// <summary>Creates a file set builder for defining collections of files.</summary>
     /// <param name="origin">The root directory for the source set, relative to the project root.</param>
-    public SourceSetBuilder SourceSet(string origin) => new(origin);
+    public static SourceSetBuilder SourceSet(string origin) => new(origin);
 
     #endregion
 
@@ -184,12 +169,6 @@ public sealed class Manila(
         _workspace.ProjectFilters.Add(new ProjectFilterHook(filter, project => action(new ProjectScriptBridge(project))));
     }
 
-    /// <summary>Runs a specific, fully-resolved project's default `run` task.</summary>
-    public static void Run(ProjectScriptBridge project) => project._handle.GetLanguageComponent().Run(project._handle);
-
-    /// <summary>Resolves and runs a project's default `run` task.</summary>
-    public static void Run(UnresolvedProject project) => Run(new ProjectScriptBridge(project.Resolve()));
-
     /// <summary>Executes a single job by its fully qualified identifier.</summary>
     /// <param name="key">The unique identifier of the job to run.</param>
     /// <exception cref="ConfigurationException">Thrown if the job is not found.</exception>
@@ -199,22 +178,26 @@ public sealed class Manila(
         await job.RunAsync();
     }
 
-    /// <summary>Executes the build process for a given artifact.</summary>
-    /// <exception cref="BuildProcessException">Thrown if the build fails.</exception>
-    public async Task Build(WorkspaceScriptBridge workspaceBridge, ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge unresolvedArtifact) {
-        var workspace = workspaceBridge._handle;
+    /// <summary>Builds a specific, fully-resolved project's artifact.</summary>
+    public async Task Build(ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge artifactBridge) {
         var project = projectBridge._handle;
         var artifact = await _services.ArtifactManager.AppendCachedDataAsync(
-            unresolvedArtifact.Resolve(), config, project
+            artifactBridge.Resolve(), config, project
         );
+
+        var component = _services.ExtensionManager.GetPluginComponent(artifact.PluginComponent)
+            ?? throw new ConfigurationException($"Plugin component '{artifact.PluginComponent}' not found for artifact '{artifact.Name}'.");
+
+        if (component is not LanguageComponent) {
+            throw new ConfigurationException(
+                $"The plugin component '{artifact.PluginComponent}' is not a valid language component for artifact '{artifact.Name}'.");
+        }
 
         var logCache = new LogCache();
         using (new LogInjector(_baseServices.Logger, logCache.Entries.Add)) {
-            var result = project.GetLanguageComponent().Build(
-                workspace, artifact.Project, config, artifact, _services.ArtifactManager
-            );
+            var res = ((LanguageComponent) component).Build(project.Workspace, project, config, artifact, _services.ArtifactManager);
 
-            switch (result) {
+            switch (res) {
                 case BuildExitCodeSuccess:
                     artifact.LogCache = logCache;
                     await _services.ArtifactManager.CacheArtifactAsync(artifact, config, artifact.Project);
@@ -236,6 +219,10 @@ public sealed class Manila(
             }
         }
     }
+
+    /// <summary>Runs a specific, fully-resolved project's default `run` task.</summary>
+    public void Run(ProjectScriptBridge project, UnresolvedArtifactScriptBridge artifact)
+        => throw new NotImplementedException("This method is not yet implemented.");
 
     #endregion
 

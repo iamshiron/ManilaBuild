@@ -14,14 +14,11 @@ namespace Shiron.Manila.API.Builders;
 /// </summary>
 public sealed class ArtifactBuilder(
     Workspace workspace,
+    string baseComponent,
     ScriptObject configurator,
     Manila manilaAPI,
-    BuildConfig buildConfig,
     Project project
 ) : IBuildable<Artifact> {
-    /// <summary>Gets the build configuration this artifact is a part of.</summary>
-    public readonly BuildConfig BuildConfig = buildConfig;
-
     /// <summary>Gets the project this artifact belongs to.</summary>
     public readonly Project Project = project;
 
@@ -38,7 +35,9 @@ public sealed class ArtifactBuilder(
     public readonly Manila ManilaAPI = manilaAPI;
 
     /// <summary>Gets the matched plugin component this artifact is based on, if any.</summary>
-    public RegexUtils.PluginComponentMatch? PluginComponent { get; private set; }
+    public RegexUtils.PluginComponentMatch PluginComponent =
+        RegexUtils.MatchPluginComponent(baseComponent)
+        ?? throw new ConfigurationException($"Invalid plugin component format: '{baseComponent}'. Expected 'plugin:component'.");
 
     /// <summary>Gets the name of the artifact.</summary>
     public string? Name { get; internal set; }
@@ -52,19 +51,6 @@ public sealed class ArtifactBuilder(
     /// <returns>The current builder instance for chaining.</returns>
     public ArtifactBuilder Description(string description) {
         ArtifactDescription = description;
-        return this;
-    }
-
-    /// <summary>
-    /// Specifies a plugin component as the source for this artifact's jobs.
-    /// </summary>
-    /// <param name="key">The plugin component identifier (e.g., "plugin-name:component-name").</param>
-    /// <returns>The current builder instance for chaining.</returns>
-    /// <exception cref="ConfigurationException">Thrown if the key format is invalid.</exception>
-    public ArtifactBuilder From(string key) {
-        PluginComponent = RegexUtils.MatchPluginComponent(key)
-            ?? throw new ConfigurationException($"Invalid plugin component format: '{key}'. Expected 'plugin:component'.");
-
         return this;
     }
 
@@ -83,7 +69,7 @@ public sealed class ArtifactBuilder(
 
         ManilaAPI.CurrentArtifactBuilder = this;
         try {
-            _ = Lambda.InvokeAsFunction(new UnresolvedArtifactScriptBridge(Project, Name));
+            _ = Lambda.InvokeAsFunction(new UnresolvedArtifactScriptBridge(Project, Name, PluginComponent));
         } catch (ScriptEngineException se) {
             throw new ScriptExecutionException($"A script error occurred while configuring artifact '{Name}'.", se);
         } catch (Exception e) {
