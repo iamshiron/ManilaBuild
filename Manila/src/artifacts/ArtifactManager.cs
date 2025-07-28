@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
+using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
@@ -10,14 +11,6 @@ using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Artifacts;
-
-public interface IArtifactManager {
-    string GetArtifactRoot(BuildConfig config, Project project, Artifact artifact);
-    Task CacheArtifactAsync(Artifact artifact, BuildConfig config, Project project);
-    Task<Artifact> AppendCachedDataAsync(Artifact artifact, BuildConfig config, Project project);
-    void LoadCache();
-    void FlushCacheToDisk();
-}
 
 public class ArtifactManager(ILogger logger, IProfiler profiler, string artifactsDir, string artifactsCacheFile) : IArtifactManager {
     private readonly ILogger _logger = logger;

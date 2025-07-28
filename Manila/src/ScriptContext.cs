@@ -4,6 +4,7 @@ using Microsoft.ClearScript.V8;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
+using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.Attributes;
 using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
@@ -12,17 +13,6 @@ using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
-
-public interface IScriptContext {
-    List<Type> EnumComponents { get; }
-    V8ScriptEngine ScriptEngine { get; }
-    string GetCompiledFilePath();
-    void Init(API.Manila manilaAPI, ScriptBridge bridge, Component component);
-    string? GetEnvironmentVariable(string key);
-    void SetEnvironmentVariable(string key, string value);
-    Task ExecuteAsync(IFileHashCache cache, Component component);
-}
-
 
 public sealed class ScriptContext : IScriptContext {
     private readonly ILogger _logger;

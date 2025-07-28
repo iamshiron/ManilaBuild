@@ -9,25 +9,6 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Ext;
 
-public interface IExtensionManager {
-    Task LoadPluginsAsync();
-    void InitPlugins();
-    void ReleasePlugins();
-    T GetPlugin<T>() where T : ManilaPlugin;
-
-    ManilaPlugin GetPlugin(Type type);
-    ManilaPlugin GetPlugin(string uri);
-    ManilaPlugin GetPlugin(RegexUtils.PluginMatch match);
-
-    PluginComponent GetPluginComponent(string uri);
-    PluginComponent GetPluginComponent(RegexUtils.PluginComponentMatch match);
-
-    Type GetAPIType(string uri);
-    Type GetAPIType(RegexUtils.PluginApiClassMatch match);
-
-    public List<ManilaPlugin> Plugins { get; }
-}
-
 /// <summary>
 /// Manages the loading, retrieval, and lifecycle of plugins. This is a global singleton.
 /// </summary>

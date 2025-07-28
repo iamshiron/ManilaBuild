@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ClearScript.Complete" Version="7.5.0" />
+      <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="9.0.3" />
+    <ProjectReference Include="..\Manila.Logging\Manila.Logging.csproj" />
+    <ProjectReference Include="..\Manila.Profiling\Manila.Profiling.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Manila.Utils\Manila.Utils.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

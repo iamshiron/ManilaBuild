@@ -8,16 +8,6 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Registries;
 
-public interface IJobRegistry {
-    void RegisterJob(Job job);
-    Job? GetJob(string uri);
-    bool TryGetJob(string name, out Job? job);
-    bool HasJob(string name);
-
-    IEnumerable<Job> Jobs { get; }
-    IEnumerable<string> JobKeys { get; }
-}
-
 public class JobRegistry(IProfiler profiler) : IJobRegistry {
     private readonly IProfiler _profiler = profiler;
     private readonly ConcurrentDictionary<string, Job> _jobs = [];
