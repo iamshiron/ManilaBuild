@@ -1,6 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
+
 using Shiron.Manila.API;
-using Shiron.Manila.Attributes;
+using Shiron.Manila.API.Attributes;
 
 namespace Shiron.Manila.Zip;
 

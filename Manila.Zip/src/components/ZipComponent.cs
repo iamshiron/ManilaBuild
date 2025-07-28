@@ -1,8 +1,10 @@
 using System.IO.Compression;
 using Shiron.Manila.API;
-using Shiron.Manila.Artifacts;
+using Shiron.Manila.API.Ext;
+using Shiron.Manila.API.Interfaces;
+using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.Exceptions;
-using Shiron.Manila.Ext;
+using Shiron.Manila.Interfaces;
 
 namespace Shiron.Manila.Zip.Components;
 
@@ -10,7 +12,7 @@ public class ZipComponent : LanguageComponent {
     public ZipComponent() : base("zip", typeof(ZipBuildConfig)) {
     }
 
-    public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, Artifact artifact, IArtifactManager artifactManager) {
+    public override IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, IArtifact artifact, IArtifactManager artifactManager) {
         var instance = ManilaZip.Instance!;
         var artifactRoot = artifactManager.GetArtifactRoot(config, project, artifact);
 

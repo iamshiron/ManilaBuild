@@ -1,4 +1,4 @@
-namespace Shiron.Manila.Attributes;
+namespace Shiron.Manila.API.Attributes;
 
 /// <summary>
 /// This attribute is used to mark a property as a global plugin singleton instance.

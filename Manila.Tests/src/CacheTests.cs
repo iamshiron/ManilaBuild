@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Shiron.Manila.API.Interfaces;
 
 namespace Shiron.Manila.Caching.Tests;
 

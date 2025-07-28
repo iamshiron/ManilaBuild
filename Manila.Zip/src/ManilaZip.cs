@@ -1,5 +1,5 @@
-using Shiron.Manila.Attributes;
-using Shiron.Manila.Ext;
+using Shiron.Manila.API.Ext;
+using Shiron.Manila.API.Attributes;
 using Shiron.Manila.Zip.Components;
 using Shiron.Manila.Zip.Templates;
 

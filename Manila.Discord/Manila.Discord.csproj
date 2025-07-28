@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Manila\Manila.csproj" />
+    <ProjectReference Include="..\Manila.API\Manila.API.csproj" />
   </ItemGroup>
 
   <ItemGroup>

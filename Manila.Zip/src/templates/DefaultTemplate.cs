@@ -1,4 +1,5 @@
-using Shiron.Manila.Ext;
+
+using Shiron.Manila.API.Ext;
 using Spectre.Console;
 
 namespace Shiron.Manila.Zip.Templates;

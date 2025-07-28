@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Interfaces;
+using Shiron.Manila.API.Interfaces.Artifacts;
+using Shiron.Manila.API.Utils;
 using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
@@ -31,7 +33,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
     };
 
-    public string GetArtifactRoot(BuildConfig config, Project project, Artifact artifact) {
+    public string GetArtifactRoot(BuildConfig config, Project project, IArtifact artifact) {
         return Path.Join(
             ArtifactsDir,
             $"{PlatformUtils.GetPlatformKey()}-{PlatformUtils.GetArchitectureKey()}",
@@ -41,14 +43,14 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         );
     }
 
-    public async Task CacheArtifactAsync(Artifact artifact, BuildConfig config, Project project) {
+    public async Task CacheArtifactAsync(IArtifact artifact, BuildConfig config, Project project) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
         _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
     }
 
-    public async Task<Artifact> AppendCachedDataAsync(Artifact artifact, BuildConfig config, Project project) {
+    public async Task<IArtifact> AppendCachedDataAsync(IArtifact artifact, BuildConfig config, Project project) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
@@ -114,7 +116,7 @@ public class ArtifactCacheEntry(string artifactRoot, long createdAt, long lastAc
     public long Size { get; set; } = size;
     public LogCache LogCache { get; set; } = logCache;
 
-    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, Artifact artifact, BuildConfig config, Project project) {
+    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, IArtifact artifact, BuildConfig config, Project project) {
         return new(
             artifactManager.GetArtifactRoot(config, project, artifact),
             TimeUtils.Now(),

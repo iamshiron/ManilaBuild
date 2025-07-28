@@ -64,7 +64,7 @@ public class FunctionUtilsTests {
     public void ManilaException() {
         var instance = new TestClass();
         var method = typeof(TestClass).GetMethod("TooManyParams");
-        Assert.Throws<ManilaException>(() => FunctionUtils.ToDelegate(instance, method!));
+        Assert.Throws<ArgumentException>(() => FunctionUtils.ToDelegate(instance, method!));
     }
 
     [Test]

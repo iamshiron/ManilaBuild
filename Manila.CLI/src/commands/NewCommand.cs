@@ -2,6 +2,7 @@
 
 using System.ComponentModel;
 using Shiron.Manila.API;
+using Shiron.Manila.API.Ext;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;

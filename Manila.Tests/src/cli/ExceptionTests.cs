@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using Microsoft.ClearScript;
 using NUnit.Framework;
 using Shiron.Manila.API;
-using Shiron.Manila.Attributes;
 using Shiron.Manila.CLI;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;

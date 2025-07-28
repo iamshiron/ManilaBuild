@@ -20,13 +20,13 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public readonly ConcurrentDictionary<string, PluginComponent> Components = [];
     public readonly List<Type> Enums = [];
     public readonly List<Type> Dependencies = [];
-    public string? File { get; internal set; } = null;
+    public string? File { get; set; } = null;
     public readonly Dictionary<string, Type> APIClasses = [];
     public readonly Dictionary<string, ProjectTemplate> ProjectTemplates = [];
 
     internal ILogger? _logger { get; private set; }
 
-    internal void SetLogger(ILogger logger) {
+    public void SetLogger(ILogger logger) {
         _logger = logger;
     }
 

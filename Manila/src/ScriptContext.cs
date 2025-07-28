@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Interfaces;
-using Shiron.Manila.Attributes;
+using Shiron.Manila.API.Logging;
 using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;

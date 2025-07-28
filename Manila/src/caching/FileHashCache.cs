@@ -1,5 +1,6 @@
 
 using Microsoft.Data.Sqlite;
+using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 

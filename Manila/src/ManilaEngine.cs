@@ -4,6 +4,7 @@ using Microsoft.ClearScript;
 using Microsoft.ClearScript.V8;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
+using Shiron.Manila.API.Utils;
 using Shiron.Manila.Artifacts;
 using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
@@ -11,6 +12,7 @@ using Shiron.Manila.Ext;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Registries;
+using Shiron.Manila.Services;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
@@ -80,7 +82,15 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             workspace.Projects.Add(projectName, project);
 
-            context.Init(new(_baseServices, services, context, workspaceBridge, workspace, projectBridge, project), projectBridge, project);
+            var apiServiceContainer = new APIServiceContainer(
+                _baseServices.Logger, _baseServices.Profiler,
+                services.ExtensionManager, services.JobRegistry, services.ArtifactManager
+            );
+
+            context.Init(new(
+                apiServiceContainer, context, workspaceBridge, workspace, projectBridge, project
+            ), projectBridge, project);
+
             try {
                 await context.ExecuteAsync(services.FileHashCache, project);
             } catch (ScriptEngineException se) {
@@ -112,7 +122,15 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
             var workspace = new Workspace(_baseServices.Logger, workspaceRoot);
             var workspaceBridge = new WorkspaceScriptBridge(_baseServices.Logger, _baseServices.Profiler, workspace);
 
-            context.Init(new(_baseServices, services, context, workspaceBridge, workspace, null, null), workspaceBridge, workspace);
+            var apiServiceContainer = new APIServiceContainer(
+                _baseServices.Logger, _baseServices.Profiler,
+                services.ExtensionManager, services.JobRegistry, services.ArtifactManager
+            );
+
+            context.Init(new(
+                apiServiceContainer, context, workspaceBridge, workspace, null, null
+            ), workspaceBridge, workspace);
+
             try {
                 await context.ExecuteAsync(services.FileHashCache, workspace);
 
