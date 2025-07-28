@@ -1,4 +1,6 @@
 
+using Microsoft.CodeAnalysis;
+
 namespace Shiron.Manila.Exceptions;
 
 #region Base Exceptions
@@ -68,3 +70,14 @@ public class DependencyNotFoundException : ConfigurationException {
 }
 
 #endregion
+
+public class ScriptCompilationException : ManilaException {
+    public readonly IReadOnlyList<Diagnostic> Diagnostics;
+
+    public ScriptCompilationException(string message, IEnumerable<Diagnostic> diagnostics) : base(message) {
+        Diagnostics = [.. diagnostics];
+    }
+    public ScriptCompilationException(string message, IList<Diagnostic> diagnostics, Exception? innerException) : base(message, innerException) {
+        Diagnostics = [.. diagnostics];
+    }
+}

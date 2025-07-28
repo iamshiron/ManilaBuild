@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.ClearScript;
 using Shiron.Manila.Exceptions;
 
 namespace Shiron.Manila.API;
@@ -36,36 +35,15 @@ public abstract class ProjectFilter {
         string s when s == "*" => new ProjectFilterAll(),
         string s => new ProjectFilterName(s),
         IList<object> list => new ProjectFilterArray(list.Select(From).ToArray()),
-        ScriptObject obj => CreateFilterFromScriptObject(obj),
+        Regex obj => CreateFilterFromScriptObject(obj),
         _ => throw new ConfigurationException($"Unsupported filter type: '{o.GetType().Name}'. Must be a string, array, or RegExp object."),
     };
 
     /// <summary>
     /// Handles the conversion of a <see cref="ScriptObject"/> to a <see cref="ProjectFilterRegex"/>.
     /// </summary>
-    private static ProjectFilterRegex CreateFilterFromScriptObject(ScriptObject obj) {
-        try {
-            dynamic dyn = obj;
-            if (dyn.constructor?.name == "RegExp") {
-                string pattern = dyn.source;
-                string flags = dyn.flags ?? "";
-                var options = flags.Contains('i') ? RegexOptions.IgnoreCase : RegexOptions.None;
-                return new ProjectFilterRegex(new Regex(pattern, options));
-            }
-        } catch {
-            // Property access on the dynamic object failed; fall through to the string parsing method.
-        }
-
-        var str = obj.ToString();
-        var match = Regex.Match(str!, @"^\/(.+?)\/([a-z]*)$");
-        if (match.Success) {
-            var pattern = match.Groups[1].Value;
-            var flags = match.Groups[2].Value;
-            var options = flags.Contains('i') ? RegexOptions.IgnoreCase : RegexOptions.None;
-            return new ProjectFilterRegex(new Regex(pattern, options));
-        }
-
-        throw new ConfigurationException("ScriptObject could not be interpreted as a filter. It must be a RegExp object.");
+    private static ProjectFilterRegex CreateFilterFromScriptObject(Regex obj) {
+        return new ProjectFilterRegex(obj);
     }
 }
 

@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <PackageReference Include="Microsoft.ClearScript.Complete" Version="7.5.0" />
       <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="9.0.3" />
   </ItemGroup>
 

@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Microsoft.ClearScript;
 using NUnit.Framework;
 using Shiron.Manila.API;
 using Shiron.Manila.CLI;

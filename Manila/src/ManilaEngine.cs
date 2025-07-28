@@ -1,7 +1,5 @@
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.ClearScript;
-using Microsoft.ClearScript.V8;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Utils;
@@ -41,9 +39,9 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
             var root = _directories.RootDir;
             try {
                 foreach (var dir in Directory.GetDirectories(root)) {
-                    foreach (var file in Directory.GetFiles(dir, "Manila.js", SearchOption.AllDirectories)) {
+                    foreach (var file in Directory.GetFiles(dir, "Manila.cs", SearchOption.AllDirectories)) {
                         var path = Path.GetRelativePath(root, file);
-                        if (Path.GetFileName(path).Equals("Manila.js", StringComparison.OrdinalIgnoreCase)) {
+                        if (Path.GetFileName(path).Equals("Manila.cs", StringComparison.OrdinalIgnoreCase)) {
                             paths.Add(path);
                         }
                     }
@@ -60,8 +58,8 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
     }
 
     public async Task<Project> RunProjectScriptAsync(ServiceContainer services, ScriptContext context, Workspace workspace, WorkspaceScriptBridge workspaceBridge) {
-        if (!Path.GetFileName(context.ScriptPath).Equals("manila.js", StringComparison.CurrentCultureIgnoreCase))
-            throw new ConfigurationException($"Project script must be named 'Manila.js', but found '{Path.GetFileName(context.ScriptPath)}' at '{context.ScriptPath}'.");
+        if (!Path.GetFileName(context.ScriptPath).Equals("Manila.cs", StringComparison.CurrentCultureIgnoreCase))
+            throw new ConfigurationException($"Project script must be named 'Manila.cs', but found '{Path.GetFileName(context.ScriptPath)}' at '{context.ScriptPath}'.");
 
         using (new ProfileScope(_baseServices.Profiler, $"Running Project Script '{context.ScriptPath}'")) {
             var projectRoot = Path.GetDirectoryName(context.ScriptPath);
@@ -93,14 +91,8 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             try {
                 await context.ExecuteAsync(services.FileHashCache, project);
-            } catch (ScriptEngineException se) {
-                throw new ScriptExecutionException(
-                    message: $"An error occurred while executing project script: '{context.ScriptPath}'. Details: {se.Message}",
-                    scriptPath: context.ScriptPath,
-                    jsErrorName: se.ScriptException.GetProperty("name")?.ToString(),
-                    jsStackTrace: se.ScriptException.GetProperty("stack")?.ToString(),
-                    innerException: se
-                );
+            } catch (ScriptCompilationException) {
+                throw;
             } catch (Exception e) {
                 throw new BuildProcessException($"An unexpected error occurred while processing project script: {context.ScriptPath}", e);
             }
@@ -133,16 +125,9 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             try {
                 await context.ExecuteAsync(services.FileHashCache, workspace);
-
                 return workspace;
-            } catch (ScriptEngineException se) {
-                throw new ScriptExecutionException(
-                    message: $"An error occurred while executing workspace script: '{context.ScriptPath}'. Details: {se.Message}",
-                    scriptPath: context.ScriptPath,
-                    jsErrorName: se.ScriptException.GetProperty("name")?.ToString(),
-                    jsStackTrace: se.ScriptException.GetProperty("stack")?.ToString(),
-                    innerException: se
-                );
+            } catch (ScriptCompilationException) {
+                throw;
             } catch (Exception e) {
                 throw new ConfigurationException($"An unexpected error occurred while processing workspace script: {context.ScriptPath}", e);
             }

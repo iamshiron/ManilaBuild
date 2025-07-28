@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-using Microsoft.ClearScript;
 using Newtonsoft.Json;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Interfaces.Artifacts;

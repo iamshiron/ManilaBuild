@@ -19,6 +19,7 @@ public static class ErrorHandler {
         return exception switch {
             ScriptExecutionException e => HandleScriptExecutionException(logger, e, settings),
             BuildProcessException e => HandleBuildProcessException(logger, e, settings),
+            ScriptCompilationException e => HandleScriptCompilationException(logger, e, settings),
             ConfigurationException e => HandleConfigurationException(logger, e, settings),
             PluginException e => HandlePluginException(logger, e, settings),
             InternalLogicException e => HandleInternalLogicException(logger, e, settings),
@@ -58,6 +59,24 @@ public static class ErrorHandler {
         }
     }
 
+    private static int HandleScriptCompilationException(ILogger logger, ScriptCompilationException e, LogOptions settings) {
+        logger.MarkupLine($"\n[red]{Emoji.Known.CrossMark} Compilation Error:[/] [white]{Markup.Escape(e.Message)}[/]");
+        logger.MarkupLine("[grey]There was an error compiling the script. Please check the script syntax and references.[/]");
+        logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");
+        logger.MarkupLine("[grey]Run with --stack-trace for a detailed technical log.[/]");
+
+        if (settings.StackTrace) {
+            ExceptionUtils.PrintException(e.InnerException ?? e);
+
+            logger.MarkupLine($"[red]Compilation Diagnostics: ({e.Diagnostics.Count} Errors)[/]");
+            foreach (var d in e.Diagnostics) {
+                logger.MarkupLine($"[red]  {d.Id} - {Markup.Escape(d.GetMessage())} - {d.Location.GetLineSpan()}[/]");
+            }
+        }
+
+        return ExitCodes.SCRIPT_COMPILATION_ERROR;
+    }
+
     private static int HandleConfigurationException(ILogger logger, ConfigurationException e, LogOptions settings) {
         logger.MarkupLine($"\n[yellow]{Emoji.Known.Warning} Configuration Error:[/] [white]{Markup.Escape(e.Message)}[/]");
         logger.MarkupLine("[grey]There is a problem with the configuration. Please check your project files and settings.[/]");
@@ -72,16 +91,6 @@ public static class ErrorHandler {
     }
 
     private static int HandleScriptExecutionException(ILogger logger, ScriptExecutionException e, LogOptions settings) {
-        string errorMessage = e.Message;
-
-        if (e.InnerException != null) {
-            if (e.InnerException is Microsoft.ClearScript.ScriptEngineException see && !string.IsNullOrEmpty(see.ErrorDetails)) {
-                errorMessage = see.ErrorDetails;
-            } else if (!string.IsNullOrEmpty(e.InnerException.Message)) {
-                errorMessage = e.InnerException.Message;
-            }
-        }
-
         logger.MarkupLine($"Error happened during {ManilaCli.ExecutionStage?.Stage} stage.");
         logger.MarkupLine("[grey]This error occurred while executing a script. Check the script for syntax errors or logic issues.[/]");
         logger.MarkupLine($"[grey]Error happened during [white]{ManilaCli.ExecutionStage?.Stage}[/] stage.[/]");

@@ -47,6 +47,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
     /// </summary>
     public static readonly Regex NugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d-]+)", RegexOptions.Compiled);
     public List<ManilaPlugin> Plugins { get; } = [];
+    public List<Assembly> Assemblies { get; } = [];
 
     /// <summary>
     /// Discovers and loads all plugins from the specified plugin directory.
@@ -77,11 +78,11 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
 
         foreach (var type in assembly.GetTypes()) {
             if (!type.IsSubclassOf(typeof(ManilaPlugin)) || type.IsAbstract) continue;
-            await LoadPluginAsync(type, file, loadContext);
+            await LoadPluginAsync(type, assembly, file, loadContext);
         }
     }
 
-    private async Task LoadPluginAsync(Type pluginType, string file, PluginLoadContext loadContext) {
+    private async Task LoadPluginAsync(Type pluginType, Assembly assembly, string file, PluginLoadContext loadContext) {
         var plugin = (ManilaPlugin?) Activator.CreateInstance(pluginType)
             ?? throw new ManilaException($"Failed to create instance of plugin type {pluginType.FullName} from file {file}.");
 

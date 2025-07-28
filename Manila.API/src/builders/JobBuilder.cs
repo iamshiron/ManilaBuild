@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.ClearScript;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
@@ -88,19 +87,18 @@ public sealed class JobBuilder(
     /// <param name="action">A script function, a native <see cref="IJobAction"/>, or an array of these types.</param>
     /// <returns>The current builder instance for chaining.</returns>
     /// <exception cref="ConfigurationException">Thrown if the provided action or list contains an invalid type.</exception>
-    public JobBuilder Execute(object action) {
-        Actions = action switch {
-            IList<object> list => [.. list.Select((item, index) => (item switch {
-                IJobAction a => a,
-                ScriptObject s => new JobScriptAction(s),
-                _ => throw new ConfigurationException(
-                    $"Invalid action type '{item?.GetType().Name ?? "null"}' at index {index} for job '{Name}'.")
-            }))],
-            ScriptObject scriptObj => [new JobScriptAction(scriptObj)],
-            IJobAction nativeAction => [nativeAction],
-            _ => throw new ConfigurationException(
-                $"Unsupported action type '{action?.GetType().Name ?? "null"}' for job '{Name}'.")
-        };
+    public JobBuilder Execute(params IJobAction[] actions) {
+        Actions = actions;
+        return this;
+    }
+
+    public JobBuilder Execute(Func<Task> action) {
+        Actions = [new JobAsyncScriptAction(action)];
+        return this;
+    }
+
+    public JobBuilder Execute(Action action) {
+        Actions = [new JobScriptAction(action)];
         return this;
     }
 

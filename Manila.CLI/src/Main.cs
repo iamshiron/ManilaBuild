@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.ClearScript.V8;
 using Microsoft.Extensions.DependencyInjection;
 using NuGet.Packaging.Signing;
 using Shiron.Manila;
@@ -50,17 +49,6 @@ public static class ManilaCli {
                 services.ExtensionManager.InitPlugins();
             }
         }
-    }
-
-    private static V8ScriptEngine CreateScriptEngine() {
-        var engine = new V8ScriptEngine(
-            V8ScriptEngineFlags.EnableTaskPromiseConversion
-        ) {
-            ExposeHostObjectStaticMembers = true,
-            CustomAttributeLoader = new JavaScriptAttributeLoader()
-        };
-
-        return engine;
     }
 
     public static async Task<int> RunJobAsync(ServiceContainer services, BaseServiceContainer baseServices, ManilaEngine engine, Workspace workspace, DefaultCommandSettings settings, string job) {
@@ -122,9 +110,9 @@ public static class ManilaCli {
                 shouldInitialize = false;
                 baseServiceContainer.Logger.Debug("Data directory does not exist. Skipping workspace initialization.");
             }
-            if (!File.Exists(Path.Join(Directories.RootDir, "Manila.js"))) {
+            if (!File.Exists(Path.Join(Directories.RootDir, "Manila.cs"))) {
                 shouldInitialize = false;
-                baseServiceContainer.Logger.Debug("Workspace script file (Manila.js) does not exist. Skipping workspace initialization.");
+                baseServiceContainer.Logger.Debug("Workspace script file (Manila.cs) does not exist. Skipping workspace initialization.");
             }
 
             if (shouldInitialize) {
@@ -149,9 +137,8 @@ public static class ManilaCli {
                     // Run engine and initialize projects
                     ExecutionStage.ChangeState(ExecutionStages.Configuration);
                     var workspace = await manilaEngine.RunWorkspaceScriptAsync(serviceContainer, new(
-                        baseServiceContainer.Logger, baseServiceContainer.Profiler,
-                        CreateScriptEngine(),
-                        Directories.RootDir, Path.Join(Directories.RootDir, "Manila.js")
+                        baseServiceContainer.Logger, baseServiceContainer.Profiler, serviceContainer.ExtensionManager,
+                        Directories.RootDir, Path.Join(Directories.RootDir, "Manila.cs")
                     ));
 
                     var workspaceBridge = new WorkspaceScriptBridge(baseServiceContainer.Logger, baseServiceContainer.Profiler, workspace);
@@ -160,8 +147,7 @@ public static class ManilaCli {
                     foreach (var script in manilaEngine.DiscoverProjectScripts(baseServiceContainer.Profiler)) {
                         projectInitializationTasks.Add(
                             manilaEngine.RunProjectScriptAsync(serviceContainer, new(
-                                baseServiceContainer.Logger, baseServiceContainer.Profiler,
-                                CreateScriptEngine(),
+                                baseServiceContainer.Logger, baseServiceContainer.Profiler, serviceContainer.ExtensionManager,
                                 Directories.RootDir, script
                             ), workspace, workspaceBridge)
                         );

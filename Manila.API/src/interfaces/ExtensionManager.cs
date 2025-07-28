@@ -1,4 +1,5 @@
 
+using System.Reflection;
 using Shiron.Manila.API.Ext;
 using Shiron.Manila.Utils;
 
@@ -21,4 +22,5 @@ public interface IExtensionManager {
     Type GetAPIType(RegexUtils.PluginApiClassMatch match);
 
     public List<ManilaPlugin> Plugins { get; }
+    public List<Assembly> Assemblies { get; }
 }

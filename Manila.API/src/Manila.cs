@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.ClearScript;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Ext;
 using Shiron.Manila.API.Interfaces;
+using Shiron.Manila.API.Logging;
 using Shiron.Manila.API.Utils;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Interfaces;
@@ -52,7 +52,7 @@ public sealed class Manila(
     /// <summary>Gets a bridge to the current project context.</summary>
     /// <exception cref="InvalidOperationException">Thrown if not currently in a project context.</exception>
     public ProjectScriptBridge GetProject() => _projectBridge
-        ?? throw new InvalidOperationException("This operation is only valid within a project context (e.g., a project's Manila.js file).");
+        ?? throw new InvalidOperationException("This operation is only valid within a project context (e.g., a project's Manila.cs file).");
 
     /// <summary>Creates a lazy-loading reference to another project in the workspace.</summary>
     /// <param name="name">The name (identifier) of the project to reference.</param>
@@ -63,7 +63,7 @@ public sealed class Manila(
 
     /// <summary>Gets the active build configuration provided by a language plugin.</summary>
     /// <exception cref="InvalidOperationException">Thrown if a language plugin has not yet been applied.</exception>
-    public object GetConfig(UnresolvedArtifactScriptBridge artifact) {
+    public dynamic GetConfig(UnresolvedArtifactScriptBridge artifact) {
         var componentMatch = artifact.PluginComponent
             ?? throw new InvalidOperationException("Artifact must specify a plugin component to get its build configuration.");
         var component = _services.ExtensionManager.GetPluginComponent(componentMatch)
@@ -86,7 +86,8 @@ public sealed class Manila(
     public object Import(string key) {
         var type = _services.ExtensionManager.GetAPIType(key);
         try {
-            return Activator.CreateInstance(type)
+            var instance = Activator.CreateInstance(type);
+            return instance
                 ?? throw new PluginException($"Activator failed to create an instance of '{type.Name}' for key '{key}'.");
         } catch (Exception e) {
             throw new PluginException($"Failed to import API for key '{key}'. See inner exception for details.", e);
@@ -101,7 +102,7 @@ public sealed class Manila(
     /// <param name="name">The name of the artifact.</param>
     /// <param name="configurator">A script function that configures the artifact.</param>
     /// <exception cref="InvalidOperationException">Thrown if not in a project context or if a language has not been applied.</exception>
-    public ArtifactBuilder Artifact(string baseComponent, ScriptObject configurator) {
+    public ArtifactBuilder Artifact(string baseComponent, Action<UnresolvedArtifactScriptBridge> configurator) {
         if (_project is null)
             throw new InvalidOperationException("Artifacts can only be defined within a project context.");
 
@@ -128,9 +129,13 @@ public sealed class Manila(
         return jobBuilder;
     }
 
+    public void Log(string message) {
+        _services.Logger.Log(new ScriptLogEntry(_context.ScriptPath, message, _context.ContextID));
+    }
+
     /// <summary>Creates a file set builder for defining collections of files.</summary>
     /// <param name="origin">The root directory for the source set, relative to the project root.</param>
-    public static SourceSetBuilder SourceSet(string origin) => new(origin);
+    public SourceSetBuilder SourceSet(string origin) => new(origin);
 
     #endregion
 
