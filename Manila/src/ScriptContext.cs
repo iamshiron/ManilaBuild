@@ -66,9 +66,9 @@ public sealed class ScriptContext : IScriptContext {
     }
 
     private async Task<string> CreateScriptCode(List<string> usings) {
-        _logger.Debug($"Creating script code for '{ScriptPath}' with usings: {string.Join(", ", usings)}");
+        _logger.Log(new ScriptUsingEntriesLogEntry(ScriptPath, [.. usings], ContextID));
 
-        return @$"
+        var code = @$"
             {string.Join("\n", usings.Select(u => $"using {u};"))}
 
             public class Script : IScriptEntry {{
@@ -77,6 +77,10 @@ public sealed class ScriptContext : IScriptContext {
                 }}
             }}
         ";
+
+        _logger.Log(new ScriptCodeCreatedLogEntry(ScriptPath, code, ContextID));
+
+        return code;
     }
 
     private async Task LoadEnvironmentVariablesAsync() {
@@ -136,10 +140,10 @@ public sealed class ScriptContext : IScriptContext {
 
                 Assembly? assembly = null;
                 if (!scriptChanged && File.Exists(assemblyPath)) {
-                    _logger.Debug("Loading cached script assembly...");
+                    _logger.Log(new ScriptAssemblyCacheHitLogEntry(ScriptPath, assemblyPath, ContextID));
                     assembly = Assembly.LoadFrom(assemblyPath);
                 } else {
-                    _logger.Debug("Script has changed or cache is missing. Compiling...");
+                    _logger.Log(new ScriptAssemblyCacheMissEntry(ScriptPath, assemblyPath, ContextID));
                     assembly = await CompileAndCacheScriptAsync(cache, assemblyPath);
                 }
 
@@ -180,13 +184,7 @@ public sealed class ScriptContext : IScriptContext {
             );
 
             var code = await CreateScriptCode(namespaces);
-
-            _logger.Debug($"{string.Join(", ", namespaces)}");
-
             var references = new List<MetadataReference> {
-                // MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                // MetadataReference.CreateFromFile(typeof(API.Manila).Assembly.Location),
-                // Required to fix:
                 // CS0656 - Missing compiler required member 'Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo.Create'
                 MetadataReference.CreateFromFile(typeof(RuntimeBinderException).Assembly.Location),
             };
@@ -219,12 +217,16 @@ public sealed class ScriptContext : IScriptContext {
 
             if (!res.Success) {
                 var errors = res.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error);
-                throw new ScriptCompilationException("Script compilation failed.", errors);
+                var e = new ScriptCompilationException("Script compilation failed.", errors);
+                _logger.Log(new ScriptCompilationFailedLogEntry(ScriptPath, e, ContextID));
+                throw e;
             }
 
             _ = ms.Seek(0, SeekOrigin.Begin);
             await File.WriteAllBytesAsync(assemblyPath, ms.ToArray());
             cache.AddOrUpdate(ScriptPath, ScriptHash);
+
+            _logger.Log(new ScriptCompiledLogEntry(ScriptPath, assemblyPath, ContextID));
 
             _ = ms.Seek(0, SeekOrigin.Begin);
             return Assembly.Load(ms.ToArray());

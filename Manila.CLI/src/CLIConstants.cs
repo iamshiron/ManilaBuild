@@ -104,13 +104,13 @@ public static class CLIConstants {
 
     public static class ScriptDefaults {
         public static readonly string[] WorkspaceScript = [
-            "const workspace = Manila.getWorkspace()",
+            "var workspace = Manila.GetWorkspace();",
             "",
-            "Manila.job('hello-world')",
-            "    .description('A simple hello world job')",
-            "    .execute(() => {",
-            "        print('Hello World from the workspace script!')",
-            "    })",
+            "Manila.Job(\"hello-world\")",
+            "    .Description(\"A simple hello world job\")",
+            "    .Execute(() => {",
+            "        Manila.Log(\"Hello World from the workspace script!\");",
+            "    });",
             "",
         ];
     }

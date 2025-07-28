@@ -22,7 +22,7 @@ internal sealed class InitCommand(IDirectories directories, BaseServiceContainer
     }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
-        var workspaceFound = Directory.Exists(_directories.DataDir);
+        var workspaceFound = Directory.Exists(_directories.DataDir) || File.Exists(Path.Join(_directories.RootDir, "Manila.cs"));
 
         if (workspaceFound && !settings.Force) {
             _baseServices.Logger.Error(Messages.AlreadyInitialized);

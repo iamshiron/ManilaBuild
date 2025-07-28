@@ -386,3 +386,49 @@ public class StageChangeLogEntry(ExecutionStages changedFrom, ExecutionStages ch
 }
 
 #endregion
+
+#region Script Creation Log Entries
+
+public class ScriptCodeCreatedLogEntry(string scriptPath, string code, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string Code { get; } = code;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptUsingEntriesLogEntry(string scriptPath, string[] namespaces, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string[] Namespaces { get; } = namespaces;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptCompiledLogEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string AssemblyPath { get; } = assemblyPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptCompilationFailedLogEntry(string scriptPath, Exception exception, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Error;
+    public string ScriptPath { get; } = scriptPath;
+    public Exception Exception { get; } = exception;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptAssemblyCacheHitLogEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string AssemblyPath { get; } = assemblyPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptAssemblyCacheMissEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string AssemblyPath { get; } = assemblyPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+#endregion
