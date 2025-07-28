@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.CSharp.RuntimeBinder;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
@@ -64,14 +65,11 @@ public sealed class ScriptContext : IScriptContext {
         ManilaAPI = manilaAPI;
     }
 
-    private async Task<string> CreateScriptCode() {
+    private async Task<string> CreateScriptCode(List<string> usings) {
+        _logger.Debug($"Creating script code for '{ScriptPath}' with usings: {string.Join(", ", usings)}");
+
         return @$"
-            using System;
-            using System.Collections.Generic;
-            using System.Linq;
-            using System.Threading.Tasks;
-            using Shiron.Manila;
-            using Shiron.Manila.API;
+            {string.Join("\n", usings.Select(u => $"using {u};"))}
 
             {await File.ReadAllTextAsync(ScriptPath)}
         ";
@@ -160,12 +158,33 @@ public sealed class ScriptContext : IScriptContext {
 
     private async Task<Assembly> CompileAndCacheScriptAsync(IFileHashCache cache, string assemblyPath) {
         using (new ProfileScope(_profiler, "Compiling Script")) {
-            var code = await CreateScriptCode();
+            List<string> namespaces = [
+                "System",
+                "System.Collections.Generic",
+                "System.Linq",
+                "System.Threading.Tasks",
+                "Shiron.Manila",
+                "Shiron.Manila.API",
+                "Shiron.Manila.API.Interfaces",
+                "Shiron.Manila.API.Bridges"
+            ];
+
+            namespaces.AddRange(_extensionManager.ExposedTypes
+                .Where(t => t.Namespace != null)
+                .Select(t => t.Namespace!)
+                .Distinct()
+            );
+
+            var code = await CreateScriptCode(namespaces);
+
+            _logger.Debug($"{string.Join(", ", namespaces)}");
 
             var references = new List<MetadataReference> {
                 // MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 // MetadataReference.CreateFromFile(typeof(API.Manila).Assembly.Location),
-                // MetadataReference.CreateFromFile(typeof(IScriptEntry).Assembly.Location),
+                // Required to fix:
+                // CS0656 - Missing compiler required member 'Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo.Create'
+                MetadataReference.CreateFromFile(typeof(RuntimeBinderException).Assembly.Location),
             };
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {

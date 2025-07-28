@@ -49,6 +49,8 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
     public List<ManilaPlugin> Plugins { get; } = [];
     public List<Assembly> Assemblies { get; } = [];
 
+    public List<Type> ExposedTypes { get; } = [];
+
     /// <summary>
     /// Discovers and loads all plugins from the specified plugin directory.
     /// </summary>
@@ -88,8 +90,15 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
 
         plugin.SetLogger(_logger);
         plugin.File = file;
+        Assemblies.Add(assembly);
         Plugins.Add(plugin);
         _logger.Log(new LoadingPluginLogEntry(plugin, Guid.NewGuid()));
+
+        foreach (var t in assembly.GetTypes()) {
+            if (t.GetCustomAttribute<ManilaExpose>() != null) {
+                ExposedTypes.Add(t);
+            }
+        }
 
         await ResolveDependenciesAsync(plugin, loadContext);
 

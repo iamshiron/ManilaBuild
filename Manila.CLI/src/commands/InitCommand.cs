@@ -42,7 +42,7 @@ internal sealed class InitCommand(IDirectories directories, BaseServiceContainer
         }
 
         // Create workspace file
-        File.WriteAllLines(Path.Join(_directories.RootDir, "Manila.cs"), CLIConstants.ScriptDefaults.WorkspaceScript);
+        File.WriteAllLines(Path.Join(_directories.RootDir, "Manila.cs"), ScriptDefaults.WorkspaceScript);
 
         _baseServices.Logger.Info(Messages.WorkspaceInitialized);
 

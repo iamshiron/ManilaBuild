@@ -83,7 +83,7 @@ public sealed class Manila(
     /// <summary>Imports a C# type registered by a plugin, making it available to the script.</summary>
     /// <param name="key">The key the API type was registered with.</param>
     /// <exception cref="PluginException">Thrown if the key is not found or the type cannot be instantiated.</exception>
-    public object Import(string key) {
+    public dynamic Import(string key) {
         var type = _services.ExtensionManager.GetAPIType(key);
         try {
             var instance = Activator.CreateInstance(type);

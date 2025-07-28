@@ -3,7 +3,7 @@
 [![CI](https://github.com/iamshiron/ManilaBuild/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/iamshiron/ManilaBuild/actions/workflows/ci.yml)
 [![Code Quality](https://github.com/iamshiron/ManilaBuild/actions/workflows/code-quality.yml/badge.svg?branch=main)](https://github.com/iamshiron/ManilaBuild/actions/workflows/code-quality.yml)
 
-ManilaBuild is a powerful and flexible build automation tool designed to streamline your development workflow. Inspired by modern build systems, it uses simple JavaScript files for configuration, making project setup easy and intuitive. Whether you're working on a simple C++ application or a complex multi-project solution, ManilaBuild provides the tools you need to manage dependencies, define build jobs, and automate your entire process.
+ManilaBuild is a powerful and flexible build automation tool designed to streamline your development workflow. Inspired by modern build systems, it uses simple C# files for configuration, making project setup easy and intuitive. Whether you're working on a simple C++ application or a complex multi-project solution, ManilaBuild provides the tools you need to manage dependencies, define build jobs, and automate your entire process.
 
 -----
 

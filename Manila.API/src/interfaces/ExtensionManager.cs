@@ -23,4 +23,5 @@ public interface IExtensionManager {
 
     public List<ManilaPlugin> Plugins { get; }
     public List<Assembly> Assemblies { get; }
+    public List<Type> ExposedTypes { get; }
 }

@@ -4,10 +4,9 @@ public class Script : IScriptEntry
     public async Task ExecuteAsync(Shiron.Manila.API.Manila Manila)
     {
         var workspace = Manila.GetWorkspace();
-        var Webhook = Manila.Import("shiron.manila:discord/webhook");
 
-        //var hook = Webhook.Create(Manila.GetEnv("DISCORD_WEBHOOK_URL"));
-        //await hook.Send("Hello from Manila!");
+        var hook = new Webhook(Manila.GetEnv("DISCORD_WEBHOOK_URL"));
+        await hook.Send("Hello from Manila!");
 
         Manila.Log("Hello from Manila!");
         if (Manila.GetEnvBool("ENABLE"))
