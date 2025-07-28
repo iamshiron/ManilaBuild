@@ -55,11 +55,6 @@ public class Project(ILogger logger, string name, string projectRoot, string roo
     public readonly Dictionary<string, SourceSetBuilder> SourceSetBuilders = [];
 
     /// <summary>
-    /// List of project dependencies.
-    /// </summary>
-    public readonly List<Dependency> Dependencies = [];
-
-    /// <summary>
     /// The workspace containing this project.
     /// </summary>
     public Workspace Workspace { get; private set; } = workspace;

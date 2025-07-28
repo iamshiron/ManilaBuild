@@ -37,20 +37,6 @@ public class ProjectScriptBridge(Project project) : ScriptBridge {
     }
 
     /// <summary>
-    /// Adds dependencies to the project from a script object.
-    /// </summary>
-    /// <param name="obj">Script object containing dependency definitions.</param>
-    public void Dependencies(ScriptObject obj) {
-        foreach (var n in obj.PropertyIndices) {
-            if (obj[n] is Dependency dep) {
-                _handle.Dependencies.Add(dep);
-            } else {
-                throw new ManilaException($"Property '{n}' is not a Dependency.");
-            }
-        }
-    }
-
-    /// <summary>
     /// Configures artifacts for the project from a collection of builders.
     /// </summary>
     /// <param name="obj">Dictionary containing artifact names and their builders.</param>
