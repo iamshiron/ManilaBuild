@@ -63,21 +63,16 @@ public sealed class Manila(
 
     /// <summary>Gets the active build configuration provided by a language plugin.</summary>
     /// <exception cref="InvalidOperationException">Thrown if a language plugin has not yet been applied.</exception>
-    public dynamic GetConfig(UnresolvedArtifactScriptBridge artifact) {
+    public T GetConfig<T>(UnresolvedArtifactScriptBridge artifact) {
         var componentMatch = artifact.PluginComponent
             ?? throw new InvalidOperationException("Artifact must specify a plugin component to get its build configuration.");
-        var component = _services.ExtensionManager.GetPluginComponent(componentMatch)
+        var builder = _services.ExtensionManager.GetArtifactBuilder(componentMatch)
             ?? throw new ConfigurationException($"Plugin component '{componentMatch}' not found for artifact '{artifact.ArtifactID}'.");
 
-        if (component is not LanguageComponent languageComponent) {
-            throw new ConfigurationException(
-                $"The plugin component '{componentMatch.Format()}' is not a valid language component for artifact '{artifact.ArtifactID}'.");
-        }
+        var config = Activator.CreateInstance(builder.BuildConfigType) ??
+            throw new PluginException($"Activator failed to create an instance of '{builder.BuildConfigType.Name}' for artifact '{artifact.ArtifactID}'.");
 
-        var config = Activator.CreateInstance(languageComponent.BuildConfigType) ??
-            throw new PluginException($"Activator failed to create an instance of '{languageComponent.BuildConfigType.Name}' for artifact '{artifact.ArtifactID}'.");
-
-        return (BuildConfig) config;
+        return (T) config;
     }
 
     /// <summary>Imports a C# type registered by a plugin, making it available to the script.</summary>
@@ -188,17 +183,18 @@ public sealed class Manila(
             artifactBridge.Resolve(), config, project
         );
 
-        var component = _services.ExtensionManager.GetPluginComponent(artifact.PluginComponent)
-            ?? throw new ConfigurationException($"Plugin component '{artifact.PluginComponent}' not found for artifact '{artifact.Name}'.");
-
-        if (component is not LanguageComponent) {
-            throw new ConfigurationException(
-                $"The plugin component '{artifact.PluginComponent}' is not a valid language component for artifact '{artifact.Name}'.");
-        }
+        var artifactBuilder = _services.ExtensionManager.GetArtifactBuilder(artifact.PluginComponent)
+            ?? throw new ConfigurationException($"Artifact builder '{artifact.PluginComponent}' not found for artifact '{artifact.Name}'.");
 
         var logCache = new LogCache();
         using (new LogInjector(_services.Logger, logCache.Entries.Add)) {
-            var res = ((LanguageComponent) component).Build(project.Workspace, project, config, artifact, _services.ArtifactManager);
+            var res = _services.ArtifactManager.BuildArtifact(
+                artifactBuilder,
+                artifact,
+                config,
+                project,
+                []
+            );
 
             switch (res) {
                 case BuildExitCodeSuccess:
@@ -208,6 +204,7 @@ public sealed class Manila(
 
                 case BuildExitCodeCached:
                     if (artifact.LogCache is { } cache) {
+                        _services.Logger.Debug($"Replaying log cache for artifact '{artifact.Name}' in project '{artifact.Project.Identifier}'.");
                         cache.Replay(_services.Logger, _services.Logger.LogContext.CurrentContextID ?? Guid.Empty);
                     } else {
                         _services.Logger.Warning($"Cached artifact '{artifact.Name}' was missing its log cache.");

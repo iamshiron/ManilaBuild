@@ -2,7 +2,7 @@
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.Logging;
 
-namespace Shiron.Manila.Enums;
+namespace Shiron.Manila.Services;
 
 public class ExecutionStage(ILogger logger) : IExecutionStage {
     private readonly ILogger _logger = logger;

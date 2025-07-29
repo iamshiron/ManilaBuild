@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using Shiron.Manila.Exceptions;
-using Shiron.Manila.Ext;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using static Shiron.Manila.CLI.CLIConstants;

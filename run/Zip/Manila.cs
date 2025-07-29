@@ -10,7 +10,7 @@ project.SourceSets(new Dictionary<string, object> {
 
 project.Artifacts(new Dictionary<string, object> {
     ["main"] = Manila.Artifact("shiron.manila:zip/zip", artifact => {
-        var config = Manila.GetConfig(artifact);
+        var config = Manila.GetConfig<ZipBuildConfig>(artifact);
         config.SetSubFolder(Manila.GetEnv("MANILA_SUB_FOLDER", "sub"));
 
         Manila.Job("build")

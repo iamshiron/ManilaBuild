@@ -4,6 +4,7 @@ using Shiron.Manila.API.Attributes;
 
 namespace Shiron.Manila.Zip;
 
+[ManilaExpose]
 public class ZipBuildConfig : BuildConfig {
     [FingerprintItem]
     public string? SubFolder { get; set; } = string.Empty;

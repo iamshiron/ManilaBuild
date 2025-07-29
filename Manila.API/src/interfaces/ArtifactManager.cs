@@ -1,5 +1,6 @@
 
 using Shiron.Manila.API.Interfaces.Artifacts;
+using Shiron.Manila.Interfaces;
 
 namespace Shiron.Manila.API.Interfaces;
 
@@ -9,4 +10,12 @@ public interface IArtifactManager {
     Task<IArtifact> AppendCachedDataAsync(IArtifact artifact, BuildConfig config, Project project);
     void LoadCache();
     void FlushCacheToDisk();
+
+    IBuildExitCode BuildArtifact(
+        IArtifactBuilder artifactBuilder,
+        IArtifact artifact,
+        BuildConfig config,
+        Project project,
+        IArtifactOutput[] dependencies
+    );
 }

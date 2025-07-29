@@ -3,7 +3,6 @@ using System.ComponentModel;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Interfaces;
-using Shiron.Manila.Ext;
 using Spectre.Console.Cli;
 using static Shiron.Manila.CLI.CLIConstants;
 

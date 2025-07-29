@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Shiron.Manila.API;
+using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.API.Logging;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
@@ -23,6 +24,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public string? File { get; set; } = null;
     public readonly Dictionary<string, Type> APIClasses = [];
     public readonly Dictionary<string, ProjectTemplate> ProjectTemplates = [];
+    public readonly List<IArtifactBuilder> ArtifactBuilders = [];
 
     internal ILogger? _logger { get; private set; }
 
@@ -79,15 +81,11 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// Registers an enum to the plugin. The class requires the <see cref="ScriptEnum"/> attribute.
     /// </summary>
     /// <typeparam name="T">The class type</typeparam>
-    public void RegisterEnum<T>() {
-        Enums.Add(typeof(T));
-    }
-    public void RegisterDependency<T>() {
-        Dependencies.Add(typeof(T));
-    }
-    public void RegisterAPIType<T>(string name) {
-        APIClasses.Add(name, typeof(T));
-    }
+    public void RegisterEnum<T>() => Enums.Add(typeof(T));
+    public void RegisterDependency<T>() => Dependencies.Add(typeof(T));
+    public void RegisterAPIType<T>(string name) => APIClasses.Add(name, typeof(T));
+    public void RegisterArtifact(IArtifactBuilder builder) => ArtifactBuilders.Add(builder);
+
     public void RegisterProjectTemplate(ProjectTemplate template) {
         var name = template.Name;
         if (ProjectTemplates.ContainsKey(name)) {

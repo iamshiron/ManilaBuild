@@ -1,7 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
       <PackageReference Include="Spectre.Console" Version="0.50.0" />
-      <ProjectReference Include="..\Manila.API\Manila.API.csproj" />
+      <ProjectReference Include="..\Manila.API\Manila.API.csproj">
+        <Private>false</Private>
+        <ExcludeAssets>runtime</ExcludeAssets>
+        <PrivateAssets>all</PrivateAssets>
+      </ProjectReference>
   </ItemGroup>
 
   <PropertyGroup>

@@ -8,11 +8,12 @@ using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.API.Utils;
 using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
+using Shiron.Manila.Interfaces;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 
-namespace Shiron.Manila.Artifacts;
+namespace Shiron.Manila.Services;
 
 public class ArtifactManager(ILogger logger, IProfiler profiler, string artifactsDir, string artifactsCacheFile) : IArtifactManager {
     private readonly ILogger _logger = logger;
@@ -106,6 +107,21 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
                 _jsonSettings
             )
         );
+    }
+
+    public IBuildExitCode BuildArtifact(IArtifactBuilder artifactBuilder, IArtifact artifact, BuildConfig config, Project project, IArtifactOutput[] dependencies) {
+        var root = GetArtifactRoot(config, project, artifact);
+        if (Directory.Exists(root)) return new BuildExitCodeCached(artifact.GetFingerprint(config));
+
+        var res = artifactBuilder.Build(
+            GetArtifactRoot(config, project, artifact),
+            project,
+            config,
+            artifact,
+            dependencies
+        );
+
+        return res;
     }
 }
 

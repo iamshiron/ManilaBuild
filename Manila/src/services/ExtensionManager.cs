@@ -1,16 +1,18 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Shiron.Manila.API.Attributes;
 using Shiron.Manila.API.Ext;
 using Shiron.Manila.API.Interfaces;
+using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Services;
 using Shiron.Manila.Utils;
 
-namespace Shiron.Manila.Ext;
+namespace Shiron.Manila.Services;
 
 /// <summary>
 /// Manages the loading, retrieval, and lifecycle of plugins. This is a global singleton.
@@ -54,6 +56,13 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
     /// </summary>
     public List<Type> ExposedTypes { get; } = [];
 
+    private readonly string[] _knownAssemblies = [
+        "Manila.API.dll",
+        "Manila.Logging.dll",
+        "Manila.Profiling.dll",
+        "Manila.Utils.dll"
+    ];
+
     /// <summary>
     /// Discovers and loads all plugins from the specified plugin directory.
     /// </summary>
@@ -67,6 +76,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             }
 
             foreach (var file in Directory.GetFiles(_pluginDir, "*.dll")) {
+                if (_knownAssemblies.Contains(Path.GetFileName(file))) continue; // Skip known assemblies
                 using (new ProfileScope(_profiler, $"LoadPluginFile: {Path.GetFileName(file)}")) {
                     await LoadPluginFileAsync(file);
                 }
@@ -77,14 +87,20 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
     }
 
     private async Task LoadPluginFileAsync(string file) {
+        _logger.Debug($"Loading plugin from file: {file}");
+
         var loadContext = new PluginLoadContext(_profiler, file);
         PluginContextManager.AddContext(loadContext);
-        var assembly = Assembly.LoadFile(Path.GetFullPath(file));
+        var assembly = loadContext.LoadFromAssemblyPath(Path.GetFullPath(file));
 
         foreach (var type in assembly.GetTypes()) {
             if (!type.IsSubclassOf(typeof(ManilaPlugin)) || type.IsAbstract) continue;
+            _logger.Debug($"Found plugin type: {type.FullName} in assembly {assembly.GetName().Name}");
             await LoadPluginAsync(type, assembly, file, loadContext);
+            return;
         }
+
+        _logger.Warning($"No valid ManilaPlugin found in assembly {assembly.GetName().Name} from file {file}. Skipping.");
     }
 
     private async Task LoadPluginAsync(Type pluginType, Assembly assembly, string file, PluginLoadContext loadContext) {
@@ -206,6 +222,18 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         );
 
         return component.Value ?? throw new ManilaException($"Component '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
+    }
+
+    public IArtifactBuilder GetArtifactBuilder(string uri) => GetArtifactBuilder(
+        RegexUtils.MatchPluginComponent(uri) ?? throw new ManilaException(uri)
+    );
+    public IArtifactBuilder GetArtifactBuilder(RegexUtils.PluginComponentMatch match) {
+        var plugin = GetPlugin(match.ToPluginMatch());
+        var builder = plugin.ArtifactBuilders.FirstOrDefault(b =>
+            b.Name == match.Component
+        );
+
+        return builder ?? throw new ManilaException($"Artifact builder '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
     }
 
     public Type GetAPIType(string uri) {

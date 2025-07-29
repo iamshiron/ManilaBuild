@@ -13,6 +13,7 @@ using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
+using Shiron.Manila.Services;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
@@ -66,6 +67,8 @@ public sealed class ScriptContext : IScriptContext {
     }
 
     private async Task<string> CreateScriptCode(List<string> usings) {
+        _logger.Debug($"Appending {usings.Count} usings to script code.");
+        _logger.Debug($"Usings: {string.Join(", ", usings)}");
         _logger.Log(new ScriptUsingEntriesLogEntry(ScriptPath, [.. usings], ContextID));
 
         var code = @$"
@@ -141,6 +144,8 @@ public sealed class ScriptContext : IScriptContext {
                 Assembly? assembly = null;
                 if (!scriptChanged && File.Exists(assemblyPath)) {
                     _logger.Log(new ScriptAssemblyCacheHitLogEntry(ScriptPath, assemblyPath, ContextID));
+
+                    var context = new PluginLoadContext(_profiler, assemblyPath);
                     assembly = Assembly.LoadFrom(assemblyPath);
                 } else {
                     _logger.Log(new ScriptAssemblyCacheMissEntry(ScriptPath, assemblyPath, ContextID));
@@ -186,17 +191,24 @@ public sealed class ScriptContext : IScriptContext {
             var code = await CreateScriptCode(namespaces);
             var references = new List<MetadataReference> {
                 // CS0656 - Missing compiler required member 'Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo.Create'
-                MetadataReference.CreateFromFile(typeof(RuntimeBinderException).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location),
             };
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
                 try {
                     if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location)) {
+                        _logger.Debug($"Adding reference to assembly: {assembly.FullName} from {assembly.Location}");
                         references.Add(MetadataReference.CreateFromFile(assembly.Location));
                     }
                 } catch (NotSupportedException) {
                     // Ignore dynamic assemblies or assemblies loaded from byte arrays
                 }
+            }
+
+            var csharpAssembly = typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly;
+            if (!references.Any(r => r.Display.Contains("Microsoft.CSharp.dll"))) {
+                _logger.Debug($"Adding reference to Microsoft.CSharp.dll from {csharpAssembly.Location}");
+                references.Add(MetadataReference.CreateFromFile(csharpAssembly.Location));
             }
 
             var compilation = CSharpCompilation.Create(

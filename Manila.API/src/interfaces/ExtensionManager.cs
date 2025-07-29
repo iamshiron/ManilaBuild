@@ -1,6 +1,7 @@
 
 using System.Reflection;
 using Shiron.Manila.API.Ext;
+using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API.Interfaces;
@@ -17,6 +18,9 @@ public interface IExtensionManager {
 
     PluginComponent GetPluginComponent(string uri);
     PluginComponent GetPluginComponent(RegexUtils.PluginComponentMatch match);
+
+    IArtifactBuilder GetArtifactBuilder(string uri);
+    IArtifactBuilder GetArtifactBuilder(RegexUtils.PluginComponentMatch match);
 
     Type GetAPIType(string uri);
     Type GetAPIType(RegexUtils.PluginApiClassMatch match);
