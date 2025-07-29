@@ -206,7 +206,7 @@ public sealed class ScriptContext : IScriptContext {
             }
 
             var csharpAssembly = typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly;
-            if (!references.Any(r => r.Display.Contains("Microsoft.CSharp.dll"))) {
+            if (!references.Any(r => r.Display != null && r.Display.Contains("Microsoft.CSharp.dll"))) {
                 _logger.Debug($"Adding reference to Microsoft.CSharp.dll from {csharpAssembly.Location}");
                 references.Add(MetadataReference.CreateFromFile(csharpAssembly.Location));
             }
