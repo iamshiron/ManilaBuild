@@ -6,7 +6,6 @@ using Shiron.Manila.API;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.API.Utils;
-using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Interfaces;
 using Shiron.Manila.Logging;

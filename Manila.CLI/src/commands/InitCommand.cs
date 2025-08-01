@@ -22,7 +22,7 @@ internal sealed class InitCommand(IDirectories directories, BaseServiceContainer
     }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
-        var workspaceFound = Directory.Exists(_directories.DataDir) || File.Exists(Path.Join(_directories.RootDir, "Manila.cs"));
+        var workspaceFound = Directory.Exists(_directories.Data) || File.Exists(Path.Join(_directories.Root, "Manila.cs"));
 
         if (workspaceFound && !settings.Force) {
             _baseServices.Logger.Error(Messages.AlreadyInitialized);
@@ -31,7 +31,7 @@ internal sealed class InitCommand(IDirectories directories, BaseServiceContainer
 
         if (workspaceFound && settings.Force) {
             _baseServices.Logger.Info("Deleting old data dir...");
-            Directory.Delete(_directories.DataDir, true);
+            Directory.Delete(_directories.Data, true);
         }
 
         _baseServices.Logger.Info(Messages.CreatingNewWorkspace);
@@ -42,7 +42,7 @@ internal sealed class InitCommand(IDirectories directories, BaseServiceContainer
         }
 
         // Create workspace file
-        File.WriteAllLines(Path.Join(_directories.RootDir, "Manila.cs"), ScriptDefaults.WorkspaceScript);
+        File.WriteAllLines(Path.Join(_directories.Root, "Manila.cs"), ScriptDefaults.WorkspaceScript);
 
         _baseServices.Logger.Info(Messages.WorkspaceInitialized);
 

@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Utils;
-using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
@@ -34,7 +33,7 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
     public IEnumerable<string> DiscoverProjectScripts(IProfiler profiler) {
         using (new ProfileScope(profiler, "Discovering Project Scripts")) {
             List<string> paths = [];
-            var root = _directories.RootDir;
+            var root = _directories.Root;
             try {
                 foreach (var dir in Directory.GetDirectories(root)) {
                     foreach (var file in Directory.GetFiles(dir, "Manila.cs", SearchOption.AllDirectories)) {
@@ -73,7 +72,7 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             _baseServices.Logger.Log(new ProjectDiscoveredLogEntry(projectRoot, context.ScriptPath));
 
-            var project = new Project(_baseServices.Logger, projectName, projectRoot, _directories.RootDir, workspace);
+            var project = new Project(_baseServices.Logger, projectName, projectRoot, _directories.Root, workspace);
             var projectBridge = new ProjectScriptBridge(project);
 
             workspace.Projects.Add(projectName, project);

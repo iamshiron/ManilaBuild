@@ -4,7 +4,7 @@ using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils;
 
-namespace Shiron.Manila.Caching;
+namespace Shiron.Manila.Services;
 
 /// <summary>
 /// Used if no manila workspace was detected.
@@ -34,9 +34,14 @@ public class FileHashCache : IFileHashCache {
     private readonly string _connectionString;
     private readonly string _root;
 
-    public FileHashCache(IProfiler profiler, string file, string root) {
+    public FileHashCache(IProfiler profiler, IDirectories directories) {
         using (new ProfileScope(profiler, "Initializing FileHashCache")) {
-            _root = root;
+            if (Directory.Exists(directories.Data) && !Directory.Exists(directories.Cache)) {
+                _ = Directory.CreateDirectory(directories.Cache);
+            }
+
+            var file = Path.Join(directories.Cache, "filehashes.db");
+            _root = directories.Root;
             _connectionString = $"Data Source={file};Mode=ReadWriteCreate;";
 
             using var connection = new SqliteConnection(_connectionString);

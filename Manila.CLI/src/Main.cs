@@ -8,7 +8,6 @@ using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Interfaces;
-using Shiron.Manila.Caching;
 using Shiron.Manila.CLI.Commands;
 using Shiron.Manila.CLI.Commands.API;
 using Shiron.Manila.CLI.Utils;
@@ -101,12 +100,14 @@ public static class ManilaCli {
 
         try {
             var shouldInitialize = true;
+            var dataDirExists = Directory.Exists(Directories.Data);
+            var workspaceFileExists = File.Exists(Path.Join(Directories.Root, "Manila.cs"));
 
-            if (!Directory.Exists(Directories.DataDir)) {
+            if (!dataDirExists) {
                 shouldInitialize = false;
                 baseServiceContainer.Logger.Debug("Data directory does not exist. Skipping workspace initialization.");
             }
-            if (!File.Exists(Path.Join(Directories.RootDir, "Manila.cs"))) {
+            if (!workspaceFileExists) {
                 shouldInitialize = false;
                 baseServiceContainer.Logger.Debug("Workspace script file (Manila.cs) does not exist. Skipping workspace initialization.");
             }
@@ -115,7 +116,7 @@ public static class ManilaCli {
                 using (new ProfileScope(baseServiceContainer.Profiler, "Initializing Manila Engine")) {
                     ExecutionStage.ChangeState(ExecutionStages.Discovery);
 
-                    Directory.CreateDirectory(Directories.DataDir);
+                    Directory.CreateDirectory(Directories.Data);
 
                     var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
 
@@ -124,7 +125,7 @@ public static class ManilaCli {
                         new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
                         new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
                         nugetManager,
-                        new FileHashCache(baseServiceContainer.Profiler, Path.Join(Directories.DataDir, "cache", "filehashes.db"), Directories.RootDir)
+                        new FileHashCache(baseServiceContainer.Profiler, Directories)
                     );
 
                     serviceContainer.ArtifactManager.LoadCache();
@@ -134,7 +135,7 @@ public static class ManilaCli {
                     ExecutionStage.ChangeState(ExecutionStages.Configuration);
                     var workspace = await manilaEngine.RunWorkspaceScriptAsync(serviceContainer, new(
                         baseServiceContainer.Logger, baseServiceContainer.Profiler, serviceContainer.ExtensionManager,
-                        Directories.RootDir, Path.Join(Directories.RootDir, "Manila.cs")
+                        Directories.Root, Path.Join(Directories.Root, "Manila.cs")
                     ));
 
                     var workspaceBridge = new WorkspaceScriptBridge(baseServiceContainer.Logger, baseServiceContainer.Profiler, workspace);
@@ -144,7 +145,7 @@ public static class ManilaCli {
                         projectInitializationTasks.Add(
                             manilaEngine.RunProjectScriptAsync(serviceContainer, new(
                                 baseServiceContainer.Logger, baseServiceContainer.Profiler, serviceContainer.ExtensionManager,
-                                Directories.RootDir, script
+                                Directories.Root, script
                             ), workspace, workspaceBridge)
                         );
                     }

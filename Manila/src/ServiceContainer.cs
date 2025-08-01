@@ -1,6 +1,5 @@
 
 using Shiron.Manila.API.Interfaces;
-using Shiron.Manila.Caching;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Registries;

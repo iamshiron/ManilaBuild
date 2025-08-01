@@ -3,7 +3,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Shiron.Manila.API.Logging;
-using Shiron.Manila.Caching;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils.Logging;
