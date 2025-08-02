@@ -5,8 +5,8 @@ namespace Shiron.Manila.Interfaces;
 
 public interface IBuildExitCode { }
 
-public class BuildExitCodeSuccess(IArtifactOutput[] outputs) : IBuildExitCode {
-    public readonly IArtifactOutput[] Outputs = outputs;
+public class BuildExitCodeSuccess(ArtifactOutputBuilder builder) : IBuildExitCode {
+    public readonly ArtifactOutput Outputs = builder.Build();
 }
 public class BuildExitCodeFailed(Exception e) : IBuildExitCode {
     public readonly Exception Exception = e;

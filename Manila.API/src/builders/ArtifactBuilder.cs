@@ -18,7 +18,7 @@ public sealed class ArtifactBuilder(
     Action<UnresolvedArtifactScriptBridge> configurator,
     Manila manilaAPI,
     Project project
-) : IBuildable<IArtifact> {
+) : IBuildable<ICreatedArtifact> {
     /// <summary>Gets the project this artifact belongs to.</summary>
     public readonly Project Project = project;
 
@@ -62,7 +62,7 @@ public sealed class ArtifactBuilder(
     /// <exception cref="ScriptExecutionException">Thrown if an error occurs within the configuration script.</exception>
     /// <exception cref="BuildProcessException">Thrown for other unexpected errors during the build.</exception>
     [MemberNotNull(nameof(Name))]
-    public IArtifact Build() {
+    public ICreatedArtifact Build() {
         if (string.IsNullOrWhiteSpace(Name)) {
             throw new ConfigurationException("Artifact name must be set before building.");
         }

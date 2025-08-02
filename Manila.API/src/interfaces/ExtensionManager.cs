@@ -19,8 +19,8 @@ public interface IExtensionManager {
     PluginComponent GetPluginComponent(string uri);
     PluginComponent GetPluginComponent(RegexUtils.PluginComponentMatch match);
 
-    IArtifactBuilder GetArtifactBuilder(string uri);
-    IArtifactBuilder GetArtifactBuilder(RegexUtils.PluginComponentMatch match);
+    IArtifactBlueprint GetArtifact(string uri);
+    IArtifactBlueprint GetArtifact(RegexUtils.PluginComponentMatch match);
 
     Type GetAPIType(string uri);
     Type GetAPIType(RegexUtils.PluginApiClassMatch match);

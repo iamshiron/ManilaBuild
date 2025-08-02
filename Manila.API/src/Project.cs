@@ -33,7 +33,7 @@ public class Project(ILogger logger, string name, string projectRoot, string roo
     /// <summary>
     /// Collection of built artifacts produced by this project.
     /// </summary>
-    public Dictionary<string, IArtifact> Artifacts { get; } = [];
+    public Dictionary<string, ICreatedArtifact> Artifacts { get; } = [];
 
     /// <summary>
     /// Collection of source sets containing project source files.

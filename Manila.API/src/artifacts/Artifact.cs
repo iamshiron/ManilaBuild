@@ -11,7 +11,7 @@ namespace Shiron.Manila.API.Artifacts;
 /// <summary>
 /// Represents a build artifact that implements the IArtifact interface.
 /// </summary>
-public class Artifact : IArtifact {
+public class Artifact : ICreatedArtifact {
     public string Description { get; }
     public Job[] Jobs { get; }
     public string Name { get; }

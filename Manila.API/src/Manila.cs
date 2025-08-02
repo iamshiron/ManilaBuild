@@ -6,6 +6,7 @@ using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Ext;
 using Shiron.Manila.API.Interfaces;
+using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.API.Logging;
 using Shiron.Manila.API.Utils;
 using Shiron.Manila.Exceptions;
@@ -19,12 +20,12 @@ namespace Shiron.Manila.API;
 /// Defines the primary, script-facing API for interacting with the Manila build system.
 /// </summary>
 public sealed class Manila(
-    APIServiceContainer services,
-    IScriptContext context,
-    WorkspaceScriptBridge workspaceBridge,
-    Workspace workspace,
-    ProjectScriptBridge? projectBridge,
-    Project? project) {
+        APIServiceContainer services,
+        IScriptContext context,
+        WorkspaceScriptBridge workspaceBridge,
+        Workspace workspace,
+        ProjectScriptBridge? projectBridge,
+        Project? project) {
     private readonly APIServiceContainer _services = services;
     private readonly IScriptContext _context = context;
     private readonly Project? _project = project;
@@ -66,7 +67,7 @@ public sealed class Manila(
     public T GetConfig<T>(UnresolvedArtifactScriptBridge artifact) {
         var componentMatch = artifact.PluginComponent
             ?? throw new InvalidOperationException("Artifact must specify a plugin component to get its build configuration.");
-        var builder = _services.ExtensionManager.GetArtifactBuilder(componentMatch)
+        var builder = _services.ExtensionManager.GetArtifact(componentMatch)
             ?? throw new ConfigurationException($"Plugin component '{componentMatch}' not found for artifact '{artifact.ArtifactID}'.");
 
         var config = Activator.CreateInstance(builder.BuildConfigType) ??
@@ -183,17 +184,18 @@ public sealed class Manila(
             artifactBridge.Resolve(), config, project
         );
 
-        var artifactBuilder = _services.ExtensionManager.GetArtifactBuilder(artifact.PluginComponent)
+        var artifactBuilder = _services.ExtensionManager.GetArtifact(artifact.PluginComponent)
             ?? throw new ConfigurationException($"Artifact builder '{artifact.PluginComponent}' not found for artifact '{artifact.Name}'.");
+
+        if (artifactBuilder is not IArtifactBuildable) throw new ConfigurationException($"Artifact builder '{artifact.PluginComponent}' is not buildable.");
 
         var logCache = new LogCache();
         using (new LogInjector(_services.Logger, logCache.Entries.Add)) {
-            var res = _services.ArtifactManager.BuildArtifact(
-                artifactBuilder,
+            var res = _services.ArtifactManager.BuildFromDependencies(
+                (IArtifactBuildable) artifactBuilder,
                 artifact,
-                config,
                 project,
-                []
+                config
             );
 
             switch (res) {

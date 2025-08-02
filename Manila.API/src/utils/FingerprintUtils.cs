@@ -24,7 +24,7 @@ public static class FingerprintUtils {
         return HashUtils.CombineHashes(hashes);
     }
 
-    public static string HashArtifact(IArtifact artifact, BuildConfig config, IProfiler? profiler = null) {
+    public static string HashArtifact(ICreatedArtifact artifact, BuildConfig config, IProfiler? profiler = null) {
         ProfileScope? disposable = null;
         if (profiler is not null) disposable = new ProfileScope(profiler, MethodBase.GetCurrentMethod()!);
 

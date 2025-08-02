@@ -15,6 +15,6 @@ public abstract class LanguageComponent : PluginComponent {
         return $"LanguageComponent({Name})";
     }
 
-    public abstract IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, IArtifact artifact, IArtifactManager artifactManager);
+    public abstract IBuildExitCode Build(Workspace workspace, Project project, BuildConfig config, ICreatedArtifact artifact, IArtifactManager artifactManager);
     public abstract void Run(Project project);
 }

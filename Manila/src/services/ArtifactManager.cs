@@ -33,7 +33,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
     };
 
-    public string GetArtifactRoot(BuildConfig config, Project project, IArtifact artifact) {
+    public string GetArtifactRoot(BuildConfig config, Project project, ICreatedArtifact artifact) {
         return Path.Join(
             ArtifactsDir,
             $"{PlatformUtils.GetPlatformKey()}-{PlatformUtils.GetArchitectureKey()}",
@@ -43,14 +43,14 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         );
     }
 
-    public async Task CacheArtifactAsync(IArtifact artifact, BuildConfig config, Project project) {
+    public async Task CacheArtifactAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
         _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
     }
 
-    public async Task<IArtifact> AppendCachedDataAsync(IArtifact artifact, BuildConfig config, Project project) {
+    public async Task<ICreatedArtifact> AppendCachedDataAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
@@ -108,19 +108,8 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         );
     }
 
-    public IBuildExitCode BuildArtifact(IArtifactBuilder artifactBuilder, IArtifact artifact, BuildConfig config, Project project, IArtifactOutput[] dependencies) {
-        var root = GetArtifactRoot(config, project, artifact);
-        if (Directory.Exists(root)) return new BuildExitCodeCached(artifact.GetFingerprint(config));
-
-        var res = artifactBuilder.Build(
-            GetArtifactRoot(config, project, artifact),
-            project,
-            config,
-            artifact,
-            dependencies
-        );
-
-        return res;
+    public IBuildExitCode BuildFromDependencies(IArtifactBuildable builder, ICreatedArtifact createdArtifact, Project project, BuildConfig config) {
+        return builder.Build(new(GetArtifactRoot(config, project, createdArtifact)), project, config);
     }
 }
 
@@ -131,7 +120,7 @@ public class ArtifactCacheEntry(string artifactRoot, long createdAt, long lastAc
     public long Size { get; set; } = size;
     public LogCache LogCache { get; set; } = logCache;
 
-    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, IArtifact artifact, BuildConfig config, Project project) {
+    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, ICreatedArtifact artifact, BuildConfig config, Project project) {
         return new(
             artifactManager.GetArtifactRoot(config, project, artifact),
             TimeUtils.Now(),

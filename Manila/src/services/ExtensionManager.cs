@@ -224,10 +224,10 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         return component.Value ?? throw new ManilaException($"Component '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
     }
 
-    public IArtifactBuilder GetArtifactBuilder(string uri) => GetArtifactBuilder(
+    public IArtifactBlueprint GetArtifact(string uri) => GetArtifact(
         RegexUtils.MatchPluginComponent(uri) ?? throw new ManilaException(uri)
     );
-    public IArtifactBuilder GetArtifactBuilder(RegexUtils.PluginComponentMatch match) {
+    public IArtifactBlueprint GetArtifact(RegexUtils.PluginComponentMatch match) {
         var plugin = GetPlugin(match.ToPluginMatch());
         var builder = plugin.ArtifactBuilders.FirstOrDefault(b =>
             b.Name == match.Component

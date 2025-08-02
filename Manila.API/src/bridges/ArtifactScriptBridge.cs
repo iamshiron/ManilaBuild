@@ -12,7 +12,7 @@ public class UnresolvedArtifactScriptBridge(Project project, string artifactID, 
     public readonly RegexUtils.PluginComponentMatch PluginComponent = pluginComponent;
     private readonly Project _parentProject = project;
 
-    public IArtifact Resolve() {
+    public ICreatedArtifact Resolve() {
         return _parentProject.Artifacts.TryGetValue(ArtifactID, out var artifact)
             ? artifact
             : throw new ManilaException($"Artifact '{ArtifactID}' could not be resolved in project '{_parentProject.Name}'!");
