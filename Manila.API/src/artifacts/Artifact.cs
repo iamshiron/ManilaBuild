@@ -42,10 +42,5 @@ public class Artifact : ICreatedArtifact {
         LogCache = null;
     }
 
-    /// <summary>
-    /// Generates a unique fingerprint for the artifact based on its configuration.
-    /// </summary>
-    /// <param name="config">The build configuration to use for hashing.</param>
-    /// <returns>A string representing the artifact's fingerprint.</returns>
-    public string GetFingerprint(BuildConfig config) => FingerprintUtils.HashArtifact(this, config);
+    public string GetFingerprint(Project project, BuildConfig config) => $"{project.Name}-{Name}_{FingerprintUtils.HashArtifact(this, config)}";
 }

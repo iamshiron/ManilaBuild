@@ -15,7 +15,7 @@ public interface ICreatedArtifact {
 
     LogCache? LogCache { get; set; }
 
-    string GetFingerprint(BuildConfig config);
+    string GetFingerprint(Project project, BuildConfig config);
 }
 
 public record ArtifactOutput(string ArtifactRoot, string[] FilePaths);

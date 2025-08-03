@@ -36,7 +36,6 @@ public static class FingerprintUtils {
 
         var configFingerprint = HashConfigData(config);
 
-
         disposable?.Dispose();
         return HashUtils.CombineHashes([
             configFingerprint,

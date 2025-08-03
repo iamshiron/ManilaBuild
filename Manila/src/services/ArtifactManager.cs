@@ -21,6 +21,10 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     public readonly string ArtifactsDir = artifactsDir;
     public readonly string ArtifactsCacheFile = artifactsCacheFile;
 
+    /// <summary>
+    /// Stores the cached artifacts.
+    /// The key is the artifact fingerprint.
+    /// </summary>
     private Dictionary<string, ArtifactCacheEntry> _artifacts = [];
     private Task<bool>? _cacheLoadTask;
     private bool _cacheLoaded = false;
@@ -38,7 +42,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             ArtifactsDir,
             $"{PlatformUtils.GetPlatformKey()}-{PlatformUtils.GetArchitectureKey()}",
             $"{project.Name}-{artifact.Name}",
-            artifact.GetFingerprint(config),
+            artifact.GetFingerprint(project, config),
             config.GetArtifactKey()
         );
     }
@@ -47,18 +51,18 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
-        _artifacts[GetArtifactRoot(config, project, artifact)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
+        _artifacts[artifact.GetFingerprint(project, config)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
     }
 
     public async Task<ICreatedArtifact> AppendCachedDataAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
-        var root = GetArtifactRoot(config, project, artifact);
-        if (_artifacts.TryGetValue(root, out var entry)) {
+        var fingerprint = artifact.GetFingerprint(project, config);
+        if (_artifacts.TryGetValue(fingerprint, out var entry)) {
             artifact.LogCache = entry.LogCache;
         } else {
-            _logger.Warning($"No cached data found for artifact {artifact.Name} in {root}");
+            _logger.Warning($"No cached data found for artifact {artifact.Name} in {fingerprint}");
         }
         return artifact;
     }
@@ -80,7 +84,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
                 _artifacts = JsonConvert.DeserializeObject<Dictionary<string, ArtifactCacheEntry>>(
                     json,
                     _jsonSettings
-                ) ?? new Dictionary<string, ArtifactCacheEntry>();
+                ) ?? [];
 
                 return true;
             } catch (Exception ex) {
@@ -107,14 +111,29 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             )
         );
     }
-
     public IBuildExitCode BuildFromDependencies(IArtifactBuildable builder, ICreatedArtifact createdArtifact, Project project, BuildConfig config) {
-        return builder.Build(new(GetArtifactRoot(config, project, createdArtifact)), project, config);
+        var fingerprint = createdArtifact.GetFingerprint(project, config);
+        var artifactRoot = GetArtifactRoot(config, project, createdArtifact);
+        var artifactExists = Directory.Exists(artifactRoot);
+        var artifactIsCached = _artifacts.ContainsKey(fingerprint);
+
+        // If artifact exists on disk and is cached, we can use it directly
+        if (artifactIsCached && artifactExists) {
+            return new BuildExitCodeCached(fingerprint);
+        }
+
+        // If artifact exists on disk but is not cached, we need to rebuild it
+        if (artifactExists) Directory.Delete(artifactRoot, true);
+        _ = Directory.CreateDirectory(artifactRoot);
+
+        _logger.Debug($"Building artifact {createdArtifact.Name} with fingerprint {fingerprint} at {artifactRoot}");
+        return builder.Build(new(artifactRoot), project, config);
     }
 }
 
-public class ArtifactCacheEntry(string artifactRoot, long createdAt, long lastAccessed, long size, LogCache logCache) {
+public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long createdAt, long lastAccessed, long size, LogCache logCache) {
     public string ArtifactRoot { get; set; } = artifactRoot;
+    public string Fringerprint { get; } = fingerprint;
     public long CreatedAt { get; set; } = createdAt;
     public long LastAccessed { get; set; } = lastAccessed;
     public long Size { get; set; } = size;
@@ -123,6 +142,7 @@ public class ArtifactCacheEntry(string artifactRoot, long createdAt, long lastAc
     public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, ICreatedArtifact artifact, BuildConfig config, Project project) {
         return new(
             artifactManager.GetArtifactRoot(config, project, artifact),
+            artifact.GetFingerprint(project, config),
             TimeUtils.Now(),
             TimeUtils.Now(),
             -1, // Size not implemented yet
