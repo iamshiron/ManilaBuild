@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
+using Shiron.Manila.API.Dependencies;
 using Shiron.Manila.API.Ext;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Interfaces.Artifacts;
@@ -273,6 +274,14 @@ public sealed class Manila(
 
     /// <summary>Creates a handle to a file path.</summary>
     public FileHandle File(string path) => new(path);
+
+    #endregion
+
+    #region Dependencies
+
+    public IDependency Artifact(UnresolvedProject project, string artifact) {
+        return new ArtifactDependency(project, artifact);
+    }
 
     #endregion
 }

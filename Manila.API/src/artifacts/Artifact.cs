@@ -11,7 +11,7 @@ namespace Shiron.Manila.API.Artifacts;
 /// <summary>
 /// Represents a build artifact that implements the IArtifact interface.
 /// </summary>
-public class Artifact : ICreatedArtifact {
+public class CreatedArtifact : ICreatedArtifact {
     public string Description { get; }
     public Job[] Jobs { get; }
     public string Name { get; }
@@ -26,13 +26,13 @@ public class Artifact : ICreatedArtifact {
     /// <param name="workspace">The current workspace.</param>
     /// <param name="builder">The builder containing the artifact's configuration.</param>
     /// <exception cref="ManilaException">Thrown if essential properties like Name or PluginComponent are missing.</exception>
-    public Artifact(Workspace workspace, ArtifactBuilder builder) {
+    public CreatedArtifact(Workspace workspace, ArtifactBuilder builder) {
         // Initialize properties from the builder.
-        Description = builder.ArtifactDescription;
+        Description = builder.Description;
         Jobs = builder.JobBuilders.Select(b => b.Build()).ToArray();
 
         // Throw exceptions for invalid configurations.
-        Name = builder.Name ?? throw new ManilaException($"Artifact must have a name! {builder.ArtifactDescription}");
+        Name = builder.Name ?? throw new ManilaException($"Artifact must have a name! {builder.Description}");
         PluginComponent = builder.PluginComponent ?? throw new ManilaException($"Artifact must have a plugin component! {builder.Description}");
 
         // Initialize complex objects.

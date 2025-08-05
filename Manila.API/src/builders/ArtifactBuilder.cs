@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Shiron.Manila.API.Artifacts;
 using Shiron.Manila.API.Bridges;
+using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
@@ -10,7 +11,7 @@ using Shiron.Manila.Utils;
 namespace Shiron.Manila.API.Builders;
 
 /// <summary>
-/// A fluent builder for defining and creating an <see cref="Artifact"/>.
+/// A fluent builder for defining and creating an <see cref="CreatedArtifact"/>.
 /// </summary>
 public sealed class ArtifactBuilder(
     Workspace workspace,
@@ -23,7 +24,10 @@ public sealed class ArtifactBuilder(
     public readonly Project Project = project;
 
     /// <summary>Gets the user-defined description of the artifact.</summary>
-    public string ArtifactDescription { get; private set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>Gets the collection of dependencies for this artifact.</summary>
+    public List<IDependency> Dependencies { get; } = [];
 
     /// <summary>Gets the collection of job builders defined for this artifact.</summary>
     public readonly List<JobBuilder> JobBuilders = [];
@@ -45,19 +49,9 @@ public sealed class ArtifactBuilder(
     private readonly Workspace _workspace = workspace;
 
     /// <summary>
-    /// Sets the description for the artifact.
+    /// Executes the configuration lambda to define jobs and constructs the final <see cref="CreatedArtifact"/>.
     /// </summary>
-    /// <param name="description">A brief description of the artifact's purpose.</param>
-    /// <returns>The current builder instance for chaining.</returns>
-    public ArtifactBuilder Description(string description) {
-        ArtifactDescription = description;
-        return this;
-    }
-
-    /// <summary>
-    /// Executes the configuration lambda to define jobs and constructs the final <see cref="Artifact"/>.
-    /// </summary>
-    /// <returns>The built <see cref="Artifact"/> instance.</returns>
+    /// <returns>The built <see cref="CreatedArtifact"/> instance.</returns>
     /// <exception cref="ConfigurationException">Thrown if the artifact name is not set.</exception>
     /// <exception cref="ScriptExecutionException">Thrown if an error occurs within the configuration script.</exception>
     /// <exception cref="BuildProcessException">Thrown for other unexpected errors during the build.</exception>
@@ -69,13 +63,13 @@ public sealed class ArtifactBuilder(
 
         ManilaAPI.CurrentArtifactBuilder = this;
         try {
-            Lambda(new UnresolvedArtifactScriptBridge(Project, Name, PluginComponent));
+            Lambda(new UnresolvedArtifactScriptBridge(Project, this, Name, PluginComponent));
         } catch (Exception e) {
             throw new BuildProcessException($"An unexpected error occurred while building artifact '{Name}'.", e);
         } finally {
             ManilaAPI.CurrentArtifactBuilder = null;
         }
 
-        return new Artifact(_workspace, this);
+        return new CreatedArtifact(_workspace, this);
     }
 }
