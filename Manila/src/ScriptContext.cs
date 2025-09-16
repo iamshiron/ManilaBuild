@@ -1,18 +1,13 @@
 using System.Reflection;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Scripting;
-using Microsoft.CSharp.RuntimeBinder;
+using Microsoft.ClearScript;
+using Microsoft.ClearScript.V8;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Interfaces;
-using Shiron.Manila.API.Logging;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
-using Shiron.Manila.Services;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
@@ -28,6 +23,9 @@ public sealed class ScriptContext : IScriptContext {
 
     private readonly string _rootDir;
     private readonly string _dataDir;
+
+    [JsonIgnore]
+    private readonly Task<V8ScriptEngine> _scriptEngine;
 
     public string ScriptPath { get; private set; }
     public readonly string ScriptHash;
@@ -54,10 +52,13 @@ public sealed class ScriptContext : IScriptContext {
         } catch (Exception ex) {
             throw new EnvironmentException($"Failed to read and hash the script file '{scriptPath}'. Check file permissions.", ex);
         }
+
+        // Asynchronously initialize the script engine to avoid blocking
+        _scriptEngine = Task.Run(() => CreateScriptEngine());
     }
 
     public string GetCompiledFilePath() {
-        var fileName = $"{ScriptHash[0..16]}.dll";
+        var fileName = $"{ScriptHash[0..16]}.bin";
         return Path.Join(_dataDir, "compiled", fileName);
     }
 
@@ -65,19 +66,31 @@ public sealed class ScriptContext : IScriptContext {
         ManilaAPI = manilaAPI;
     }
 
-    private async Task<string> CreateScriptCode(List<string> usings) {
-        _logger.Debug($"Appending {usings.Count} usings to script code.");
-        _logger.Debug($"Usings: {string.Join(", ", usings)}");
-        _logger.Log(new ScriptUsingEntriesLogEntry(ScriptPath, [.. usings], ContextID));
+    private V8ScriptEngine CreateScriptEngine() {
+        using (new ProfileScope(_profiler, "Creating V8 Script Engine")) {
+            var engine = new V8ScriptEngine(V8ScriptEngineFlags.EnableTaskPromiseConversion) {
+                ExposeHostObjectStaticMembers = true
+            };
+
+            engine.AddHostObject("Manila", ManilaAPI);
+
+            return engine;
+        }
+    }
+
+    private async Task<string> CreateScriptCode() {
+        _logger.Log(new ScriptUsingEntriesLogEntry(ScriptPath, ContextID));
 
         var code = @$"
-            {string.Join("\n", usings.Select(u => $"using {u};"))}
-
-            public class Script : IScriptEntry {{
-                public async Task ExecuteAsync(Shiron.Manila.API.Manila Manila) {{
-                    {await File.ReadAllTextAsync(ScriptPath)}
-                }}
+            async function main() {{
+                {await File.ReadAllTextAsync(ScriptPath)}
             }}
+
+            main().then(() => {{
+                __Manila_signalSuccess();
+            }}).catch(err => {{
+                __Manila_signalError(err.message);
+            }});
         ";
 
         _logger.Log(new ScriptCodeCreatedLogEntry(ScriptPath, code, ContextID));
@@ -134,135 +147,57 @@ public sealed class ScriptContext : IScriptContext {
             var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _logger.Log(new ScriptExecutionStartedLogEntry(ScriptPath, ContextID));
 
+            byte[]? cachedBytes = null;
+            var codeTask = CreateScriptCode();
+            var binPath = GetCompiledFilePath();
+
             try {
                 await LoadEnvironmentVariablesAsync();
+                var scriptChanged = CheckForScriptChanges(cache);
 
-                var assemblyPath = GetCompiledFilePath();
-                bool scriptChanged = CheckForScriptChanges(cache);
-
-                Assembly? assembly = null;
-                if (!scriptChanged && File.Exists(assemblyPath)) {
-                    _logger.Log(new ScriptAssemblyCacheHitLogEntry(ScriptPath, assemblyPath, ContextID));
-
-                    var context = new PluginLoadContext(_profiler, assemblyPath);
-                    assembly = Assembly.LoadFrom(assemblyPath);
-                } else {
-                    _logger.Log(new ScriptAssemblyCacheMissEntry(ScriptPath, assemblyPath, ContextID));
-                    assembly = await CompileAndCacheScriptAsync(cache, assemblyPath);
+                if (!scriptChanged && File.Exists(binPath)) {
+                    _logger.Debug($"Using cached compiled script from '{binPath}'.");
+                    cachedBytes = await File.ReadAllBytesAsync(binPath);
                 }
-
-                if (assembly == null) {
-                    throw new ScriptExecutionException($"Failed to load or compile script assembly for '{ScriptPath}'.");
-                }
-
-                await InvokeScriptEntryPoint(assembly, ManilaAPI, component);
-
-                component.Finalize(ManilaAPI);
             } catch (ManilaException) {
                 throw;
             } catch (Exception ex) {
                 throw new InternalLogicException($"An unexpected error occurred during script execution of '{ScriptPath}'. See inner exception for details.", ex);
             }
 
+            try {
+                var engine = await _scriptEngine;
+                var docInfo = new DocumentInfo(ScriptPath);
+                var script = engine.Compile(docInfo, await codeTask, V8CacheKind.Code, cachedBytes, out var cacheAccepted);
+
+                engine.AddHostObject("__Manila_signalSuccess", new Action(() => {
+                    _logger.Debug($"Script '{ScriptPath}' signaled successful completion.");
+                }));
+                engine.AddHostObject("__Manila_signalError", new Action<object>((err) => {
+                    _logger.Error($"Script '{ScriptPath}' signaled an error: {err}");
+                    throw new ScriptExecutionException($"Script '{ScriptPath}' signaled an error: {err}", ScriptPath);
+                }));
+
+                if (!cacheAccepted) {
+                    _logger.Warning($"Cached compiled script was rejected by V8 engine. Recompiling script '{ScriptPath}'.");
+
+                    cache.AddOrUpdate(ScriptPath, ScriptHash);
+                    script = engine.Compile(docInfo, await codeTask, V8CacheKind.Code, out var newBytes);
+                    var directory = Path.GetDirectoryName(binPath)!;
+                    if (!Directory.Exists(directory)) _ = Directory.CreateDirectory(directory);
+                    await File.WriteAllBytesAsync(binPath, newBytes);
+                    _logger.Debug($"Wrote new compiled script to '{binPath}'.");
+                }
+
+                engine.Execute(script);
+            } catch (ScriptEngineException ex) {
+                throw new ScriptExecutionException($"Failed to compile or execute script: {ex.Message}", ScriptPath, ex);
+            } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+                throw new EnvironmentException($"Failed to write script cache to '{binPath}'. Check directory permissions.", ex);
+            }
+
             _logger.Log(new ScriptExecutedSuccessfullyLogEntry(ScriptPath, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startTime, ContextID));
-        }
-    }
-
-    private async Task<Assembly> CompileAndCacheScriptAsync(IFileHashCache cache, string assemblyPath) {
-        using (new ProfileScope(_profiler, "Compiling Script")) {
-            List<string> namespaces = [
-                "System",
-                "System.Collections.Generic",
-                "System.Linq",
-                "System.Threading.Tasks",
-                "Shiron.Manila",
-                "Shiron.Manila.API",
-                "Shiron.Manila.API.Interfaces",
-                "Shiron.Manila.API.Bridges"
-            ];
-
-            namespaces.AddRange(_extensionManager.ExposedTypes
-                .Where(t => t.Namespace != null)
-                .Select(t => t.Namespace!)
-                .Distinct()
-            );
-
-            var code = await CreateScriptCode(namespaces);
-            var references = new List<MetadataReference> {
-                // CS0656 - Missing compiler required member 'Microsoft.CSharp.RuntimeBinder.CSharpArgumentInfo.Create'
-                MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly.Location),
-            };
-
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
-                try {
-                    if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location)) {
-                        _logger.Debug($"Adding reference to assembly: {assembly.FullName} from {assembly.Location}");
-                        references.Add(MetadataReference.CreateFromFile(assembly.Location));
-                    }
-                } catch (NotSupportedException) {
-                    // Ignore dynamic assemblies or assemblies loaded from byte arrays
-                }
-            }
-
-            var csharpAssembly = typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly;
-            if (!references.Any(r => r.Display != null && r.Display.Contains("Microsoft.CSharp.dll"))) {
-                _logger.Debug($"Adding reference to Microsoft.CSharp.dll from {csharpAssembly.Location}");
-                references.Add(MetadataReference.CreateFromFile(csharpAssembly.Location));
-            }
-
-            var compilation = CSharpCompilation.Create(
-                Path.GetFileNameWithoutExtension(assemblyPath),
-                syntaxTrees: [CSharpSyntaxTree.ParseText(code)],
-                references: references,
-                options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-                    .WithSpecificDiagnosticOptions(new Dictionary<string, ReportDiagnostic>
-                    {
-                        {"CS1701", ReportDiagnostic.Suppress},
-                        {"CS1702", ReportDiagnostic.Suppress},
-                        {"CS0246", ReportDiagnostic.Suppress}
-                    })
-            );
-
-            using var ms = new MemoryStream();
-            var res = compilation.Emit(ms);
-
-            if (!res.Success) {
-                var errors = res.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error);
-                var e = new ScriptCompilationException("Script compilation failed.", errors);
-                _logger.Log(new ScriptCompilationFailedLogEntry(ScriptPath, e, ContextID));
-                throw e;
-            }
-
-            _ = ms.Seek(0, SeekOrigin.Begin);
-            await File.WriteAllBytesAsync(assemblyPath, ms.ToArray());
-            cache.AddOrUpdate(ScriptPath, ScriptHash);
-
-            _logger.Log(new ScriptCompiledLogEntry(ScriptPath, assemblyPath, ContextID));
-
-            _ = ms.Seek(0, SeekOrigin.Begin);
-            return Assembly.Load(ms.ToArray());
-        }
-    }
-
-    private async Task InvokeScriptEntryPoint(Assembly assembly, API.Manila manilaAPI, Component component) {
-        using (new ProfileScope(_profiler, "Invoking Script Entry Point")) {
-            IScriptEntry? script = null;
-            foreach (var t in assembly.GetTypes()) {
-                if (typeof(IScriptEntry).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract) {
-                    try {
-                        script = (IScriptEntry) Activator.CreateInstance(t)!;
-                        break;
-                    } catch (Exception ex) {
-                        _logger.Error($"Failed to instantiate script entry point '{t.FullName}': {ex.Message}");
-                    }
-                }
-            }
-
-            if (script == null) {
-                throw new ScriptExecutionException($"No valid script entry point found in assembly '{assembly.FullName}' for script '{ScriptPath}'.");
-            }
-
-            await script.ExecuteAsync(manilaAPI);
+            component.Finalize(ManilaAPI);
         }
     }
 

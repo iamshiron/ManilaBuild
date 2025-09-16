@@ -12,7 +12,7 @@ public class ManilaException : Exception {
 
 /// <summary>
 /// Thrown when there is an error in the user-defined configuration,
-/// such as in a Manila.cs script, project structure, or build parameters.
+/// such as in a Manila.js script, project structure, or build parameters.
 /// This includes validation, resolution, and structural errors.
 /// </summary>
 public class ConfigurationException : ManilaException {

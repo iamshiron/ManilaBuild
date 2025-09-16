@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.ClearScript;
 using Shiron.Manila.API.Artifacts;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Interfaces;
@@ -16,7 +15,7 @@ namespace Shiron.Manila.API.Builders;
 public sealed class ArtifactBuilder(
     Workspace workspace,
     string baseComponent,
-    Action<UnresolvedArtifactScriptBridge> configurator,
+    ScriptObject configurator,
     Manila manilaAPI,
     Project project
 ) : IBuildable<ICreatedArtifact> {
@@ -33,7 +32,7 @@ public sealed class ArtifactBuilder(
     public readonly List<JobBuilder> JobBuilders = [];
 
     /// <summary>Gets the script function that configures this artifact.</summary>
-    public readonly Action<UnresolvedArtifactScriptBridge> Lambda = configurator;
+    public readonly ScriptObject Lambda = configurator;
 
     /// <summary>Gets a reference to the top-level Manila API.</summary>
     public readonly Manila ManilaAPI = manilaAPI;
@@ -63,7 +62,7 @@ public sealed class ArtifactBuilder(
 
         ManilaAPI.CurrentArtifactBuilder = this;
         try {
-            Lambda(new UnresolvedArtifactScriptBridge(Project, this, Name, PluginComponent));
+            _ = Lambda.InvokeAsFunction(new UnresolvedArtifactScriptBridge(Project, this, Name, PluginComponent));
         } catch (Exception e) {
             throw new BuildProcessException($"An unexpected error occurred while building artifact '{Name}'.", e);
         } finally {

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.ClearScript;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Dependencies;
@@ -54,7 +55,7 @@ public sealed class Manila(
     /// <summary>Gets a bridge to the current project context.</summary>
     /// <exception cref="InvalidOperationException">Thrown if not currently in a project context.</exception>
     public ProjectScriptBridge GetProject() => _projectBridge
-        ?? throw new InvalidOperationException("This operation is only valid within a project context (e.g., a project's Manila.cs file).");
+        ?? throw new InvalidOperationException("This operation is only valid within a project context (e.g., a project's Manila.js file).");
 
     /// <summary>Creates a lazy-loading reference to another project in the workspace.</summary>
     /// <param name="name">The name (identifier) of the project to reference.</param>
@@ -65,7 +66,7 @@ public sealed class Manila(
 
     /// <summary>Gets the active build configuration provided by a language plugin.</summary>
     /// <exception cref="InvalidOperationException">Thrown if a language plugin has not yet been applied.</exception>
-    public T GetConfig<T>(UnresolvedArtifactScriptBridge artifact) {
+    public object GetConfig(UnresolvedArtifactScriptBridge artifact) {
         var componentMatch = artifact.PluginComponent
             ?? throw new InvalidOperationException("Artifact must specify a plugin component to get its build configuration.");
         var builder = _services.ExtensionManager.GetArtifact(componentMatch)
@@ -74,7 +75,7 @@ public sealed class Manila(
         var config = Activator.CreateInstance(builder.BuildConfigType) ??
             throw new PluginException($"Activator failed to create an instance of '{builder.BuildConfigType.Name}' for artifact '{artifact.ArtifactID}'.");
 
-        return (T) config;
+        return config;
     }
 
     /// <summary>Imports a C# type registered by a plugin, making it available to the script.</summary>
@@ -99,7 +100,7 @@ public sealed class Manila(
     /// <param name="name">The name of the artifact.</param>
     /// <param name="configurator">A script function that configures the artifact.</param>
     /// <exception cref="InvalidOperationException">Thrown if not in a project context or if a language has not been applied.</exception>
-    public ArtifactBuilder Artifact(string baseComponent, Action<UnresolvedArtifactScriptBridge> configurator) {
+    public ArtifactBuilder Artifact(string baseComponent, ScriptObject configurator) {
         if (_project is null)
             throw new InvalidOperationException("Artifacts can only be defined within a project context.");
 

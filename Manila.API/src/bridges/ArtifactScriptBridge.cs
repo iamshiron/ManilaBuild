@@ -1,4 +1,5 @@
 
+using Microsoft.ClearScript;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Interfaces.Artifacts;
@@ -17,8 +18,14 @@ public class UnresolvedArtifactScriptBridge(Project project, ArtifactBuilder bui
     public void Description(string description) {
         builder.Description = description;
     }
-    public void Dependencies(IEnumerable<IDependency> dependencies) {
-        builder.Dependencies.AddRange(dependencies);
+    public void Dependencies(ScriptObject obj) {
+        foreach (var i in (IList<object>) obj) {
+            if (i is not IDependency) {
+                throw new ConfigurationException($"Invalid dependency type '{i.GetType().Name}' in artifact '{ArtifactID}' of project '{_parentProject.Name}'!");
+            }
+
+            builder.Dependencies.Add((IDependency) i);
+        }
     }
 
     public ICreatedArtifact Resolve() {

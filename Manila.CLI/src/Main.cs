@@ -101,7 +101,7 @@ public static class ManilaCli {
         try {
             var shouldInitialize = true;
             var dataDirExists = Directory.Exists(Directories.Data);
-            var workspaceFileExists = File.Exists(Path.Join(Directories.Root, "Manila.cs"));
+            var workspaceFileExists = File.Exists(Path.Join(Directories.Root, "Manila.js"));
 
             if (!dataDirExists) {
                 shouldInitialize = false;
@@ -109,7 +109,7 @@ public static class ManilaCli {
             }
             if (!workspaceFileExists) {
                 shouldInitialize = false;
-                baseServiceContainer.Logger.Debug("Workspace script file (Manila.cs) does not exist. Skipping workspace initialization.");
+                baseServiceContainer.Logger.Debug("Workspace script file (Manila.js) does not exist. Skipping workspace initialization.");
             }
 
             if (shouldInitialize) {
@@ -135,7 +135,7 @@ public static class ManilaCli {
                     ExecutionStage.ChangeState(ExecutionStages.Configuration);
                     var workspace = await manilaEngine.RunWorkspaceScriptAsync(serviceContainer, new(
                         baseServiceContainer.Logger, baseServiceContainer.Profiler, serviceContainer.ExtensionManager,
-                        Directories.Root, Path.Join(Directories.Root, "Manila.cs")
+                        Directories.Root, Path.Join(Directories.Root, "Manila.js")
                     ));
 
                     var workspaceBridge = new WorkspaceScriptBridge(baseServiceContainer.Logger, baseServiceContainer.Profiler, workspace);

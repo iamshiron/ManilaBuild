@@ -8,7 +8,7 @@ public static class DefaultTemplate {
     public static ProjectTemplate Create() {
         return new ProjectTemplateBuilder("default", "Default Zip Template")
             .WithFile(
-                new TemplateFileBuilder("/Manila.cs", (args) => {
+                new TemplateFileBuilder("/Manila.js", (args) => {
                     var description = AnsiConsole.Ask<string>("What is the description of the project?") ??
                         "A Default Zip project.";
 

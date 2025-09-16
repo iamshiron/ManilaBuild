@@ -22,7 +22,7 @@ internal sealed class InitCommand(IDirectories directories, BaseServiceContainer
     }
 
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
-        var workspaceFound = Directory.Exists(_directories.Data) || File.Exists(Path.Join(_directories.Root, "Manila.cs"));
+        var workspaceFound = Directory.Exists(_directories.Data) || File.Exists(Path.Join(_directories.Root, "Manila.js"));
 
         if (workspaceFound && !settings.Force) {
             _baseServices.Logger.Error(Messages.AlreadyInitialized);
@@ -42,7 +42,7 @@ internal sealed class InitCommand(IDirectories directories, BaseServiceContainer
         }
 
         // Create workspace file
-        File.WriteAllLines(Path.Join(_directories.Root, "Manila.cs"), ScriptDefaults.WorkspaceScript);
+        File.WriteAllLines(Path.Join(_directories.Root, "Manila.js"), ScriptDefaults.WorkspaceScript);
 
         _baseServices.Logger.Info(Messages.WorkspaceInitialized);
 

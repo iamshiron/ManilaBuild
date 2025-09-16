@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.ClearScript;
 using Newtonsoft.Json;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Interfaces;
@@ -26,13 +27,14 @@ public interface IJobAction {
 /// An action that executes a JavaScript function provided as a <see cref="ScriptObject"/>.
 /// </summary>
 /// <param name="scriptObject">The script object representing the function to invoke.</param>
-public class JobAsyncScriptAction(Func<Task> handle) : IJobAction {
-    private readonly Func<Task> _handle = handle;
+public class JobAsyncScriptAction(ScriptObject handle) : IJobAction {
+    private readonly ScriptObject _handle = handle;
 
     /// <inheritdoc/>
     public async Task ExecuteAsync() {
         try {
-            await _handle();
+            var res = _handle.InvokeAsFunction();
+            if (res is Task task) await task;
         } catch (Exception e) {
             // Wrap script engine errors in a more specific exception type.
             throw new ScriptExecutionException("A script error occurred during job execution.", e);
@@ -40,13 +42,13 @@ public class JobAsyncScriptAction(Func<Task> handle) : IJobAction {
     }
 }
 
-public class JobScriptAction(Action handle) : IJobAction {
-    private readonly Action _handle = handle;
+public class JobScriptAction(ScriptObject handle) : IJobAction {
+    private readonly ScriptObject _handle = handle;
 
     /// <inheritdoc/>
     public Task ExecuteAsync() {
         try {
-            _handle();
+            _ = _handle.InvokeAsFunction();
             return Task.CompletedTask;
         } catch (Exception e) {
             // Wrap script engine errors in a more specific exception type.

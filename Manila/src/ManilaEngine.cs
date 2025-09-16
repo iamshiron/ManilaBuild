@@ -36,9 +36,9 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
             var root = _directories.Root;
             try {
                 foreach (var dir in Directory.GetDirectories(root)) {
-                    foreach (var file in Directory.GetFiles(dir, "Manila.cs", SearchOption.AllDirectories)) {
+                    foreach (var file in Directory.GetFiles(dir, "Manila.js", SearchOption.AllDirectories)) {
                         var path = Path.GetRelativePath(root, file);
-                        if (Path.GetFileName(path).Equals("Manila.cs", StringComparison.OrdinalIgnoreCase)) {
+                        if (Path.GetFileName(path).Equals("Manila.js", StringComparison.OrdinalIgnoreCase)) {
                             paths.Add(path);
                         }
                     }
@@ -55,8 +55,8 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
     }
 
     public async Task<Project> RunProjectScriptAsync(ServiceContainer services, ScriptContext context, Workspace workspace, WorkspaceScriptBridge workspaceBridge) {
-        if (!Path.GetFileName(context.ScriptPath).Equals("Manila.cs", StringComparison.CurrentCultureIgnoreCase))
-            throw new ConfigurationException($"Project script must be named 'Manila.cs', but found '{Path.GetFileName(context.ScriptPath)}' at '{context.ScriptPath}'.");
+        if (!Path.GetFileName(context.ScriptPath).Equals("Manila.js", StringComparison.CurrentCultureIgnoreCase))
+            throw new ConfigurationException($"Project script must be named 'Manila.js', but found '{Path.GetFileName(context.ScriptPath)}' at '{context.ScriptPath}'.");
 
         using (new ProfileScope(_baseServices.Profiler, $"Running Project Script '{context.ScriptPath}'")) {
             var projectRoot = Path.GetDirectoryName(context.ScriptPath);

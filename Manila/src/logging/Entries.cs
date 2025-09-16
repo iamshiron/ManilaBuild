@@ -394,10 +394,9 @@ public class ScriptCodeCreatedLogEntry(string scriptPath, string code, Guid cont
     public string ContextID { get; } = contextID.ToString();
 }
 
-public class ScriptUsingEntriesLogEntry(string scriptPath, string[] namespaces, Guid contextID) : BaseLogEntry {
+public class ScriptUsingEntriesLogEntry(string scriptPath, Guid contextID) : BaseLogEntry {
     public override LogLevel Level => LogLevel.Debug;
     public string ScriptPath { get; } = scriptPath;
-    public string[] Namespaces { get; } = namespaces;
     public string ContextID { get; } = contextID.ToString();
 }
 
