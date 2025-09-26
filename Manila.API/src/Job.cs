@@ -48,10 +48,12 @@ public class JobScriptAction(ScriptObject handle) : IJobAction {
     private readonly ScriptObject _handle = handle;
 
     /// <inheritdoc/>
-    public Task ExecuteAsync() {
+    public async Task ExecuteAsync() {
         try {
-            _ = _handle.InvokeAsFunction();
-            return Task.CompletedTask;
+            var res = _handle.InvokeAsFunction();
+            if (res is Task task) {
+                await task;
+            }
         } catch (Exception e) {
             // Wrap script engine errors in a more specific exception type.
             throw new ScriptExecutionException("A script error occurred during job execution.", e);

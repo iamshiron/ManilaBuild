@@ -193,10 +193,8 @@ public sealed class ScriptContext : IScriptContext {
                     _logger.Debug($"Wrote new compiled script to '{binPath}'.");
                 }
 
-                System.Console.WriteLine("Starting to execute script...");
                 engine.Execute(script);
                 _ = await jobCompletion.Task;
-                System.Console.WriteLine("Finished!");
             } catch (ScriptEngineException ex) {
                 throw new ScriptExecutionException($"Failed to compile or execute script: {ex.Message}", ScriptPath, ex);
             } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
