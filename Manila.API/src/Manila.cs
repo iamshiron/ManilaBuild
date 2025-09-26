@@ -268,7 +268,9 @@ public sealed class Manila(
     public void SetEnv(string key, string value) => _context.SetEnvironmentVariable(key, value);
 
     /// <summary>Pauses execution for the specified duration.</summary>
-    public Task Sleep(int milliseconds) => Task.Delay(milliseconds);
+    public async Task Sleep(int milliseconds) {
+        await Task.Delay(milliseconds);
+    }
 
     /// <summary>Creates a handle to a directory path.</summary>
     public DirHandle Dir(string path) => new(path);

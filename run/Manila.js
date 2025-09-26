@@ -1,7 +1,8 @@
 var workspace = Manila.GetWorkspace();
 
-//var hook = new Webhook(Manila.GetEnv("DISCORD_WEBHOOK_URL"));
-//await hook.Send("Hello from Manila!");
+// const Webhook = Manila.Import("shiron.manila:discord/webhook")
+// var hook = Webhook.Create(Manila.GetEnv("DISCORD_WEBHOOK_URL"));
+// await hook.Send("<@437522118981189642>");
 
 Manila.Log("Hello from Manila!");
 if (Manila.GetEnvBool("ENABLE")) {
@@ -55,7 +56,7 @@ Manila.Job("chained")
 	]);
 
 Manila.Job("sleep").Execute(async () => {
-	Manila.Log("Sleeping for 2 seconds...");
-	await Manila.Sleep(2000);
+	Manila.Log("Sleeping for 5 seconds...");
+	await Manila.Sleep(5000);
 	Manila.Log("Done Sleeping!");
 });

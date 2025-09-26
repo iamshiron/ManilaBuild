@@ -73,6 +73,7 @@ public sealed class ScriptContext : IScriptContext {
             };
 
             engine.AddHostObject("Manila", ManilaAPI);
+            engine.AddHostObject("print", (dynamic data) => { Console.WriteLine(data); });
 
             return engine;
         }
@@ -169,13 +170,16 @@ public sealed class ScriptContext : IScriptContext {
                 var engine = await _scriptEngine;
                 var docInfo = new DocumentInfo(ScriptPath);
                 var script = engine.Compile(docInfo, await codeTask, V8CacheKind.Code, cachedBytes, out var cacheAccepted);
+                var jobCompletion = new TaskCompletionSource<bool>();
 
                 engine.AddHostObject("__Manila_signalSuccess", new Action(() => {
                     _logger.Debug($"Script '{ScriptPath}' signaled successful completion.");
+                    _ = jobCompletion.TrySetResult(true);
                 }));
                 engine.AddHostObject("__Manila_signalError", new Action<object>((err) => {
                     _logger.Error($"Script '{ScriptPath}' signaled an error: {err}");
-                    throw new ScriptExecutionException($"Script '{ScriptPath}' signaled an error: {err}", ScriptPath);
+                    var ex = new ScriptExecutionException($"Script '{ScriptPath}' signaled an error: {err}", ScriptPath);
+                    _ = jobCompletion.TrySetException(ex);
                 }));
 
                 if (!cacheAccepted) {
@@ -189,7 +193,10 @@ public sealed class ScriptContext : IScriptContext {
                     _logger.Debug($"Wrote new compiled script to '{binPath}'.");
                 }
 
+                System.Console.WriteLine("Starting to execute script...");
                 engine.Execute(script);
+                _ = await jobCompletion.Task;
+                System.Console.WriteLine("Finished!");
             } catch (ScriptEngineException ex) {
                 throw new ScriptExecutionException($"Failed to compile or execute script: {ex.Message}", ScriptPath, ex);
             } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {

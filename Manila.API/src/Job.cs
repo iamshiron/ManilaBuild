@@ -34,7 +34,9 @@ public class JobAsyncScriptAction(ScriptObject handle) : IJobAction {
     public async Task ExecuteAsync() {
         try {
             var res = _handle.InvokeAsFunction();
-            if (res is Task task) await task;
+            if (res is Task task) {
+                await task;
+            }
         } catch (Exception e) {
             // Wrap script engine errors in a more specific exception type.
             throw new ScriptExecutionException("A script error occurred during job execution.", e);
