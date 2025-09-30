@@ -12,6 +12,7 @@ public interface ICreatedArtifact {
     string Name { get; }
     UnresolvedProject Project { get; }
     RegexUtils.PluginComponentMatch PluginComponent { get; }
+    IDependency[] Dependencies { get; }
 
     LogCache? LogCache { get; set; }
 

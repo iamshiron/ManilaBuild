@@ -27,7 +27,8 @@ public sealed class Manila(
         WorkspaceScriptBridge workspaceBridge,
         Workspace workspace,
         ProjectScriptBridge? projectBridge,
-        Project? project) {
+        Project? project
+) {
     private readonly APIServiceContainer _services = services;
     private readonly IScriptContext _context = context;
     private readonly Project? _project = project;

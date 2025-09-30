@@ -1,4 +1,5 @@
 
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -25,7 +26,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     /// Stores the cached artifacts.
     /// The key is the artifact fingerprint.
     /// </summary>
-    private Dictionary<string, ArtifactCacheEntry> _artifacts = [];
+    private ConcurrentDictionary<string, ArtifactCacheEntry> _artifacts = new();
     private Task<bool>? _cacheLoadTask;
     private bool _cacheLoaded = false;
 
@@ -81,7 +82,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
 
                 var json = await File.ReadAllTextAsync(ArtifactsCacheFile);
                 _artifacts.Clear();
-                _artifacts = JsonConvert.DeserializeObject<Dictionary<string, ArtifactCacheEntry>>(
+                _artifacts = JsonConvert.DeserializeObject<ConcurrentDictionary<string, ArtifactCacheEntry>>(
                     json,
                     _jsonSettings
                 ) ?? [];

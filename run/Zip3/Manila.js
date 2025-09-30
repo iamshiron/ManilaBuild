@@ -13,11 +13,7 @@ project.Artifacts({
 		var config = Manila.GetConfig(artifact);
 		config.SetSubFolder(Manila.GetEnv("MANILA_SUB_FOLDER", "sub"));
 
-		artifact.Description("Zip Main Artifact");
-		artifact.Dependencies([
-			Manila.Artifact(Manila.GetProject("zip2"), "main"),
-			Manila.Artifact(Manila.GetProject("zip3"), "main"),
-		]);
+		artifact.Description("Zip Main Artifact 3");
 
 		Manila.Job("build")
 			.Description("Create the Zip File")

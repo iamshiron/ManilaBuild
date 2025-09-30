@@ -17,6 +17,7 @@ public class CreatedArtifact : ICreatedArtifact {
     public string Name { get; }
     public UnresolvedProject Project { get; }
     public RegexUtils.PluginComponentMatch PluginComponent { get; }
+    public IDependency[] Dependencies { get; } = [];
 
     public LogCache? LogCache { get; set; }
 
@@ -29,7 +30,8 @@ public class CreatedArtifact : ICreatedArtifact {
     public CreatedArtifact(Workspace workspace, ArtifactBuilder builder) {
         // Initialize properties from the builder.
         Description = builder.Description;
-        Jobs = builder.JobBuilders.Select(b => b.Build()).ToArray();
+        Jobs = [.. builder.JobBuilders.Select(b => b.Build())];
+        Dependencies = [.. builder.Dependencies];
 
         // Throw exceptions for invalid configurations.
         Name = builder.Name ?? throw new ManilaException($"Artifact must have a name! {builder.Description}");

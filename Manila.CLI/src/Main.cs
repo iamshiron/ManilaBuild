@@ -153,6 +153,14 @@ public static class ManilaCli {
                     await Task.WhenAll(projectInitializationTasks);
                     baseServiceContainer.Logger.Debug("All projects initialized successfully.");
 
+                    foreach (var project in workspace.Projects.Values) {
+                        foreach (var artifact in project.Artifacts.Values) {
+                            foreach (var dep in artifact.Dependencies) {
+                                dep.Resolve(artifact);
+                            }
+                        }
+                    }
+
                     _ = services.AddSingleton(serviceContainer)
                         .AddSingleton(workspace);
                 }
