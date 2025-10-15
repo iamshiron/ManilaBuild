@@ -72,9 +72,11 @@ public class JobShellAction(ILogger logger, ShellUtils.CommandInfo commandInfo) 
     /// <inheritdoc/>
     public async Task ExecuteAsync() {
         try {
-            // Offload the synchronous, potentially long-running shell command to a thread pool thread.
-            _ = ShellUtils.Run(_commandInfo, _logger);
-            await Task.Yield();
+            // Run the command on a thread pool thread and await completion to ensure proper ordering.
+            var exitCode = await Task.Run(() => ShellUtils.Run(_commandInfo, _logger));
+            if (exitCode != 0) {
+                throw new BuildProcessException($"Shell command failed with exit code {exitCode}: '{_commandInfo.Command}'");
+            }
         } catch (Exception e) {
             // Wrap any process execution errors in a BuildProcessException.
             throw new BuildProcessException($"Shell command failed: '{_commandInfo.Command}'", e);
@@ -159,7 +161,7 @@ public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) :
         using (_logger.LogContext.PushContext(ExecutableID)) {
             try {
                 foreach (var action in Actions) {
-                    await action.ExecuteAsync();
+                    await action.ExecuteAsync().ConfigureAwait(false);
                 }
             } catch (Exception e) {
                 _logger.Log(new JobExecutionFailedLogEntry(this, ExecutableID, e));

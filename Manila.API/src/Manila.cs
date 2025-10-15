@@ -193,7 +193,10 @@ public sealed class Manila(
         if (artifactBuilder is not IArtifactBuildable) throw new ConfigurationException($"Artifact builder '{artifact.PluginComponent}' is not buildable.");
 
         var logCache = new LogCache();
-        using (new LogInjector(_services.Logger, logCache.Entries.Add)) {
+        var currentCtx = _services.Logger.LogContext.CurrentContextID;
+        using (currentCtx is Guid ctx
+            ? _services.Logger.CreateContextInjector(logCache.Entries.Add, ctx)
+            : new LogInjector(_services.Logger, logCache.Entries.Add)) {
             var res = _services.ArtifactManager.BuildFromDependencies(
                 (IArtifactBuildable) artifactBuilder,
                 artifact,

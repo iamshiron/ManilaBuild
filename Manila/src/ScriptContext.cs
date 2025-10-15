@@ -25,7 +25,7 @@ public sealed class ScriptContext : IScriptContext {
     private readonly string _dataDir;
 
     [JsonIgnore]
-    private readonly Task<V8ScriptEngine> _scriptEngine;
+    private Task<V8ScriptEngine>? _scriptEngine;
 
     public string ScriptPath { get; private set; }
     public readonly string ScriptHash;
@@ -53,8 +53,8 @@ public sealed class ScriptContext : IScriptContext {
             throw new EnvironmentException($"Failed to read and hash the script file '{scriptPath}'. Check file permissions.", ex);
         }
 
-        // Asynchronously initialize the script engine to avoid blocking
-        _scriptEngine = Task.Run(() => CreateScriptEngine());
+        // Do not initialize script engine here to avoid a race with ManilaAPI assignment in Init().
+        // Engine will be lazily created after ManilaAPI is set.
     }
 
     public string GetCompiledFilePath() {
@@ -64,6 +64,8 @@ public sealed class ScriptContext : IScriptContext {
 
     public void Init(API.Manila manilaAPI, ScriptBridge bridge, Component component) {
         ManilaAPI = manilaAPI;
+        // Initialize the script engine after ManilaAPI is set to ensure host objects are valid.
+        _scriptEngine ??= Task.Run(() => CreateScriptEngine());
     }
 
     private V8ScriptEngine CreateScriptEngine() {
@@ -72,6 +74,9 @@ public sealed class ScriptContext : IScriptContext {
                 ExposeHostObjectStaticMembers = true
             };
 
+            if (ManilaAPI == null) {
+                throw new InternalLogicException("ManilaAPI is not initialized when creating the script engine.");
+            }
             engine.AddHostObject("Manila", ManilaAPI);
             engine.AddHostObject("print", (dynamic data) => { Console.WriteLine(data); });
 
@@ -167,7 +172,8 @@ public sealed class ScriptContext : IScriptContext {
             }
 
             try {
-                var engine = await _scriptEngine;
+                // Ensure engine is initialized (Init() should have done this).
+                var engine = await (_scriptEngine ??= Task.Run(() => CreateScriptEngine()));
                 var docInfo = new DocumentInfo(ScriptPath);
                 var script = engine.Compile(docInfo, await codeTask, V8CacheKind.Code, cachedBytes, out var cacheAccepted);
                 var jobCompletion = new TaskCompletionSource<bool>();

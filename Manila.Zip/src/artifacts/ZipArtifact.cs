@@ -41,8 +41,10 @@ public class ZipArtifact : IArtifactBuildable, IArtifactConsumable {
                     );
                 }
 
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var d in _dependencies) {
                     foreach (var f in d.FilePaths) {
+                        if (!seen.Add(Path.Combine(d.ArtifactRoot, f))) continue;
                         _ = zip.CreateEntryFromFile(
                             f,
                             zipConfig.SubFolder is not null ?

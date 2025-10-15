@@ -19,12 +19,19 @@ public class UnresolvedArtifactScriptBridge(Project project, ArtifactBuilder bui
         builder.Description = description;
     }
     public void Dependencies(ScriptObject obj) {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var i in (IList<object>) obj) {
             if (i is not IDependency) {
                 throw new ConfigurationException($"Invalid dependency type '{i.GetType().Name}' in artifact '{ArtifactID}' of project '{_parentProject.Name}'!");
             }
 
-            builder.Dependencies.Add((IDependency) i);
+            var dep = (IDependency) i;
+            // Use the type+string form where available to dedupe; fall back to type name
+            var key = dep switch {
+                Shiron.Manila.API.Dependencies.ArtifactDependency ad => $"Artifact:{ad.GetHashCode()}", // GetHashCode isn't ideal; real impl doesn't expose fields
+                _ => dep.GetType().FullName ?? dep.GetType().Name
+            };
+            if (seen.Add(key)) builder.Dependencies.Add(dep);
         }
     }
 

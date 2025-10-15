@@ -29,6 +29,8 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     private ConcurrentDictionary<string, ArtifactCacheEntry> _artifacts = new();
     private Task<bool>? _cacheLoadTask;
     private bool _cacheLoaded = false;
+    // Prevents concurrent duplicate builds of the same artifact fingerprint
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _buildLocks = new();
 
     private static readonly JsonSerializerSettings _jsonSettings = new() {
         Formatting = Formatting.Indented,
@@ -115,20 +117,35 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     public IBuildExitCode BuildFromDependencies(IArtifactBuildable builder, ICreatedArtifact createdArtifact, Project project, BuildConfig config) {
         var fingerprint = createdArtifact.GetFingerprint(project, config);
         var artifactRoot = GetArtifactRoot(config, project, createdArtifact);
-        var artifactExists = Directory.Exists(artifactRoot);
-        var artifactIsCached = _artifacts.ContainsKey(fingerprint);
 
-        // If artifact exists on disk and is cached, we can use it directly
-        if (artifactIsCached && artifactExists) {
+        bool ExistsOnDisk() => Directory.Exists(artifactRoot);
+        bool IsCached() => _artifacts.ContainsKey(fingerprint);
+
+        // Fast path: already built and recorded
+        if (ExistsOnDisk() && IsCached()) {
             return new BuildExitCodeCached(fingerprint);
         }
 
-        // If artifact exists on disk but is not cached, we need to rebuild it
-        if (artifactExists) Directory.Delete(artifactRoot, true);
-        _ = Directory.CreateDirectory(artifactRoot);
+        var gate = _buildLocks.GetOrAdd(fingerprint, _ => new SemaphoreSlim(1, 1));
+        gate.Wait();
+        try {
+            // Re-check after acquiring the lock
+            var exists = ExistsOnDisk();
+            var cached = IsCached();
+            if (exists && cached) return new BuildExitCodeCached(fingerprint);
 
-        _logger.Debug($"Building artifact {createdArtifact.Name} with fingerprint {fingerprint} at {artifactRoot}");
-        return builder.Build(new(artifactRoot), project, config);
+            if (exists && !cached) Directory.Delete(artifactRoot, true);
+            if (!Directory.Exists(artifactRoot)) _ = Directory.CreateDirectory(artifactRoot);
+
+            _logger.Debug($"Building artifact {createdArtifact.Name} with fingerprint {fingerprint} at {artifactRoot}");
+            return builder.Build(new(artifactRoot), project, config);
+        } finally {
+            gate.Release();
+            // Best-effort cleanup to avoid unbounded growth
+            if (gate.CurrentCount == 1) {
+                _ = _buildLocks.TryRemove(fingerprint, out _);
+            }
+        }
     }
 }
 

@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Linq;
+
 namespace Shiron.Manila.Logging;
 
 /// <summary>
@@ -77,9 +80,11 @@ public class Logger(string? loggerPrefix) : ILogger {
     public event Action<ILogEntry>? OnLogEntry;
 
     /// <summary>
-    /// A dictionary holding the currently active log injectors, keyed by their unique ID.
+    /// A concurrent dictionary holding the currently active log injectors, keyed by their unique ID.
+    /// Using a thread-safe collection prevents race conditions when jobs log in parallel while
+    /// injectors are being added/removed.
     /// </summary>
-    private readonly Dictionary<Guid, LogInjector> _activeInjectors = [];
+    private readonly ConcurrentDictionary<Guid, LogInjector> _activeInjectors = new();
     public LogContext LogContext { get; } = new();
 
     public string? LoggerPrefix => loggerPrefix;
@@ -102,7 +107,7 @@ public class Logger(string? loggerPrefix) : ILogger {
     /// <param name="id">The unique identifier of the injector to remove.</param>
     /// <exception cref="InvalidOperationException">Thrown if no injector with the specified ID is found.</exception>
     public void RemoveInjector(Guid id) {
-        if (!_activeInjectors.Remove(id)) {
+        if (!_activeInjectors.TryRemove(id, out _)) {
             // Note: Depending on requirements, this could fail silently instead of throwing.
             // Throwing makes behavior more explicit.
             throw new Exception($"No injector with ID {id} exists to remove.");
@@ -118,9 +123,9 @@ public class Logger(string? loggerPrefix) : ILogger {
             entry.ParentContextID = LogContext.CurrentContextID;
 
         OnLogEntry?.Invoke(entry);
-        // Create a copy of values to prevent collection modification issues if an injector modifies the collection.
-        foreach (var injector in _activeInjectors.Values.ToList()) {
-            injector._onLog(entry);
+        // Iterate over a thread-safe snapshot of injectors. ConcurrentDictionary supports safe enumeration.
+        foreach (var injector in _activeInjectors.Values) {
+            injector.Handle(entry);
         }
     }
 
@@ -178,5 +183,17 @@ public class Logger(string? loggerPrefix) : ILogger {
     /// <param name="message">The message to log.</param>
     public void System(string message) {
         Log(new BasicLogEntry(message, LogLevel.System, loggerPrefix));
+    }
+}
+
+public static class LoggerExtensions {
+    /// <summary>
+    /// Creates a LogInjector that only receives entries matching the provided ParentContextID.
+    /// </summary>
+    /// <param name="logger">The logger to attach to.</param>
+    /// <param name="onLog">Callback to handle matching entries.</param>
+    /// <param name="contextId">The context identifier to filter on.</param>
+    public static LogInjector CreateContextInjector(this ILogger logger, Action<ILogEntry> onLog, Guid contextId) {
+        return new LogInjector(logger, onLog, entry => entry.ParentContextID == contextId);
     }
 }
