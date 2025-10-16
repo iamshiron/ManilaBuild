@@ -6,6 +6,8 @@ namespace Shiron.Manila.Zip.Templates;
 
 public static class DefaultTemplate {
     public static ProjectTemplate Create() {
+        var zip = ManilaZip.Instance;
+
         return new ProjectTemplateBuilder("default", "Default Zip Template")
             .WithFile(
                 new TemplateFileBuilder("/Manila.js", (args) => {
@@ -13,26 +15,28 @@ public static class DefaultTemplate {
                         "A Default Zip project.";
 
                     return [
-                        "var project = Manila.getProject();",
-                        "var workspace = Manila.getWorkspace();",
+                        "const project = Manila.GetProject();",
+                        "const workspace = Manila.GetWorkspace();",
                         "",
                         "project.Version(\"1.0.0\");",
                         $"project.Description(\"{description}\");",
                         "",
-                        "project.SourceSets(new Dictionary<string, object> {",
-                        "    [\"main\"] = Manila.SourceSet(project.GetPath().Join(\"main\")).Include(\"**/*\")",
+                        "project.SourceSets({",
+                        "    main: Manila.SourceSet(project.GetPath().Join(\"main\")).Include(\"**/*\")",
                         "});",
                         "",
-                        "project.Artifacts(new Dictionary<string, object> {",
-                        "    [\"main\"] = Manila.Artifact(artifact => {",
+                        "project.Artifacts({",
+                        "    main: Manila.Artifact(\"shiron.manila:zip/zip\", (artifact) => {",
                         "        var config = Manila.GetConfig(artifact);",
+                        "",
+                        "        artifact.Description(\"Zip Main Artifact\")",
                         "",
                         "        Manila.Job(\"build\")",
                         "            .Description(\"Create the Zip File\")",
                         "            .Execute(async () => {",
                         "                await Manila.Build(project, config, artifact);",
                         "            });",
-                        "    }).description(\"Zip Main Artifact\")",
+                        "    })",
                         "});",
                         ""
                     ];
