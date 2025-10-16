@@ -18,10 +18,15 @@ using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.API;
 
+public sealed class ManilaAPIFlags {
+    public bool InvalidateBuildCache { get; set; } = false;
+}
+
 /// <summary>
 /// Defines the primary, script-facing API for interacting with the Manila build system.
 /// </summary>
 public sealed class Manila(
+        ManilaAPIFlags flags,
         APIServiceContainer services,
         IScriptContext context,
         WorkspaceScriptBridge workspaceBridge,
@@ -29,6 +34,7 @@ public sealed class Manila(
         ProjectScriptBridge? projectBridge,
         Project? project
 ) {
+    public readonly ManilaAPIFlags Flags = flags;
     private readonly APIServiceContainer _services = services;
     private readonly IScriptContext _context = context;
     private readonly Project? _project = project;
@@ -201,7 +207,8 @@ public sealed class Manila(
                 (IArtifactBuildable) artifactBuilder,
                 artifact,
                 project,
-                config
+                config,
+                Flags.InvalidateBuildCache
             );
 
             switch (res) {

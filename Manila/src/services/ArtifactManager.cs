@@ -114,12 +114,12 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             )
         );
     }
-    public IBuildExitCode BuildFromDependencies(IArtifactBuildable builder, ICreatedArtifact createdArtifact, Project project, BuildConfig config) {
+    public IBuildExitCode BuildFromDependencies(IArtifactBuildable builder, ICreatedArtifact createdArtifact, Project project, BuildConfig config, bool invalidateCache = false) {
         var fingerprint = createdArtifact.GetFingerprint(project, config);
         var artifactRoot = GetArtifactRoot(config, project, createdArtifact);
 
         bool ExistsOnDisk() => Directory.Exists(artifactRoot);
-        bool IsCached() => _artifacts.ContainsKey(fingerprint);
+        bool IsCached() => _artifacts.ContainsKey(fingerprint) && !invalidateCache;
 
         // Fast path: already built and recorded
         if (ExistsOnDisk() && IsCached()) {

@@ -12,6 +12,10 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
+public sealed class ManilaEngineFlags {
+    public ManilaAPIFlags APIFlags = new();
+}
+
 public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories directories) {
     #region Properties
 
@@ -24,6 +28,11 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
     /// Gets the version of the Manila engine.
     /// </summary>
     public static readonly string VERSION = "0.0.1";
+
+    /// <summary>
+    /// Gets the flags for the Manila engine.
+    /// </summary>
+    public readonly ManilaEngineFlags Flags = new();
 
     private readonly IDirectories _directories = directories;
     private readonly BaseServiceContainer _baseServices = baseServices;
@@ -83,6 +92,7 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
             );
 
             context.Init(new(
+                Flags.APIFlags,
                 apiServiceContainer, context, workspaceBridge, workspace, projectBridge, project
             ), projectBridge, project);
 
@@ -117,6 +127,7 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
             );
 
             context.Init(new(
+                Flags.APIFlags,
                 apiServiceContainer, context, workspaceBridge, workspace, null, null
             ), workspaceBridge, workspace);
 

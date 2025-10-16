@@ -11,5 +11,5 @@ public interface IArtifactManager {
     void LoadCache();
     void FlushCacheToDisk();
 
-    IBuildExitCode BuildFromDependencies(IArtifactBuildable artifact, ICreatedArtifact createdArtifact, Project project, BuildConfig config);
+    IBuildExitCode BuildFromDependencies(IArtifactBuildable artifact, ICreatedArtifact createdArtifact, Project project, BuildConfig config, bool invalidateCache);
 }

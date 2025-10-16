@@ -21,6 +21,11 @@ internal sealed class RunCommand(BaseServiceContainer baseServices, ManilaEngine
         [Description("The job to run")]
         [Required]
         public string Job { get; set; } = "";
+
+        [Description("Invalidates caches to force a rebuild of the workspace")]
+        [CommandOption("--api-invalidate-build-cache")]
+        [DefaultValue(false)]
+        public bool APIInvalidateBuildCache { get; set; }
     }
 
     protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
@@ -30,6 +35,8 @@ internal sealed class RunCommand(BaseServiceContainer baseServices, ManilaEngine
         }
 
         var safeEngine = _engine ?? throw new ManilaException("Manila engine is not initialized.");
+        safeEngine.Flags.APIFlags.InvalidateBuildCache = settings.APIInvalidateBuildCache;
+
         var safeServices = _services ?? throw new ManilaException("Services are not initialized.");
 
         return _services.JobRegistry.GetJob(settings.Job) == null
