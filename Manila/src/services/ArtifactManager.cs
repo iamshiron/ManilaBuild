@@ -65,7 +65,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         if (_artifacts.TryGetValue(fingerprint, out var entry)) {
             artifact.LogCache = entry.LogCache;
         } else {
-            _logger.Warning($"No cached data found for artifact {artifact.Name} in {fingerprint}");
+            _logger.Debug($"No cached data found for artifact {artifact.Name} in {fingerprint}");
         }
         return artifact;
     }

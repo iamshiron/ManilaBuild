@@ -59,7 +59,7 @@ public class NuGetManager : INuGetManager {
         using (new ProfileScope(_profiler, "Initialize NuGetManager")) {
             PackageDir = packageDir;
             PackageCacheFilePath = Path.Combine(PackageDir, "nuget.json");
-            Directory.CreateDirectory(PackageDir); // Ensures the directory exists.
+            _ = Directory.CreateDirectory(PackageDir); // Ensures the directory exists.
 
             _currentTargetFramework = NuGetFramework.Parse(GetCurrentFrameworkName());
 
@@ -198,7 +198,10 @@ public class NuGetManager : INuGetManager {
 
     private async Task<string> DownloadPackageAsync(string id, NuGetVersion version) {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
+            var downloadContext = Guid.NewGuid();
             var nupkgFileName = $"{id}_{version.ToNormalizedString()}.nupkg";
+            _logger.Log(new NugetManagerDownloadStartEntry(id, version.ToNormalizedString(), nupkgFileName, downloadContext));
+
             var downloadPath = Path.Combine(PackageDir, nupkgFileName);
             if (File.Exists(downloadPath)) return downloadPath;
 
@@ -210,6 +213,8 @@ public class NuGetManager : INuGetManager {
             using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write);
             packageStream.Position = 0;
             await packageStream.CopyToAsync(fileStream).ConfigureAwait(false);
+
+            _logger.Log(new NugetManagerDownloadCompleteEntry(id, version.ToNormalizedString(), downloadContext));
 
             return downloadPath;
         }

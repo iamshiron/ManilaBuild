@@ -315,6 +315,80 @@ public class LoadingPluginLogEntry : BaseLogEntry {
     }
 }
 
+#endregion
+
+#region  Miscellaneous Log Entries
+
+public class StageChangeLogEntry(ExecutionStages changedFrom, ExecutionStages changedTo, long previousStartedAt) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public ExecutionStages ChangedFrom { get; } = changedFrom;
+    public ExecutionStages ChangedTo { get; } = changedTo;
+    public long PreviousStartedAt { get; } = previousStartedAt;
+}
+
+#endregion
+
+#region Script Creation Log Entries
+
+public class ScriptCodeCreatedLogEntry(string scriptPath, string code, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string Code { get; } = code;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptUsingEntriesLogEntry(string scriptPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptCompiledLogEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string AssemblyPath { get; } = assemblyPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptCompilationFailedLogEntry(string scriptPath, Exception exception, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Error;
+    public string ScriptPath { get; } = scriptPath;
+    public Exception Exception { get; } = exception;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptAssemblyCacheHitLogEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string AssemblyPath { get; } = assemblyPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class ScriptAssemblyCacheMissEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string ScriptPath { get; } = scriptPath;
+    public string AssemblyPath { get; } = assemblyPath;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+#endregion
+
+#region NuGetManager
+public class NugetManagerDownloadStartEntry(string package, string version, string fileName, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string Package { get; } = package;
+    public string Version { get; } = version;
+    public string FileName { get; } = fileName;
+    public string ContextID { get; } = contextID.ToString();
+}
+
+public class NugetManagerDownloadCompleteEntry(string package, string version, Guid contextID) : BaseLogEntry {
+    public override LogLevel Level => LogLevel.Debug;
+    public string Package { get; } = package;
+    public string Version { get; } = version;
+    public string ContextID { get; } = contextID.ToString();
+}
+
 /// <summary>
 /// Logged when a NuGet package dependency for a plugin is being loaded.
 /// </summary>
@@ -370,62 +444,6 @@ public partial class NuGetSubPackageLoadingEntry : BaseLogEntry {
 
     [GeneratedRegex(@"(?<package>[\w\.]+?)_(?<version>[\d\.]+?)[\\\/]")]
     private static partial Regex AssemblyRegex();
-}
-
-#endregion
-
-#region  Miscellaneous Log Entries
-
-public class StageChangeLogEntry(ExecutionStages changedFrom, ExecutionStages changedTo, long previousStartedAt) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public ExecutionStages ChangedFrom { get; } = changedFrom;
-    public ExecutionStages ChangedTo { get; } = changedTo;
-    public long PreviousStartedAt { get; } = previousStartedAt;
-}
-
-#endregion
-
-#region Script Creation Log Entries
-
-public class ScriptCodeCreatedLogEntry(string scriptPath, string code, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public string ScriptPath { get; } = scriptPath;
-    public string Code { get; } = code;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class ScriptUsingEntriesLogEntry(string scriptPath, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public string ScriptPath { get; } = scriptPath;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class ScriptCompiledLogEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public string ScriptPath { get; } = scriptPath;
-    public string AssemblyPath { get; } = assemblyPath;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class ScriptCompilationFailedLogEntry(string scriptPath, Exception exception, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Error;
-    public string ScriptPath { get; } = scriptPath;
-    public Exception Exception { get; } = exception;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class ScriptAssemblyCacheHitLogEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public string ScriptPath { get; } = scriptPath;
-    public string AssemblyPath { get; } = assemblyPath;
-    public string ContextID { get; } = contextID.ToString();
-}
-
-public class ScriptAssemblyCacheMissEntry(string scriptPath, string assemblyPath, Guid contextID) : BaseLogEntry {
-    public override LogLevel Level => LogLevel.Debug;
-    public string ScriptPath { get; } = scriptPath;
-    public string AssemblyPath { get; } = assemblyPath;
-    public string ContextID { get; } = contextID.ToString();
 }
 
 #endregion

@@ -178,6 +178,14 @@ public static class AnsiConsoleRenderer {
                 logEntry.ParentContextID = log.ContextID;
                 RenderLog(log.Entry);
                 break;
+
+            case NugetManagerDownloadStartEntry log:
+                _logger?.Info($"Starting download of NuGet package [yellow]{log.Package}[/] version [yellow]{log.Version}[/]");
+                break;
+            case NugetManagerDownloadCompleteEntry log:
+                _logger?.Info($"Completed download of NuGet package [yellow]{log.Package}[/] version [yellow]{log.Version}[/]");
+                break;
+
             default:
                 AnsiConsole.MarkupLine($"[dim]Unhandled Log Event: {entry.GetType().Name}[/]");
                 break;
