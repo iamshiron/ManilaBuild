@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -132,8 +133,13 @@ public class NuGetManager : INuGetManager {
             var allDllPaths = new List<string>();
             var topLevelPackage = new InstalledPackage();
 
-            foreach (var package in allPackages) {
-                topLevelPackage.Dependencies.Add($"{package.Id}@{package.Version}");
+            // Use concurrent collections for thread-safe operations
+            var concurrentDllPaths = new ConcurrentBag<string>();
+            var concurrentDependencies = new ConcurrentBag<string>();
+
+            // Create tasks for parallel processing with proper async/await handling
+            var packageTasks = allPackages.Select(async package => {
+                concurrentDependencies.Add($"{package.Id}@{package.Version}");
                 string packageCacheKey = $"{package.Id}@{package.Version}";
 
                 List<string> packageDlls;
@@ -148,10 +154,24 @@ public class NuGetManager : INuGetManager {
                     var newPackageEntry = new InstalledPackage {
                         DLLPaths = packageDlls.Select(p => Path.GetRelativePath(PackageDir, p)).ToList()
                     };
-                    _installedPackages[packageCacheKey] = newPackageEntry;
+
+                    // Thread-safe dictionary update
+                    lock (_installedPackages) {
+                        _installedPackages[packageCacheKey] = newPackageEntry;
+                    }
                 }
-                allDllPaths.AddRange(packageDlls);
-            }
+
+                foreach (var dll in packageDlls) {
+                    concurrentDllPaths.Add(dll);
+                }
+            });
+
+            // Wait for all package downloads and processing to complete
+            await Task.WhenAll(packageTasks).ConfigureAwait(false);
+
+            // Convert concurrent collections back to regular collections
+            allDllPaths.AddRange(concurrentDllPaths);
+            topLevelPackage.Dependencies.AddRange(concurrentDependencies);
 
             // Cache the top-level package with all its transitive DLLs.
             topLevelPackage.DLLPaths = allDllPaths.Select(p => Path.GetRelativePath(PackageDir, p)).ToList();
