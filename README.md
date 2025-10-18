@@ -3,7 +3,7 @@
 [![CI](https://github.com/iamshiron/ManilaBuild/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/iamshiron/ManilaBuild/actions/workflows/ci.yml)
 [![Code Quality](https://github.com/iamshiron/ManilaBuild/actions/workflows/code-quality.yml/badge.svg?branch=main)](https://github.com/iamshiron/ManilaBuild/actions/workflows/code-quality.yml)
 
-ManilaBuild is a powerful and flexible build automation tool designed to streamline your development workflow. Inspired by modern build systems, it uses simple C# files for configuration, making project setup easy and intuitive. Whether you're working on a simple C++ application or a complex multi-project solution, ManilaBuild provides the tools you need to manage dependencies, define build jobs, and automate your entire process.
+ManilaBuild is a powerful and flexible build automation tool designed to streamline your development workflow. Inspired by modern build systems, it uses simple JS files for configuration, making project setup easy and intuitive. Whether you're working on a simple C++ application or a complex multi-project solution, ManilaBuild provides the tools you need to manage dependencies, define build jobs, and automate your entire process.
 
 -----
 
@@ -52,7 +52,7 @@ ManilaBuild is built around a few core concepts:
 
   * **Workspaces and Projects**: A workspace contains one or more projects, each with its own build configuration. This allows you to easily manage complex, multi-project solutions.
   * **Jobs**: Jobs are the fundamental building blocks of your build process. You can define jobs for compiling, testing, or any other action. Jobs can also have dependencies on other jobs.
-  * **Plugins**: ManilaBuild is highly extensible through plugins. The C++ plugin, for example, provides components for building static libraries and console applications. You can also create your own plugins to add new functionality.
+  * **Plugins**: ManilaBuild is highly extensible through plugins. To test the plugin system, the only available plugin for now is a Zip plugin. This is just for testing and won't end up in the final version.
   * **JavaScript Configuration**: Build scripts are written in JavaScript, giving you the full power and flexibility of a real programming language for your build logic.
 
 -----
