@@ -28,7 +28,7 @@ public class ZipArtifact : IArtifactBuildable, IArtifactConsumable {
 
             foreach (var (key, set) in project.SourceSets) {
                 instance.Debug($"Processing source set '{key}' with root '{set.Root}' and {set.Files.Length} files");
-                var zipFile = builder.GetPathInArtifact($"{key}.zip");
+                var zipFile = builder.GetPathInArtifact($"{project.Name}_{key}.zip");
                 _ = rootBuilder.AddFile(zipFile);
 
                 using var zip = ZipFile.Open(zipFile, ZipArchiveMode.Create);
@@ -44,12 +44,14 @@ public class ZipArtifact : IArtifactBuildable, IArtifactConsumable {
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var d in _dependencies) {
                     foreach (var f in d.FilePaths) {
+                        var file = Path.GetRelativePath(d.ArtifactRoot, f);
+                        ManilaZip.Instance!.Debug($"File: {f}, Entry: {(zipConfig.SubFolder is not null ? Path.Join(zipConfig.SubFolder, file) : file)}");
                         if (!seen.Add(Path.Combine(d.ArtifactRoot, f))) continue;
                         _ = zip.CreateEntryFromFile(
                             f,
                             zipConfig.SubFolder is not null ?
-                                Path.Join(zipConfig.SubFolder, f) :
-                                Path.Join(d.ArtifactRoot, f)
+                                Path.Join(zipConfig.SubFolder, file) :
+                               file
                         );
                     }
                 }
@@ -64,7 +66,7 @@ public class ZipArtifact : IArtifactBuildable, IArtifactConsumable {
         }
     }
 
-    public void Consume(IArtifactBlueprint artifact, ArtifactOutput output, Project project) {
+    public void Consume(ICreatedArtifact artifact, ArtifactOutput output, Project project) {
         _dependencies.Add(output);
     }
 }

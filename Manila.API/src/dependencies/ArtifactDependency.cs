@@ -17,5 +17,6 @@ public class ArtifactDependency(UnresolvedProject project, string artifact) : ID
         artifact.Jobs.First(j => j != null && j.Name == "build").Dependencies.Add(
             new RegexUtils.JobMatch(project.Name, _artifactName, "build").Format()
         );
+        artifact.DependentArtifacts.Add(dependency);
     }
 }

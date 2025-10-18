@@ -18,6 +18,7 @@ public class CreatedArtifact : ICreatedArtifact {
     public UnresolvedProject Project { get; }
     public RegexUtils.PluginComponentMatch PluginComponent { get; }
     public IDependency[] Dependencies { get; } = [];
+    public List<ICreatedArtifact> DependentArtifacts { get; } = [];
 
     public LogCache? LogCache { get; set; }
 

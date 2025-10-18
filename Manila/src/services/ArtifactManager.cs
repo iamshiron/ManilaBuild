@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Interfaces;
@@ -50,11 +51,19 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         );
     }
 
-    public async Task CacheArtifactAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
+    public async Task CacheArtifactAsync(ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
-        _artifacts[artifact.GetFingerprint(project, config)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project);
+        _artifacts[artifact.GetFingerprint(project, config)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project, output);
+    }
+
+    public void UpdateCacheAccessTime(BuildExitCodeCached cachedExitCode) {
+        if (_artifacts.TryGetValue(cachedExitCode.CacheKey, out var entry)) {
+            entry.LastAccessed = TimeUtils.Now();
+        } else {
+            _logger.Debug($"No cached artifact found for fingerprint {cachedExitCode.CacheKey} to update access time.");
+        }
     }
 
     public async Task<ICreatedArtifact> AppendCachedDataAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
@@ -114,7 +123,11 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             )
         );
     }
-    public IBuildExitCode BuildFromDependencies(IArtifactBuildable builder, ICreatedArtifact createdArtifact, Project project, BuildConfig config, bool invalidateCache = false) {
+    public IBuildExitCode BuildFromDependencies(IArtifactBlueprint artifact, ICreatedArtifact createdArtifact, Project project, BuildConfig config, bool invalidateCache = false) {
+        if (artifact is not IArtifactBuildable artifactBuildable) {
+            throw new ConfigurationException($"Artifact '{artifact.Name}' is not buildable.");
+        }
+
         var fingerprint = createdArtifact.GetFingerprint(project, config);
         var artifactRoot = GetArtifactRoot(config, project, createdArtifact);
 
@@ -137,27 +150,51 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             if (exists && !cached) Directory.Delete(artifactRoot, true);
             if (!Directory.Exists(artifactRoot)) _ = Directory.CreateDirectory(artifactRoot);
 
+            if (artifact is IArtifactConsumable consumable) {
+                _logger.Debug($"Consuming required dependencies for artifact {createdArtifact.Name}...");
+                foreach (var dependency in createdArtifact.DependentArtifacts) {
+                    var entry = GetRecentCachedArtifactForProject(dependency.Project);
+                    consumable.Consume(dependency, entry.Output, dependency.Project);
+                }
+            }
+
             _logger.Debug($"Building artifact {createdArtifact.Name} with fingerprint {fingerprint} at {artifactRoot}");
-            return builder.Build(new(artifactRoot), project, config);
+            return artifactBuildable.Build(new(artifactRoot), project, config);
         } finally {
-            gate.Release();
+            _ = gate.Release();
             // Best-effort cleanup to avoid unbounded growth
             if (gate.CurrentCount == 1) {
                 _ = _buildLocks.TryRemove(fingerprint, out _);
             }
         }
     }
+
+    public ArtifactCacheEntry GetRecentCachedArtifactForProject(Project project) {
+        var name = project.Name;
+
+        List<Tuple<ArtifactCacheEntry, long>> candidates = new();
+        foreach (var (key, entry) in _artifacts.OrderByDescending(kv => kv.Value.LastAccessed)) {
+            if (key.StartsWith($"{name}-")) {
+                candidates.Add(Tuple.Create(entry, entry.LastAccessed));
+            }
+        }
+
+        return candidates.Count == 0
+            ? throw new ManilaException($"No cached artifacts found for project '{name}'.")
+            : candidates.OrderByDescending(t => t.Item2).First().Item1;
+    }
 }
 
-public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long createdAt, long lastAccessed, long size, LogCache logCache) {
+public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long createdAt, long lastAccessed, long size, LogCache logCache, ArtifactOutput output) {
     public string ArtifactRoot { get; set; } = artifactRoot;
     public string Fringerprint { get; } = fingerprint;
     public long CreatedAt { get; set; } = createdAt;
     public long LastAccessed { get; set; } = lastAccessed;
     public long Size { get; set; } = size;
     public LogCache LogCache { get; set; } = logCache;
+    public ArtifactOutput Output { get; set; } = output;
 
-    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, ICreatedArtifact artifact, BuildConfig config, Project project) {
+    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
         return new(
             artifactManager.GetArtifactRoot(config, project, artifact),
             artifact.GetFingerprint(project, config),
@@ -166,7 +203,8 @@ public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long cr
             -1, // Size not implemented yet
             artifact.LogCache ?? throw new ManilaException(
                 "Artifact does not have a log cache. Please ensure the artifact is properly executed before caching it."
-            )
+            ),
+            output
         );
     }
 }

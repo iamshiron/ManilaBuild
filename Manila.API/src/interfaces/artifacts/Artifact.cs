@@ -13,6 +13,7 @@ public interface ICreatedArtifact {
     UnresolvedProject Project { get; }
     RegexUtils.PluginComponentMatch PluginComponent { get; }
     IDependency[] Dependencies { get; }
+    List<ICreatedArtifact> DependentArtifacts { get; }
 
     LogCache? LogCache { get; set; }
 
@@ -73,7 +74,7 @@ public interface IArtifactBuildable : IArtifactBlueprint {
     IBuildExitCode Build(ArtifactOutputBuilder builder, Project project, BuildConfig config);
 }
 public interface IArtifactConsumable : IArtifactBlueprint {
-    void Consume(IArtifactBlueprint artifact, ArtifactOutput output, Project project);
+    void Consume(ICreatedArtifact artifact, ArtifactOutput output, Project project);
 }
 public interface IArtifactExecutable : IArtifactBlueprint { }
 public interface IArtifactTransientExecutable : IArtifactBlueprint { }

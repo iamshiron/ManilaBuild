@@ -193,10 +193,8 @@ public sealed class Manila(
             artifactBridge.Resolve(), config, project
         );
 
-        var artifactBuilder = _services.ExtensionManager.GetArtifact(artifact.PluginComponent)
+        var artifactBlueprint = _services.ExtensionManager.GetArtifact(artifact.PluginComponent)
             ?? throw new ConfigurationException($"Artifact builder '{artifact.PluginComponent}' not found for artifact '{artifact.Name}'.");
-
-        if (artifactBuilder is not IArtifactBuildable) throw new ConfigurationException($"Artifact builder '{artifact.PluginComponent}' is not buildable.");
 
         var logCache = new LogCache();
         var currentCtx = _services.Logger.LogContext.CurrentContextID;
@@ -204,7 +202,7 @@ public sealed class Manila(
             ? _services.Logger.CreateContextInjector(logCache.Entries.Add, ctx)
             : new LogInjector(_services.Logger, logCache.Entries.Add)) {
             var res = _services.ArtifactManager.BuildFromDependencies(
-                (IArtifactBuildable) artifactBuilder,
+                artifactBlueprint,
                 artifact,
                 project,
                 config,
@@ -212,14 +210,15 @@ public sealed class Manila(
             );
 
             switch (res) {
-                case BuildExitCodeSuccess:
+                case BuildExitCodeSuccess success:
                     artifact.LogCache = logCache;
-                    await _services.ArtifactManager.CacheArtifactAsync(artifact, config, artifact.Project);
+                    await _services.ArtifactManager.CacheArtifactAsync(artifact, config, artifact.Project, success.Outputs);
                     break;
 
-                case BuildExitCodeCached:
+                case BuildExitCodeCached c:
                     if (artifact.LogCache is { } cache) {
                         _services.Logger.Debug($"Replaying log cache for artifact '{artifact.Name}' in project '{artifact.Project.Identifier}'.");
+                        _services.ArtifactManager.UpdateCacheAccessTime(c);
                         cache.Replay(_services.Logger, _services.Logger.LogContext.CurrentContextID ?? Guid.Empty);
                     } else {
                         _services.Logger.Warning($"Cached artifact '{artifact.Name}' was missing its log cache.");
