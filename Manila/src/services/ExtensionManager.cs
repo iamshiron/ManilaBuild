@@ -229,11 +229,11 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
     );
     public IArtifactBlueprint GetArtifact(RegexUtils.PluginComponentMatch match) {
         var plugin = GetPlugin(match.ToPluginMatch());
-        var builder = plugin.ArtifactBuilders.FirstOrDefault(b =>
-            b.Name == match.Component
+        var builder = plugin.ArtifactBuilderTypes.FirstOrDefault(b =>
+            b.Item1 == match.Component
         );
 
-        return builder ?? throw new ManilaException($"Artifact builder '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
+        return ((IArtifactBlueprint) Activator.CreateInstance(builder.Item2)) ?? throw new ManilaException($"Artifact builder '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
     }
 
     public Type GetAPIType(string uri) {

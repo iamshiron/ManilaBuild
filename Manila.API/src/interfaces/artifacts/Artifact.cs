@@ -67,7 +67,6 @@ public sealed class ArtifactOutputBuilder(string root) {
 }
 
 public interface IArtifactBlueprint {
-    string Name { get; }
     Type BuildConfigType { get; }
 }
 public interface IArtifactBuildable : IArtifactBlueprint {

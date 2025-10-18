@@ -125,7 +125,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
     public IBuildExitCode BuildFromDependencies(IArtifactBlueprint artifact, ICreatedArtifact createdArtifact, Project project, BuildConfig config, bool invalidateCache = false) {
         if (artifact is not IArtifactBuildable artifactBuildable) {
-            throw new ConfigurationException($"Artifact '{artifact.Name}' is not buildable.");
+            throw new ConfigurationException($"Artifact '{artifact.GetType().FullName}' is not buildable.");
         }
 
         var fingerprint = createdArtifact.GetFingerprint(project, config);
@@ -153,6 +153,8 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             if (artifact is IArtifactConsumable consumable) {
                 _logger.Debug($"Consuming required dependencies for artifact {createdArtifact.Name}...");
                 foreach (var dependency in createdArtifact.DependentArtifacts) {
+                    _logger.Debug($"Consuming dependency artifact {dependency.Name} for project {dependency.Project.Resolve().Name}...");
+
                     var entry = GetRecentCachedArtifactForProject(dependency.Project);
                     consumable.Consume(dependency, entry.Output, dependency.Project);
                 }

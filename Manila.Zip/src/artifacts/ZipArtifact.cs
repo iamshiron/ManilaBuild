@@ -12,7 +12,6 @@ namespace Shiron.Manila.Zip.Artifacts;
 
 [ManilaExpose]
 public class ZipArtifact : IArtifactBuildable, IArtifactConsumable {
-    public string Name => "zip";
     public Type BuildConfigType => typeof(ZipBuildConfig);
 
     private readonly List<ArtifactOutput> _dependencies = [];

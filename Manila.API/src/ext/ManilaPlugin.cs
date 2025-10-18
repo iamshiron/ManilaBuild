@@ -24,7 +24,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public string? File { get; set; } = null;
     public readonly Dictionary<string, Type> APIClasses = [];
     public readonly Dictionary<string, ProjectTemplate> ProjectTemplates = [];
-    public readonly List<IArtifactBuildable> ArtifactBuilders = [];
+    public readonly List<Tuple<string, Type>> ArtifactBuilderTypes = [];
 
     internal ILogger? _logger { get; private set; }
 
@@ -84,7 +84,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public void RegisterEnum<T>() => Enums.Add(typeof(T));
     public void RegisterDependency<T>() => Dependencies.Add(typeof(T));
     public void RegisterAPIType<T>(string name) => APIClasses.Add(name, typeof(T));
-    public void RegisterArtifact(IArtifactBuildable builder) => ArtifactBuilders.Add(builder);
+    public void RegisterArtifact(string name, Type builder) => ArtifactBuilderTypes.Add(Tuple.Create(name, builder));
 
     public void RegisterProjectTemplate(ProjectTemplate template) {
         var name = template.Name;
