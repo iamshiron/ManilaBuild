@@ -247,7 +247,7 @@ public static class AnsiConsoleRenderer {
 
     private static void HandleJobExecutionStartedLogEntry(JobExecutionStartedLogEntry entry) {
         // Attach the job to the current layer's node
-        PushLog($"[deepskyblue1]Job [skyblue1]{entry.Job.Name}[/][/]", entry.ParentContextID.ToString(), entry.ContextID);
+        PushLog($"[deepskyblue1]Job [skyblue1]{entry.Job.Component.ID}:{entry.Job.Name}[/][/]", entry.ParentContextID.ToString(), entry.ContextID);
         _refresh?.Invoke();
     }
 

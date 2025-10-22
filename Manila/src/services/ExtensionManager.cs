@@ -233,7 +233,12 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             b.Item1 == match.Component
         );
 
-        return ((IArtifactBlueprint) Activator.CreateInstance(builder.Item2)) ?? throw new ManilaException($"Artifact builder '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
+        if (builder == default) {
+            throw new ManilaException($"Artifact builder '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
+        }
+
+        var instance = Activator.CreateInstance(builder.Item2);
+        return instance is IArtifactBlueprint blueprint ? blueprint : throw new ManilaException($"Failed to create instance of artifact builder '{match.Component}' in plugin '{plugin.Name}' with match: {match}");
     }
 
     public Type GetAPIType(string uri) {
