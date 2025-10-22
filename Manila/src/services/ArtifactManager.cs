@@ -1,6 +1,7 @@
 
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Newtonsoft.Json;
@@ -55,7 +56,10 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
-        _artifacts[artifact.GetFingerprint(project, config)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project, output);
+        if (artifact.ArtifactType is null)
+            throw new ManilaException("Artifact does not have an associated ArtifactType. Please ensure the artifact is properly built before caching it.");
+
+        _artifacts[artifact.GetFingerprint(project, config)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project, output, artifact.ArtifactType);
     }
 
     public void UpdateCacheAccessTime(BuildExitCodeCached cachedExitCode) {
@@ -128,6 +132,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             throw new ConfigurationException($"Artifact '{artifact.GetType().FullName}' is not buildable.");
         }
 
+        createdArtifact.ArtifactType = artifact;
         var fingerprint = createdArtifact.GetFingerprint(project, config);
         var artifactRoot = GetArtifactRoot(config, project, createdArtifact);
 
@@ -142,7 +147,6 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         var gate = _buildLocks.GetOrAdd(fingerprint, _ => new SemaphoreSlim(1, 1));
         gate.Wait();
         try {
-            // Re-check after acquiring the lock
             var exists = ExistsOnDisk();
             var cached = IsCached();
             if (exists && cached) return new BuildExitCodeCached(fingerprint);
@@ -150,13 +154,18 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             if (exists && !cached) Directory.Delete(artifactRoot, true);
             if (!Directory.Exists(artifactRoot)) _ = Directory.CreateDirectory(artifactRoot);
 
-            if (artifact is IArtifactConsumable consumable) {
-                _logger.Debug($"Consuming required dependencies for artifact {createdArtifact.Name}...");
-                foreach (var dependency in createdArtifact.DependentArtifacts) {
+            foreach (var dependency in createdArtifact.DependentArtifacts) {
+                if (dependency.ArtifactType == null)
+                    throw new ConfigurationException($"Artifact '{dependency.Name}' does not have an associated ArtifactType. Usually this indicates a artifact was not built properly before being added as a dependency.");
+                var blueprintType = dependency.ArtifactType.GetType();
+                var consumableType = typeof(IArtifactConsumable<>).MakeGenericType(blueprintType);
+                if (consumableType.IsAssignableFrom(artifact.GetType())) {
+                    _logger.Debug($"Consuming required dependencies for artifact {createdArtifact.Name}...");
                     _logger.Debug($"Consuming dependency artifact {dependency.Name} for project {dependency.Project.Resolve().Name}...");
 
                     var entry = GetRecentCachedArtifactForProject(dependency.Project);
-                    consumable.Consume(dependency, entry.Output, dependency.Project);
+                    var consumeMethod = consumableType.GetMethod("Consume");
+                    _ = consumeMethod?.Invoke(artifact, [dependency, entry.Output, dependency.Project.Resolve(), artifact]);
                 }
             }
 
@@ -164,7 +173,6 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             return artifactBuildable.Build(new(artifactRoot), project, config);
         } finally {
             _ = gate.Release();
-            // Best-effort cleanup to avoid unbounded growth
             if (gate.CurrentCount == 1) {
                 _ = _buildLocks.TryRemove(fingerprint, out _);
             }
@@ -187,7 +195,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
 }
 
-public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long createdAt, long lastAccessed, long size, LogCache logCache, ArtifactOutput output) {
+public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long createdAt, long lastAccessed, long size, LogCache logCache, ArtifactOutput output, IArtifactBlueprint artifactType) {
     public string ArtifactRoot { get; set; } = artifactRoot;
     public string Fringerprint { get; } = fingerprint;
     public long CreatedAt { get; set; } = createdAt;
@@ -195,8 +203,9 @@ public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long cr
     public long Size { get; set; } = size;
     public LogCache LogCache { get; set; } = logCache;
     public ArtifactOutput Output { get; set; } = output;
+    public IArtifactBlueprint ArtifactType { get; set; } = artifactType;
 
-    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
+    public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output, IArtifactBlueprint artifactType) {
         return new(
             artifactManager.GetArtifactRoot(config, project, artifact),
             artifact.GetFingerprint(project, config),
@@ -206,7 +215,8 @@ public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long cr
             artifact.LogCache ?? throw new ManilaException(
                 "Artifact does not have a log cache. Please ensure the artifact is properly executed before caching it."
             ),
-            output
+            output,
+            artifactType
         );
     }
 }

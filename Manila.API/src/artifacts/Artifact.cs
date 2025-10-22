@@ -19,8 +19,8 @@ public class CreatedArtifact : ICreatedArtifact {
     public RegexUtils.PluginComponentMatch PluginComponent { get; }
     public IDependency[] Dependencies { get; } = [];
     public List<ICreatedArtifact> DependentArtifacts { get; } = [];
-
     public LogCache? LogCache { get; set; }
+    public IArtifactBlueprint? ArtifactType { set; get; } = null;
 
     /// <summary>
     /// Initializes a new instance of the Artifact class using a builder pattern.

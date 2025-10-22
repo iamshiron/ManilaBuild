@@ -11,7 +11,7 @@ using Shiron.Manila.Interfaces;
 namespace Shiron.Manila.Zip.Artifacts;
 
 [ManilaExpose]
-public class ZipArtifact : IArtifactBuildable, IArtifactConsumable {
+public class ZipArtifact : IArtifactBuildable, IArtifactConsumable<ZipArtifact> {
     public Type BuildConfigType => typeof(ZipBuildConfig);
 
     private readonly List<ArtifactOutput> _dependencies = [];
@@ -65,7 +65,7 @@ public class ZipArtifact : IArtifactBuildable, IArtifactConsumable {
         }
     }
 
-    public void Consume(ICreatedArtifact artifact, ArtifactOutput output, Project project) {
+    public void Consume(ICreatedArtifact artifact, ArtifactOutput output, Project project, ZipArtifact artifactType) {
         _dependencies.Add(output);
     }
 }
