@@ -53,6 +53,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
 
     public async Task CacheArtifactAsync(ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
+        _logger.Debug($"Caching artifact {artifact.Name}...");
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
@@ -63,6 +64,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
 
     public void UpdateCacheAccessTime(BuildExitCodeCached cachedExitCode) {
+        _logger.Debug($"Updating access time for cached artifact with fingerprint {cachedExitCode.CacheKey}...");
         if (_artifacts.TryGetValue(cachedExitCode.CacheKey, out var entry)) {
             entry.LastAccessed = TimeUtils.Now();
         } else {
@@ -71,6 +73,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
 
     public async Task<ICreatedArtifact> AppendCachedDataAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
+        _logger.Debug($"Appending cached data to artifact {artifact.Name}...");
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
@@ -88,6 +91,8 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
 
     private async Task<bool> PerformCacheLoadAsync() {
+        _logger.Debug("Loading artifacts cache from disk...");
+
         using (new ProfileScope(_profiler, "Background loading artifacts cache")) {
             try {
                 if (_cacheLoaded) _logger.Warning("Cache is already loaded. Overwriting existing cache.");
@@ -111,6 +116,8 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
 
     public void FlushCacheToDisk() {
+        _logger.Debug("Flushing artifacts cache to disk...");
+
         if (_artifacts.Keys.Count == 0) {
             _logger.Debug("No artifacts to flush to disk, skipping.");
             return;
@@ -157,16 +164,18 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             foreach (var dependency in createdArtifact.DependentArtifacts) {
                 if (dependency.ArtifactType == null)
                     throw new ConfigurationException($"Artifact '{dependency.Name}' does not have an associated ArtifactType. Usually this indicates a artifact was not built properly before being added as a dependency.");
-                var blueprintType = dependency.ArtifactType.GetType();
-                var consumableType = typeof(IArtifactConsumable<>).MakeGenericType(blueprintType);
-                if (consumableType.IsAssignableFrom(artifact.GetType())) {
-                    _logger.Debug($"Consuming required dependencies for artifact {createdArtifact.Name}...");
-                    _logger.Debug($"Consuming dependency artifact {dependency.Name} for project {dependency.Project.Resolve().Name}...");
 
-                    var entry = GetRecentCachedArtifactForProject(dependency.Project);
-                    var consumeMethod = consumableType.GetMethod("Consume");
-                    _ = consumeMethod?.Invoke(artifact, [dependency, entry.Output, dependency.Project.Resolve(), artifact]);
-                }
+                var blueprintType = createdArtifact.ArtifactType.GetType();
+                var consumableType = typeof(IArtifactConsumable<>).MakeGenericType(blueprintType);
+                if (!consumableType.IsAssignableFrom(artifact.GetType()))
+                    throw new ConfigurationException($"Artifact '{artifact.GetType().FullName}' does not implement IArtifactConsumable<{blueprintType.FullName}> required to consume dependency '{dependency.Name}'.");
+
+                _logger.Debug($"Consuming required dependencies for artifact {createdArtifact.Name}...");
+                _logger.Debug($"Consuming dependency artifact {dependency.Name} for project {dependency.Project.Resolve().Name}...");
+
+                var entry = GetRecentCachedArtifactForProject(dependency.Project);
+                var consumeMethod = consumableType.GetMethod("Consume");
+                _ = consumeMethod?.Invoke(artifact, [dependency, entry.Output, dependency.Project.Resolve(), artifact]);
             }
 
             _logger.Debug($"Building artifact {createdArtifact.Name} with fingerprint {fingerprint} at {artifactRoot}");
