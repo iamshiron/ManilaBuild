@@ -96,7 +96,10 @@ csharp_style_unused_value_assignment_preference = discard_variable:suggestion
 csharp_style_unused_value_expression_statement_preference = discard_variable:suggestion
 
 # Settings for JSON, YAML, and Markdown
-[*.{json,yml,yaml,md}]
+[*.{json,md}]
+indent_size = 4
+
+[*.yml]
 indent_size = 2
 
 # Settings for csproj files

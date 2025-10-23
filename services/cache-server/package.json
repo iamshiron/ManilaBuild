@@ -1,0 +1,17 @@
+{
+    "name": "cache-server",
+    "version": "1.0.50",
+    "scripts": {
+        "dev": "bun run --env-file .env --watch src/index.ts",
+        "build": "tsc --outDir dist",
+        "start": "bun run dist/index.js"
+    },
+    "dependencies": {
+        "elysia": "latest"
+    },
+    "devDependencies": {
+        "bun-types": "latest",
+        "dotenv": "^17.2.3"
+    },
+    "module": "src/index.js"
+}

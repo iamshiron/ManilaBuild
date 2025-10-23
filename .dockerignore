@@ -1,0 +1,5 @@
+*
+!bun.lock
+!package.json
+!turbo.json
+!services
