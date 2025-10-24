@@ -16,5 +16,8 @@
         "bun-types": "latest",
         "dotenv": "^17.2.3"
     },
+    "peerDependencies": {
+        "typescript": "^5"
+    },
     "module": "src/index.js"
 }

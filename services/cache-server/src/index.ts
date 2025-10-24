@@ -12,13 +12,7 @@ if (dev) doc.use(openapi());
 app.use(doc)
     .onRequest(authMiddleware)
     .get("/artifacts", () => {
-        return [
-            {
-                key: "artifact-1",
-                size: 1024,
-                createdAt: new Date().toISOString(),
-            },
-        ];
+        return [];
     })
     .put("/artifacts/:key", () => {})
     .post("/artifacts/:key", () => {})

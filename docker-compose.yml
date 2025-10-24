@@ -3,8 +3,8 @@ services:
     image: postgres:17
     environment:
       POSTGRES_USER: manila
-      POSTGRES_PASSWORD: manila_password
-      POSTGRES_DB: manila_db
+      POSTGRES_PASSWORD: manila
+      POSTGRES_DB: manila
       POSTGRES_PORT: 5432
     ports:
       - "5432:5432"
@@ -13,11 +13,18 @@ services:
 
   cache-server:
     build:
-      context: .
-      dockerfile: ./services/cache-server/Dockerfile
-    env_file: ./services/cache-server/.env
+      context: ./services/cache-server
+      dockerfile: Dockerfile
+    environment:
+      PORT: 2995
+      AUTH_TOKEN: manila
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: manila
+      DB_PASSWORD: manila
+      DB_NAME: manila
     ports:
-      - "${PORT:-2995}:${PORT:-2995}"
+      - "2995:2995"
     depends_on:
       - db
 
