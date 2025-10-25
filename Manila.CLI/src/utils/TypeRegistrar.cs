@@ -1,6 +1,6 @@
 
 using Microsoft.Extensions.DependencyInjection;
-using Shiron.Manila.Exceptions;
+using Shiron.Manila.API.Exceptions;
 using Spectre.Console.Cli;
 
 namespace Shiron.Manila.CLI.Utils;

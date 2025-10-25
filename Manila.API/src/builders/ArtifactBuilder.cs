@@ -2,9 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.ClearScript;
 using Shiron.Manila.API.Artifacts;
 using Shiron.Manila.API.Bridges;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Interfaces.Artifacts;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API.Builders;

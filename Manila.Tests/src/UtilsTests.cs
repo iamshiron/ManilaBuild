@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using NUnit.Framework;
-using Shiron.Manila.Exceptions;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Tests;

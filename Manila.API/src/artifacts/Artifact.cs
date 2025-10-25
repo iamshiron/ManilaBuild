@@ -1,9 +1,9 @@
 
 using Shiron.Manila.API.Builders;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.API.Utils;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API.Artifacts;

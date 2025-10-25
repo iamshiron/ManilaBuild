@@ -1,7 +1,7 @@
 
 using Newtonsoft.Json;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Ext;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 
 namespace Shiron.Manila.API.Logging;

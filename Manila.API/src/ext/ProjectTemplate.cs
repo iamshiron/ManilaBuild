@@ -1,6 +1,6 @@
 
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Interfaces;
-using Shiron.Manila.Exceptions;
 
 namespace Shiron.Manila.API.Ext;
 

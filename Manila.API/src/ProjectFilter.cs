@@ -1,6 +1,6 @@
 using System.Linq;
 using System.Text.RegularExpressions;
-using Shiron.Manila.Exceptions;
+using Shiron.Manila.API.Exceptions;
 
 namespace Shiron.Manila.API;
 

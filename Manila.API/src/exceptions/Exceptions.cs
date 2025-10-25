@@ -1,5 +1,5 @@
 
-namespace Shiron.Manila.Exceptions;
+namespace Shiron.Manila.API.Exceptions;
 
 /// <summary>
 /// Represents the base class for all exceptions thrown by the Manila application.
