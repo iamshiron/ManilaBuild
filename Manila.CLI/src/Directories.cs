@@ -12,4 +12,5 @@ public class Directories : IDirectories {
     public string Artifacts => Path.Join(Data, "artifacts");
     public string Cache => Path.Join(Data, "cache");
     public string Compiled => Path.Join(Data, "compiled");
+    public string Temp => Path.Join(Data, "temp");
 }

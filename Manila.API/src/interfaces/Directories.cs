@@ -9,6 +9,7 @@ public interface IDirectories {
     string Artifacts { get; }
     string Cache { get; }
     string Compiled { get; }
+    string Temp { get; }
 
     IEnumerable<string> AllDataDirectories => [
         Data,
@@ -17,6 +18,7 @@ public interface IDirectories {
         Profiles,
         Artifacts,
         Cache,
-        Compiled
+        Compiled,
+        Temp
     ];
 }

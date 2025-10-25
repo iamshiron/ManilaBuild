@@ -26,6 +26,11 @@ Ready to dive in? Here’s how to set up your first project with ManilaBuild. Th
 First, create a new empty folder that will contain your workspace.
 Inside this folder, run `manila init` to initialize a new empty workspace.
 
+### Environment variables
+
+- MANILA_CACHE_HOST: The cache server base URL including port (for example: http://localhost:3000). When set, artifact caches are pushed to this server after successful builds.
+- MANILA_CACHE_KEY: Optional bearer token used for authenticating with the cache server when authentication is enabled. If omitted and the server enforces auth, uploads will be skipped with a warning.
+
 ### 2. Project Creation
 
 To create your first project, we will use the *Zip project template* as an example.

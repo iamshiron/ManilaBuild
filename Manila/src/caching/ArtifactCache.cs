@@ -31,6 +31,7 @@ public class ArtifactCache(ILogger logger, string artifactsDir, string artifacts
     };
 
     public void LoadCache() {
+        _logger.Debug("LoadCache invoked; starting background cache load task.");
         _cacheLoadTask = PerformCacheLoadAsync();
     }
 
@@ -49,7 +50,7 @@ public class ArtifactCache(ILogger logger, string artifactsDir, string artifacts
                 json,
                 _jsonSettings
             ) ?? [];
-
+            _logger.Debug($"Loaded {_artifacts.Count} cached artifact entries from '{ArtifactsCacheFile}'.");
             return true;
         } catch (Exception ex) {
             var e = new ManilaException($"Failed to load artifacts cache from {ArtifactsCacheFile}: {ex.Message}", ex);
@@ -58,7 +59,7 @@ public class ArtifactCache(ILogger logger, string artifactsDir, string artifacts
     }
 
     public void FlushCacheToDisk() {
-        _logger.Debug("Flushing artifacts cache to disk...");
+        _logger.Debug($"Flushing artifacts cache to disk at '{ArtifactsCacheFile}' (entries: {_artifacts.Keys.Count})...");
 
         if (_artifacts.Keys.Count == 0) {
             _logger.Debug("No artifacts to flush to disk, skipping.");
@@ -75,38 +76,43 @@ public class ArtifactCache(ILogger logger, string artifactsDir, string artifacts
                 _jsonSettings
             )
         );
+        _logger.Debug("Flush completed.");
     }
 
     public async Task CacheArtifactAsync(ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
-        _logger.Debug($"Caching artifact {artifact.Name}...");
+        _logger.Debug($"Caching artifact '{artifact.Name}' for project '{project.Name}'.");
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
         if (artifact.ArtifactType is null)
             throw new ManilaException("Artifact does not have an associated ArtifactType. Please ensure the artifact is properly built before caching it.");
-
-        _artifacts[artifact.GetFingerprint(project, config)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project, output, artifact.ArtifactType);
+        var fingerprint = artifact.GetFingerprint(project, config);
+        var entry = ArtifactCacheEntry.FromArtifact(this, artifact, config, project, output, artifact.ArtifactType);
+        _artifacts[fingerprint] = entry;
+        _logger.Debug($"Cached artifact. Fingerprint='{fingerprint}', Root='{entry.ArtifactRoot}', Files={output.FilePaths.Length}.");
     }
 
     public void UpdateCacheAccessTime(BuildExitCodeCached cachedExitCode) {
-        _logger.Debug($"Updating access time for cached artifact with fingerprint {cachedExitCode.CacheKey}...");
+        _logger.Debug($"Updating access time for cached artifact. Fingerprint='{cachedExitCode.CacheKey}'.");
         if (_artifacts.TryGetValue(cachedExitCode.CacheKey, out var entry)) {
             entry.LastAccessed = TimeUtils.Now();
+            _logger.Debug("Access time updated.");
         } else {
-            _logger.Debug($"No cached artifact found for fingerprint {cachedExitCode.CacheKey} to update access time.");
+            _logger.Debug($"No entry found for '{cachedExitCode.CacheKey}' when updating access time.");
         }
     }
 
     public async Task<ICreatedArtifact> AppendCachedDataAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
-        _logger.Debug($"Appending cached data to artifact {artifact.Name}...");
+        _logger.Debug($"Appending cached data to artifact '{artifact.Name}' (project '{project.Name}').");
         if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
         _ = await _cacheLoadTask;
 
         var fingerprint = artifact.GetFingerprint(project, config);
         if (_artifacts.TryGetValue(fingerprint, out var entry)) {
             artifact.LogCache = entry.LogCache;
+            _logger.Debug($"Found cached log for fingerprint '{fingerprint}' (created {entry.CreatedAt}, last accessed {entry.LastAccessed}).");
         } else {
-            _logger.Debug($"No cached data found for artifact {artifact.Name} in {fingerprint}");
+            _logger.Debug($"No cached log found for fingerprint '{fingerprint}'.");
         }
         return artifact;
     }
@@ -115,13 +121,14 @@ public class ArtifactCache(ILogger logger, string artifactsDir, string artifacts
 
     public ArtifactOutput GetMostRecentOutputForProject(Project project) {
         var name = project.Name;
+        _logger.Debug($"Retrieving most recent output for project '{name}'.");
         List<Tuple<ArtifactCacheEntry, long>> candidates = new();
         foreach (var (key, entry) in _artifacts.OrderByDescending(kv => kv.Value.LastAccessed)) {
             if (key.StartsWith($"{name}-")) {
                 candidates.Add(Tuple.Create(entry, entry.LastAccessed));
             }
         }
-
+        _logger.Debug($"Found {candidates.Count} candidate cached entries for project '{name}'.");
         return candidates.Count == 0
             ? throw new ManilaException($"No cached artifacts found for project '{name}'.")
             : candidates.OrderByDescending(t => t.Item2).First().Item1.Output;

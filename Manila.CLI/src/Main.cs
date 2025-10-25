@@ -9,6 +9,7 @@ using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Interfaces;
+using Shiron.Manila.Caching;
 using Shiron.Manila.CLI.Commands;
 using Shiron.Manila.CLI.Commands.API;
 using Shiron.Manila.CLI.Utils;
@@ -16,7 +17,6 @@ using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Registries;
 using Shiron.Manila.Services;
-using Shiron.Manila.Caching;
 using Shiron.Manila.Utils;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -121,11 +121,12 @@ public static class ManilaCli {
 
                     var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
                     var artifactCache = new ArtifactCache(logger, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json"));
+                    var remoteCache = new RemoteArtifactCache(logger, Directories, artifactCache);
 
                     serviceContainer = new ServiceContainer(
                         new JobRegistry(baseServiceContainer.Profiler),
-                        new ArtifactManager(logger, profiler, Directories.Artifacts, artifactCache),
-                        artifactCache,
+                        new ArtifactManager(logger, profiler, Directories.Artifacts, remoteCache),
+                        remoteCache,
                         new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
                         nugetManager,
                         new FileHashCache(baseServiceContainer.Profiler, Directories)
