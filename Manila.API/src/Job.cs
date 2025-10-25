@@ -4,10 +4,10 @@ using System.Threading.Tasks;
 using Microsoft.ClearScript;
 using Newtonsoft.Json;
 using Shiron.Manila.API.Builders;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Logging;
 using Shiron.Manila.API.Utils;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 

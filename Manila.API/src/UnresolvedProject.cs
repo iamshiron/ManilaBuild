@@ -1,6 +1,6 @@
 using System.Linq;
 using Newtonsoft.Json;
-using Shiron.Manila.Exceptions;
+using Shiron.Manila.API.Exceptions;
 
 namespace Shiron.Manila.API;
 

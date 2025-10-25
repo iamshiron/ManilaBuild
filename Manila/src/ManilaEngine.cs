@@ -2,8 +2,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Bridges;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Utils;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Registries;
@@ -88,7 +88,7 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             var apiServiceContainer = new APIServiceContainer(
                 _baseServices.Logger, _baseServices.Profiler,
-                services.ExtensionManager, services.JobRegistry, services.ArtifactManager
+                services.ExtensionManager, services.JobRegistry, services.ArtifactManager, services.ArtifactCache
             );
 
             context.Init(new(
@@ -123,7 +123,7 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             var apiServiceContainer = new APIServiceContainer(
                 _baseServices.Logger, _baseServices.Profiler,
-                services.ExtensionManager, services.JobRegistry, services.ArtifactManager
+                services.ExtensionManager, services.JobRegistry, services.ArtifactManager, services.ArtifactCache
             );
 
             context.Init(new(

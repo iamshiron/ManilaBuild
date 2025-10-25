@@ -6,12 +6,12 @@ using Microsoft.ClearScript;
 using Shiron.Manila.API.Bridges;
 using Shiron.Manila.API.Builders;
 using Shiron.Manila.API.Dependencies;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Ext;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.API.Logging;
 using Shiron.Manila.API.Utils;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Interfaces;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
@@ -189,7 +189,7 @@ public sealed class Manila(
     /// <summary>Builds a specific, fully-resolved project's artifact.</summary>
     public async Task Build(ProjectScriptBridge projectBridge, BuildConfig config, UnresolvedArtifactScriptBridge artifactBridge) {
         var project = projectBridge._handle;
-        var artifact = await _services.ArtifactManager.AppendCachedDataAsync(
+        var artifact = await _services.ArtifactCache.AppendCachedDataAsync(
             artifactBridge.Resolve(), config, project
         );
 
@@ -212,13 +212,13 @@ public sealed class Manila(
             switch (res) {
                 case BuildExitCodeSuccess success:
                     artifact.LogCache = logCache;
-                    await _services.ArtifactManager.CacheArtifactAsync(artifact, config, artifact.Project, success.Outputs);
+                    await _services.ArtifactCache.CacheArtifactAsync(artifact, config, artifact.Project, success.Outputs);
                     break;
 
                 case BuildExitCodeCached c:
                     if (artifact.LogCache is { } cache) {
                         _services.Logger.Debug($"Replaying log cache for artifact '{artifact.Name}' in project '{artifact.Project.Identifier}'.");
-                        _services.ArtifactManager.UpdateCacheAccessTime(c);
+                        _services.ArtifactCache.UpdateCacheAccessTime(c);
                         cache.Replay(_services.Logger, _services.Logger.LogContext.CurrentContextID ?? Guid.Empty);
                     } else {
                         _services.Logger.Warning($"Cached artifact '{artifact.Name}' was missing its log cache.");

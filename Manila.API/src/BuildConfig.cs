@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using Shiron.Manila.API.Attributes;
-using Shiron.Manila.Exceptions;
+using Shiron.Manila.API.Exceptions;
 
 namespace Shiron.Manila.API;
 

@@ -1,4 +1,4 @@
-using Shiron.Manila.Exceptions;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 

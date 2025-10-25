@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Shiron.Manila.API;
-using Shiron.Manila.Exceptions;
+using Shiron.Manila.API.Exceptions;
 using Spectre.Console.Cli;
 using static Shiron.Manila.CLI.CLIConstants;
 

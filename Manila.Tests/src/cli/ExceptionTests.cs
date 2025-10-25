@@ -4,8 +4,8 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Shiron.Manila.API;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.CLI;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
 

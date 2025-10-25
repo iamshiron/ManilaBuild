@@ -1,10 +1,10 @@
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
+using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Ext;
 using Shiron.Manila.API.Interfaces;
 using Shiron.Manila.API.Logging;
-using Shiron.Manila.Exceptions;
 using Shiron.Manila.Services;
 using Shiron.Manila.Utils;
 

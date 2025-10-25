@@ -1,7 +1,7 @@
 
 using Microsoft.CodeAnalysis;
 
-namespace Shiron.Manila.Exceptions;
+namespace Shiron.Manila.API.Exceptions;
 
 #region Base Exceptions
 
