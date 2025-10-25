@@ -126,6 +126,22 @@ public class RemoteArtifactCache(ILogger logger, IDirectories directories, IArti
             stream.Position = 0;
 
             _logger.Debug($"Prepared zip archive for upload. Size={stream.Length} bytes, Entries={added}.");
+            var split = fingerprint.Split('_');
+            var hash = split[split.Length - 1];
+
+            _logger.Debug($"Uploading artifact data to /artifacts/{hash} ...");
+            var content = new ByteArrayContent(stream.ToArray());
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+
+            var res = await http.PostAsync($"artifacts/{fingerprint}/output", new MultipartFormDataContent {
+                { content, "\"file\"", "artifact.zip" }
+            });
+
+            if (!res.IsSuccessStatusCode) {
+                _logger.Warning($"Remote cache artifact upload failed ({(int) res.StatusCode}): {res.ReasonPhrase}");
+            } else {
+                _logger.Info($"Successfully pushed artifact '{artifact.Name}' (fingerprint '{fingerprint}') to remote cache.");
+            }
         }
     }
 }
