@@ -1,4 +1,4 @@
-import { status, type Context } from "elysia";
+import { status } from "elysia";
 
 const AUTH_TOKEN = process.env.AUTH_TOKEN;
 
@@ -15,6 +15,6 @@ export async function authMiddleware({ request }: { request: Request }) {
 
     const authHeader = request.headers.get("Authorization");
     if (!authHeader || authHeader !== `Bearer ${AUTH_TOKEN}`) {
-        return status(401);
+        return status(401, { error: "Unauthorized" });
     }
 }

@@ -4,7 +4,8 @@
     "scripts": {
         "dev": "bun run --env-file .env --watch src/index.ts",
         "build": "tsc --outDir dist",
-        "start": "bun run dist/index.js"
+        "start": "bun run dist/index.js",
+        "db:push": "bun --env-file .env drizzle-kit push"
     },
     "dependencies": {
         "@elysiajs/openapi": "^1.4.11",
@@ -14,7 +15,8 @@
     },
     "devDependencies": {
         "bun-types": "latest",
-        "dotenv": "^17.2.3"
+        "dotenv": "^17.2.3",
+        "drizzle-kit": "^0.31.5"
     },
     "peerDependencies": {
         "typescript": "^5"

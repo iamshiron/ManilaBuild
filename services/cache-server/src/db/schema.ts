@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+    customType,
     integer,
     jsonb,
     pgEnum,
@@ -17,11 +18,20 @@ export const LogLevel = pgEnum("log_level", [
     "Critical",
 ]);
 
+const bytea = customType<{
+    data: Buffer;
+    default: false;
+}>({
+    dataType() {
+        return "bytea";
+    },
+});
+
 export const Artifacts = pgTable("artifacts", {
     id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-    project: varchar("project", { length: 255 }),
-    artifact: varchar("artifact", { length: 255 }),
-    hash: varchar("hash", { length: 255 }),
+    project: varchar("project", { length: 255 }).notNull(),
+    artifact: varchar("artifact", { length: 255 }).notNull(),
+    hash: varchar("hash", { length: 255 }).notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     lastAccessedAt: timestamp("last_accessed_at").notNull().defaultNow(),
     type: varchar("type", { length: 256 }).notNull(),
@@ -34,6 +44,8 @@ export const ArtifactsRelations = relations(Artifacts, ({ many }) => ({
 export const ArtifactOutput = pgTable("artifact_outputs", {
     id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
     artifactID: integer("artifact_id").references(() => Artifacts.id),
+    data: bytea("data").notNull(),
+    sizeB: integer("size_b").notNull(),
 });
 export const ArtifactOutputRelations = relations(ArtifactOutput, ({ one }) => ({
     artifact: one(Artifacts, {
