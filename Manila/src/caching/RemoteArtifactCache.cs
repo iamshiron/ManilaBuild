@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Exceptions;
 using Shiron.Manila.API.Interfaces;
@@ -15,10 +16,12 @@ using Spectre.Console;
 
 namespace Shiron.Manila.Caching;
 
-public class RemoteArtifactCache(ILogger logger, IDirectories directories, IArtifactCache localCache) : IArtifactCache {
+public class RemoteArtifactCache(string host, string key, ILogger logger, IDirectories directories, IArtifactCache localCache) : IArtifactCache {
     private readonly ILogger _logger = logger;
     private readonly IArtifactCache _local = localCache;
     private readonly IDirectories _directories = directories;
+    private readonly string _host = host;
+    private readonly string _key = key;
 
     private HttpClient? _http;
 
@@ -57,32 +60,46 @@ public class RemoteArtifactCache(ILogger logger, IDirectories directories, IArti
         await TryPushToRemoteAsync(artifact, config, project, output);
     }
 
-    private HttpClient? EnsureHttpClient(string host, string? key) {
+    private HttpClient? EnsureHttpClient() {
         if (_http != null) return _http;
         try {
-            var baseUri = host.EndsWith("/") ? host : host + "/";
+            var baseUri = _host.EndsWith('/') ? _host : _host + "/";
             _http = new HttpClient { BaseAddress = new Uri(baseUri) };
-            if (!string.IsNullOrWhiteSpace(key)) {
-                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
+            if (!string.IsNullOrWhiteSpace(_key)) {
+                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _key);
             }
-            _logger.Debug($"HTTP client created. Base='{_http.BaseAddress}', Auth={(string.IsNullOrWhiteSpace(key) ? "none" : "bearer")}.");
+
+            _logger.Debug($"HTTP client created. Base='{_http.BaseAddress}', Auth={(string.IsNullOrWhiteSpace(_key) ? "none" : "bearer")}.");
             return _http;
         } catch (Exception e) {
-            _logger.Warning($"Failed to create HTTP client for cache server at '{host}': {e.Message}");
+            _logger.Warning($"Failed to create HTTP client for cache server at '{_host}': {e.Message}");
             return null;
         }
     }
 
-    private async Task TryPushToRemoteAsync(ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
-        var host = Environment.GetEnvironmentVariable("MANILA_CACHE_HOST");
-        var key = Environment.GetEnvironmentVariable("MANILA_CACHE_KEY");
+    public async Task<bool> CheckAvailability() {
+        var http = EnsureHttpClient();
+        if (http == null) return false;
 
-        if (string.IsNullOrWhiteSpace(host)) {
-            _logger.Debug("MANILA_CACHE_HOST not set. Skipping remote cache push.");
-            return;
+        try {
+            _logger.Debug("Checking remote cache availability via GET /ping ...");
+            var resp = await http.GetAsync("ping");
+            if (resp.IsSuccessStatusCode) {
+                _logger.Debug("Remote cache is available.");
+                return true;
+            } else {
+                _logger.Warning($"Remote cache ping failed ({(int) resp.StatusCode}): {resp.ReasonPhrase}");
+                throw new ManilaException($"Remote cache is not available ({(int) resp.StatusCode}): {resp.ReasonPhrase}");
+            }
+        } catch (Exception e) {
+            var ex = new ManilaException($"Remote cache availability check failed with exception: {e.Message}", e);
+            _logger.Warning(ex.Message);
+            throw ex;
         }
+    }
 
-        var http = EnsureHttpClient(host!, key);
+    private async Task TryPushToRemoteAsync(ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
+        var http = EnsureHttpClient();
         if (http == null) return;
 
         var fingerprint = artifact.GetFingerprint(project, config);
@@ -118,7 +135,7 @@ public class RemoteArtifactCache(ILogger logger, IDirectories directories, IArti
                         throw new ManilaException($"Cannot add file '{filePath}' to remote cache zip: file does not exist.");
 
                     var entryPath = Path.GetRelativePath(output.ArtifactRoot, filePath);
-                    archive.CreateEntryFromFile(filePath, entryPath);
+                    _ = archive.CreateEntryFromFile(filePath, entryPath);
                     added++;
                 }
             }

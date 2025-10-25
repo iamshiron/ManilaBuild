@@ -21,44 +21,47 @@ if (process.env.NO_AUTH === undefined || process.env.NO_AUTH === "false")
     app.onRequest(authMiddleware);
 else console.warn("⚠️  Running cache server without authentication!");
 
-app.get(
-    "/artifacts",
-    async (c) => {
-        const artifacts = await db.query.Artifacts.findMany({
-            with: {
-                outputs: {
-                    columns: {
-                        artifactID: false,
-                        data: false,
+app.get("/ping", (c) => {
+    return c.status(200, { message: "Authenticated" });
+})
+    .get(
+        "/artifacts",
+        async (c) => {
+            const artifacts = await db.query.Artifacts.findMany({
+                with: {
+                    outputs: {
+                        columns: {
+                            artifactID: false,
+                            data: false,
+                        },
                     },
                 },
-            },
-        });
+            });
 
-        return c.status(200, artifacts);
-    },
-    {
-        response: {
-            200: t.Array(
-                t.Object({
-                    id: t.Number(),
-                    artifact: t.String(),
-                    project: t.String(),
-                    hash: t.String(),
-                    type: t.String(),
-                    lastAccessedAt: t.Date(),
-                    createdAt: t.Date(),
-                    outputs: t.Array(
-                        t.Object({
-                            id: t.Number(),
-                            sizeB: t.Number(),
-                        }),
-                    ),
-                }),
-            ),
+            return c.status(200, artifacts);
         },
-    },
-)
+        {
+            response: {
+                200: t.Array(
+                    t.Object({
+                        id: t.Number(),
+                        artifact: t.String(),
+                        project: t.String(),
+                        hash: t.String(),
+                        type: t.String(),
+                        lastAccessedAt: t.Date(),
+                        createdAt: t.Date(),
+                        outputs: t.Array(
+                            t.Object({
+                                id: t.Number(),
+                                sizeB: t.Number(),
+                            }),
+                        ),
+                    }),
+                ),
+            },
+        },
+    )
     .put(
         "/artifacts/:key",
         async (c) => {

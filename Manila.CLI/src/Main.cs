@@ -120,13 +120,27 @@ public static class ManilaCli {
                     Directory.CreateDirectory(Directories.Data);
 
                     var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
-                    var artifactCache = new ArtifactCache(logger, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json"));
-                    var remoteCache = new RemoteArtifactCache(logger, Directories, artifactCache);
+
+                    IArtifactCache artifactCache = Environment.GetEnvironmentVariable("MANILA_CACHE_HOST") == null ?
+                        new ArtifactCache(logger, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")) :
+                        new RemoteArtifactCache(
+                            Environment.GetEnvironmentVariable("MANILA_CACHE_HOST")!,
+                            Environment.GetEnvironmentVariable("MANILA_CACHE_KEY") ?? "",
+                            logger,
+                            Directories,
+                            new ArtifactCache(logger, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json"))
+                        );
+
+                    if (!await artifactCache.CheckAvailability()) {
+                        throw new ManilaException($"Artifact cache of type '{artifactCache.GetType().FullName}' is not available. Aborting initialization.");
+                    }
+
+                    logger.Debug($"Using artifact cache of type '{artifactCache.GetType().FullName}'.");
 
                     serviceContainer = new ServiceContainer(
                         new JobRegistry(baseServiceContainer.Profiler),
-                        new ArtifactManager(logger, profiler, Directories.Artifacts, remoteCache),
-                        remoteCache,
+                        new ArtifactManager(logger, profiler, Directories.Artifacts, artifactCache),
+                        artifactCache,
                         new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
                         nugetManager,
                         new FileHashCache(baseServiceContainer.Profiler, Directories)

@@ -14,6 +14,8 @@ public interface IArtifactCache {
     Task<ICreatedArtifact> AppendCachedDataAsync(ICreatedArtifact artifact, BuildConfig config, Project project);
     void UpdateCacheAccessTime(BuildExitCodeCached cachedExitCode);
 
+    Task<bool> CheckAvailability();
+
     // Queries
     bool IsCached(string fingerprint);
     ArtifactOutput GetMostRecentOutputForProject(Project project);

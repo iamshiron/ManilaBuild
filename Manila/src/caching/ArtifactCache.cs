@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography.Pkcs;
 using Newtonsoft.Json;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Exceptions;
@@ -132,6 +133,11 @@ public class ArtifactCache(ILogger logger, string artifactsDir, string artifacts
         return candidates.Count == 0
             ? throw new ManilaException($"No cached artifacts found for project '{name}'.")
             : candidates.OrderByDescending(t => t.Item2).First().Item1.Output;
+    }
+
+    public async Task<bool> CheckAvailability() {
+        await Task.Yield();
+        return true;
     }
 
     internal string GetArtifactRoot(BuildConfig config, Project project, ICreatedArtifact artifact) {
