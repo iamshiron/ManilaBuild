@@ -88,7 +88,7 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             var apiServiceContainer = new APIServiceContainer(
                 _baseServices.Logger, _baseServices.Profiler,
-                services.ExtensionManager, services.JobRegistry, services.ArtifactManager
+                services.ExtensionManager, services.JobRegistry, services.ArtifactManager, services.ArtifactCache
             );
 
             context.Init(new(
@@ -123,7 +123,7 @@ public sealed class ManilaEngine(BaseServiceContainer baseServices, IDirectories
 
             var apiServiceContainer = new APIServiceContainer(
                 _baseServices.Logger, _baseServices.Profiler,
-                services.ExtensionManager, services.JobRegistry, services.ArtifactManager
+                services.ExtensionManager, services.JobRegistry, services.ArtifactManager, services.ArtifactCache
             );
 
             context.Init(new(

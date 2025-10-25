@@ -21,6 +21,7 @@ public record BaseServiceContainer(
 /// </summary>
 public record ServiceContainer(IJobRegistry JobRegistry,
             IArtifactManager ArtifactManager,
+            IArtifactCache ArtifactCache,
             IExtensionManager ExtensionManager,
             INuGetManager NuGetManager,
             IFileHashCache FileHashCache

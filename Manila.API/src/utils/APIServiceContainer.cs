@@ -10,5 +10,6 @@ public record APIServiceContainer(
     IProfiler Profiler,
     IExtensionManager ExtensionManager,
     IJobRegistry JobRegistry,
-    IArtifactManager ArtifactManager
+    IArtifactManager ArtifactManager,
+    IArtifactCache ArtifactCache
 );

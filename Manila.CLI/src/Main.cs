@@ -16,6 +16,7 @@ using Shiron.Manila.Logging;
 using Shiron.Manila.Profiling;
 using Shiron.Manila.Registries;
 using Shiron.Manila.Services;
+using Shiron.Manila.Caching;
 using Shiron.Manila.Utils;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -119,16 +120,18 @@ public static class ManilaCli {
                     Directory.CreateDirectory(Directories.Data);
 
                     var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
+                    var artifactCache = new ArtifactCache(logger, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json"));
 
                     serviceContainer = new ServiceContainer(
                         new JobRegistry(baseServiceContainer.Profiler),
-                        new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
+                        new ArtifactManager(logger, profiler, Directories.Artifacts, artifactCache),
+                        artifactCache,
                         new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
                         nugetManager,
                         new FileHashCache(baseServiceContainer.Profiler, Directories)
                     );
 
-                    serviceContainer.ArtifactManager.LoadCache();
+                    serviceContainer.ArtifactCache.LoadCache();
                     await InitExtensions(baseServiceContainer, serviceContainer);
 
                     // Run engine and initialize projects
@@ -231,7 +234,7 @@ public static class ManilaCli {
         serviceContainer?.ExtensionManager.ReleasePlugins();
 
         profiler.SaveToFile(Directories.Profiles);
-        serviceContainer?.ArtifactManager.FlushCacheToDisk();
+        serviceContainer?.ArtifactCache.FlushCacheToDisk();
         return exitCode;
     }
 }
