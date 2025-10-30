@@ -67,7 +67,8 @@ public static class ManilaCli {
             args.Contains(CommandOptions.Quiet) || args.Contains(CommandOptions.QuietShort),
             args.Contains(CommandOptions.Verbose),
             args.Contains(CommandOptions.Structured) || args.Contains(CommandOptions.Json),
-            args.Contains(CommandOptions.StackTrace)
+            args.Contains(CommandOptions.StackTrace),
+            args.Contains(CommandOptions.LogProfiling)
         );
 
         var commands = CommandUtils.GetCommandNames(args);
@@ -77,7 +78,7 @@ public static class ManilaCli {
         Directories = new Directories();
 
         var logger = isApiCommand ? (ILogger) new EmptyLogger() : new Logger(null);
-        var profiler = new Profiler(logger);
+        var profiler = new Profiler(logger, logOptions.LogProfiling);
         var services = new ServiceCollection();
         ExecutionStage = new ExecutionStage(logger);
 
@@ -96,51 +97,50 @@ public static class ManilaCli {
 
         var manilaEngine = new ManilaEngine(baseServiceContainer, Directories);
 
-        ServiceContainer? serviceContainer = null;
+        var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
+        var serviceContainer = new ServiceContainer(
+            new JobRegistry(baseServiceContainer.Profiler),
+            new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
+            new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
+            nugetManager,
+            new FileHashCache(baseServiceContainer.Profiler, Directories)
+        );
 
-        try {
-            var shouldInitialize = true;
-            var dataDirExists = Directory.Exists(Directories.Data);
-            var workspaceFileExists = File.Exists(Path.Join(Directories.Root, "Manila.js"));
+        serviceContainer.ArtifactManager.LoadCache();
+        if (Directory.Exists(Directories.Plugins)) {
+            logger.Debug("Initializing extensions...");
+            await InitExtensions(baseServiceContainer, serviceContainer);
+        }
 
-            if (!dataDirExists) {
-                shouldInitialize = false;
-                baseServiceContainer.Logger.Debug("Data directory does not exist. Skipping workspace initialization.");
-            }
-            if (!workspaceFileExists) {
-                shouldInitialize = false;
-                baseServiceContainer.Logger.Debug("Workspace script file (Manila.js) does not exist. Skipping workspace initialization.");
-            }
+        services.AddSingleton(serviceContainer);
+        services.AddSingleton(manilaEngine);
+        services.AddSingleton(baseServiceContainer);
+        services.AddSingleton(Directories);
+        services.AddSingleton(baseServiceContainer.Logger);
 
-            if (shouldInitialize) {
-                using (new ProfileScope(baseServiceContainer.Profiler, "Initializing Manila Engine")) {
-                    ExecutionStage.ChangeState(ExecutionStages.Discovery);
+        services.AddSingleton<Workspace>(p => {
+            using (new ProfileScope(baseServiceContainer.Profiler, "Initializing Workspace")) {
+                logger.Debug("Registering workspace service...");
 
-                    Directory.CreateDirectory(Directories.Data);
+                var dataExists = Directory.Exists(Directories.Data);
+                var workspaceFileExists = File.Exists(Path.Join(Directories.Root, "Manila.js"));
+                if (!dataExists || !workspaceFileExists) {
+                    logger.Debug("No workspace found during service registration.");
+                    return null!;
+                }
 
-                    var nugetManager = new NuGetManager(logger, profiler, Directories.Nuget);
+                logger.Debug("A command is attempting to access the workspace. Initializing...");
+                ExecutionStage.ChangeState(ExecutionStages.Configuration);
 
-                    serviceContainer = new ServiceContainer(
-                        new JobRegistry(baseServiceContainer.Profiler),
-                        new ArtifactManager(logger, profiler, Directories.Artifacts, Path.Join(Directories.Cache, "artifacts.json")),
-                        new ExtensionManager(logger, profiler, Directories.Plugins, nugetManager),
-                        nugetManager,
-                        new FileHashCache(baseServiceContainer.Profiler, Directories)
-                    );
-
-                    serviceContainer.ArtifactManager.LoadCache();
-                    await InitExtensions(baseServiceContainer, serviceContainer);
-
-                    // Run engine and initialize projects
-                    ExecutionStage.ChangeState(ExecutionStages.Configuration);
-                    var workspace = await manilaEngine.RunWorkspaceScriptAsync(serviceContainer, new(
+                try {
+                    var workspace = manilaEngine.RunWorkspaceScriptAsync(serviceContainer, new(
                         baseServiceContainer.Logger, baseServiceContainer.Profiler, serviceContainer.ExtensionManager,
                         Directories.Root, Path.Join(Directories.Root, "Manila.js")
-                    ));
+                    )).GetAwaiter().GetResult();
 
                     var workspaceBridge = new WorkspaceScriptBridge(baseServiceContainer.Logger, baseServiceContainer.Profiler, workspace);
 
-                    List<Task<Project>> projectInitializationTasks = [];
+                    var projectInitializationTasks = new List<Task<Project>>();
                     foreach (var script in manilaEngine.DiscoverProjectScripts(baseServiceContainer.Profiler)) {
                         projectInitializationTasks.Add(
                             manilaEngine.RunProjectScriptAsync(serviceContainer, new(
@@ -149,9 +149,9 @@ public static class ManilaCli {
                             ), workspace, workspaceBridge)
                         );
                     }
-                    baseServiceContainer.Logger.Debug($"Discovered {projectInitializationTasks.Count} project scripts.");
-                    await Task.WhenAll(projectInitializationTasks);
-                    baseServiceContainer.Logger.Debug("All projects initialized successfully.");
+
+                    Task.WhenAll(projectInitializationTasks).GetAwaiter().GetResult();
+                    logger.Debug("All projects initialized successfully.");
 
                     foreach (var project in workspace.Projects.Values) {
                         foreach (var artifact in project.Artifacts.Values) {
@@ -161,37 +161,31 @@ public static class ManilaCli {
                         }
                     }
 
-                    _ = services.AddSingleton(serviceContainer)
-                        .AddSingleton(workspace);
+                    return workspace;
+                } catch (Exception e) {
+                    ErrorHandler.Handle(baseServiceContainer.Logger, e, logOptions);
+                    throw new ManilaException("Failed to initialize workspace during service registration.", e);
                 }
-            } else {
-                baseServiceContainer.Logger.Debug("No workspace found. Continuing without workspace.");
             }
-        } catch (Exception e) {
-            return ErrorHandler.Handle(baseServiceContainer.Logger, e, logOptions);
-        }
+        });
 
-        _ = services.AddSingleton(manilaEngine)
-                .AddSingleton(baseServiceContainer)
-                .AddSingleton(Directories)
-                .AddSingleton(baseServiceContainer.Logger);
         _ = services
-                // Base Commands
-                .AddTransient<RunCommand>()
-                .AddTransient<PluginsCommand>()
-                .AddTransient<TemplatesCommand>()
-                .AddTransient<JobsCommand>()
-                .AddTransient<NewCommand>()
-                .AddTransient<ArtifactsCommand>()
-                .AddTransient<ProjectsCommand>()
-                .AddTransient<InitCommand>()
+            // Base Commands
+            .AddTransient<RunCommand>()
+            .AddTransient<PluginsCommand>()
+            .AddTransient<TemplatesCommand>()
+            .AddTransient<JobsCommand>()
+            .AddTransient<NewCommand>()
+            .AddTransient<ArtifactsCommand>()
+            .AddTransient<ProjectsCommand>()
+            .AddTransient<InitCommand>()
 
-                // API Commands
-                .AddTransient<APIArtifactsCommand>()
-                .AddTransient<APIJobsCommand>()
-                .AddTransient<APIProjectsCommand>()
-                .AddTransient<APIPluginsCommand>()
-                .AddTransient<APIWorkspaceCommand>();
+            // API Commands
+            .AddTransient<APIArtifactsCommand>()
+            .AddTransient<APIJobsCommand>()
+            .AddTransient<APIProjectsCommand>()
+            .AddTransient<APIPluginsCommand>()
+            .AddTransient<APIWorkspaceCommand>();
 
         CommandApp = new CommandApp<DefaultCommand>(new TypeRegistrar(services));
 

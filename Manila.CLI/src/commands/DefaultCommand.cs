@@ -34,7 +34,11 @@ public class DefaultCommandSettings : CommandSettings {
     [DefaultValue(false)]
     public bool StackTrace { get; set; }
 
+    [Description("Logs profiling information during command execution")]
+    [CommandOption("--log-profiling")]
+    public bool LogProfiling { get; set; } = false;
+
     public LogOptions ToLogOptions() {
-        return new LogOptions(Quiet, Verbose, Structured, StackTrace);
+        return new LogOptions(Quiet, Verbose, Structured, StackTrace, LogProfiling);
     }
 }

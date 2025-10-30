@@ -50,7 +50,7 @@ public class TraceEvent {
     /// Optional arguments associated with the event.
     /// </summary>
     [JsonProperty("args")]
-    public Dictionary<string, object> Arguments { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, object> Arguments { get; set; } = [];
 
     /// <summary>
     /// Duration of the event in microseconds (only for "X" phase events).

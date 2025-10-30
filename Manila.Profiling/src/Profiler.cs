@@ -10,6 +10,8 @@ public interface IProfiler {
     void BeginEvent(string name, Dictionary<string, object>? args = null);
     void EndEvent(string name, Dictionary<string, object>? args = null);
     void SaveToFile(string baseDir);
+    long GetTimestamp();
+
     void RecordCompleteEvent(string name, long timestampMicroseconds, long durationMicroseconds, Dictionary<string, object>? args = null);
 }
 
@@ -17,60 +19,75 @@ public interface IProfiler {
 /// Provides a simple API for profiling code execution using the Chrome Trace Event Format.
 /// Events are collected and can be saved to a JSON file for visualization in chrome://tracing.
 /// </summary>
-public class Profiler(ILogger logger) : IProfiler {
+public class Profiler(ILogger logger, bool logProfiling) : IProfiler {
     private readonly ILogger _logger = logger;
+    private readonly bool _logProfiling = logProfiling;
     private readonly List<TraceEvent> _events = [];
     private readonly Stopwatch _stopwatch = new();
     private readonly int _processId = Environment.ProcessId;
     private readonly Lock _lock = new();
+    private readonly long _profilerStartTimestampMicroseconds = Utils.TimeNow();
 
     internal static readonly AsyncLocal<string?> _currentCategory = new();
 
     public void BeginEvent(string name, Dictionary<string, object>? args = null) {
+        var e = new TraceEvent {
+            Name = name,
+            Category = _currentCategory.Value ?? "default",
+            Phase = "B", // Begin event
+            Timestamp = GetTimestamp(),
+            ProcessId = _processId,
+            ThreadId = Environment.CurrentManagedThreadId, // More modern way to get ThreadId
+            Arguments = args ?? []
+        };
+
+        if (_logProfiling) _logger.Log(new ProfileBeginLogEntry(e));
+
         lock (_lock) {
-            _events.Add(new TraceEvent {
-                Name = name,
-                Category = _currentCategory.Value ?? "default",
-                Phase = "B", // Begin event
-                Timestamp = GetTimestampMicroseconds(),
-                ProcessId = _processId,
-                ThreadId = Environment.CurrentManagedThreadId, // More modern way to get ThreadId
-                Arguments = args ?? new Dictionary<string, object>()
-            });
+            _events.Add(e);
         }
     }
 
     public void EndEvent(string name, Dictionary<string, object>? args = null) {
+        var e = new TraceEvent {
+            Name = name,
+            Category = _currentCategory.Value ?? "default",
+            Phase = "E", // End event
+            Timestamp = GetTimestamp(),
+            ProcessId = _processId,
+            ThreadId = Environment.CurrentManagedThreadId,
+            Arguments = args ?? []
+        };
+
+        if (_logProfiling) _logger.Log(new ProfileEndLogEntry(e));
+
         lock (_lock) {
-            _events.Add(new TraceEvent {
-                Name = name,
-                Category = _currentCategory.Value ?? "default",
-                Phase = "E", // End event
-                Timestamp = GetTimestampMicroseconds(),
-                ProcessId = _processId,
-                ThreadId = Environment.CurrentManagedThreadId,
-                Arguments = args ?? new Dictionary<string, object>()
-            });
+            _events.Add(e);
         }
     }
 
     public void RecordCompleteEvent(string name, long timestampMicroseconds, long durationMicroseconds, Dictionary<string, object>? args = null) {
+        var e = new TraceEvent {
+            Name = name,
+            Category = _currentCategory.Value ?? "default",
+            Phase = "X", // Complete event
+            Timestamp = timestampMicroseconds,
+            Duration = durationMicroseconds,
+            ProcessId = _processId,
+            ThreadId = Environment.CurrentManagedThreadId,
+            Arguments = args ?? []
+        };
+
+        if (_logProfiling) _logger.Log(new ProfileCompleteLogEntry(e));
+
         lock (_lock) {
-            _events.Add(new TraceEvent {
-                Name = name,
-                Category = _currentCategory.Value ?? "default",
-                Phase = "X", // Complete event
-                Timestamp = timestampMicroseconds,
-                Duration = durationMicroseconds,
-                ProcessId = _processId,
-                ThreadId = Environment.CurrentManagedThreadId,
-                Arguments = args ?? new Dictionary<string, object>()
-            });
+            _events.Add(e);
         }
     }
 
-    public long GetTimestampMicroseconds() {
-        return _stopwatch.ElapsedTicks * 1_000_000 / Stopwatch.Frequency;
+    public long GetTimestamp() {
+        // return _stopwatch.ElapsedTicks * 1_000_000 / Stopwatch.Frequency;
+        return Utils.TimeNow() - _profilerStartTimestampMicroseconds;
     }
 
     public void ClearEvents() {
@@ -122,27 +139,34 @@ public readonly struct ProfileScope : IDisposable {
         _profiler = profiler;
         _args = args;
         _name = name;
-        _startTimestampMicroseconds = Utils.TimeNow();
+        _startTimestampMicroseconds = _profiler.GetTimestamp();
+
+        _profiler.BeginEvent(_name, _args);
     }
 
     public ProfileScope(IProfiler profiler, string name, Dictionary<string, object>? args = null) {
         _profiler = profiler;
         _name = name;
         _args = args;
-        _startTimestampMicroseconds = Utils.TimeNow();
+        _startTimestampMicroseconds = _profiler.GetTimestamp();
+
+        _profiler.BeginEvent(_name, _args);
     }
 
     public ProfileScope(IProfiler profiler, MethodBase func, Dictionary<string, object>? args = null) {
         _profiler = profiler;
         _name = $"{func.DeclaringType?.FullName ?? "Unknown"}.{func.Name}";
         _args = args;
-        _startTimestampMicroseconds = Utils.TimeNow();
+        _startTimestampMicroseconds = _profiler.GetTimestamp();
+
+        _profiler.BeginEvent(_name, _args);
     }
 
     public void Dispose() {
-        long endTimestampMicroseconds = Utils.TimeNow();
+        long endTimestampMicroseconds = _profiler.GetTimestamp();
         long durationMicroseconds = endTimestampMicroseconds - _startTimestampMicroseconds;
 
+        _profiler.EndEvent(_name, _args);
         _profiler.RecordCompleteEvent(_name, _startTimestampMicroseconds, durationMicroseconds, _args);
     }
 }

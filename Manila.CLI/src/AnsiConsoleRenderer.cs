@@ -5,6 +5,7 @@ using Newtonsoft.Json.Serialization;
 using Shiron.Manila.API.Logging;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
+using Shiron.Manila.Profiling;
 using Shiron.Manila.Utils.Logging;
 using Spectre.Console;
 
@@ -14,10 +15,11 @@ public record LogOptions(
     bool Quiet,
     bool Verbose,
     bool Structured,
-    bool StackTrace
+    bool StackTrace,
+    bool LogProfiling
 ) {
-    public static readonly LogOptions None = new(true, false, false, false);
-    public static readonly LogOptions Default = new(false, false, false, false);
+    public static readonly LogOptions None = new(true, false, false, false, false);
+    public static readonly LogOptions Default = new(false, false, false, false, false);
 }
 
 /// <summary>
@@ -42,7 +44,7 @@ public static class AnsiConsoleRenderer {
     private static TaskCompletionSource<bool>? _buildCompletion;
     private static LiveDisplay? _liveDisplay = null;
 
-    private static LogOptions _options { get; set; } = new(false, false, false, false);
+    private static LogOptions _options { get; set; } = new(false, false, false, false, false);
 
     private static readonly ConcurrentDictionary<string, TreeNode> _executionNodes = [];
     private static ILogger? _logger;
@@ -83,7 +85,7 @@ public static class AnsiConsoleRenderer {
             }
         };
 
-        if (_options.Structured && _options.Verbose) { _logger?.Warning("Ignoring 'verbose' flag is the logger is running in structured mode!"); _logger?.Info("Logger always logs everything when running on structured mode!"); }
+        if (_options.Structured && _options.Verbose) { _logger?.Warning("Ignoring 'verbose' flag as the logger is running in structured mode! Logger always logs everything when running on structured mode!"); }
     }
 
     /// <summary>
@@ -184,6 +186,13 @@ public static class AnsiConsoleRenderer {
                 break;
             case NugetManagerDownloadCompleteEntry log:
                 _logger?.Info($"Completed download of NuGet package [yellow]{log.Package}[/] version [yellow]{log.Version}[/]");
+                break;
+
+            case ProfileCompleteLogEntry log:
+                HandleProfilingCompleteLogEntry(log);
+                break;
+            case ProfilingLogEntry:
+                // Ignore general profiling log entries
                 break;
 
             default:
@@ -324,6 +333,10 @@ public static class AnsiConsoleRenderer {
     private static void HandleStageChangeLogEntry(StageChangeLogEntry entry) {
         var duration = entry.Timestamp - entry.PreviousStartedAt;
         PushLog($"[grey]Stage changed from [blue]{entry.ChangedFrom}[/] to [magenta]{entry.ChangedTo}[/]. Old stage took [yellow]{duration}[/]ms[/]");
+    }
+
+    private static void HandleProfilingCompleteLogEntry(ProfileCompleteLogEntry entry) {
+        PushLog($"[grey]Profiling event [green]{entry.Name}[/] completed. Duration: [yellow]{entry.Duration}[/]ms[/]");
     }
 
     private static void HandleCommandStdErrLogEntry(CommandStdErrLogEntry entry) { }
