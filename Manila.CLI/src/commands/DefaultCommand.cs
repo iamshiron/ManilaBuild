@@ -38,6 +38,11 @@ public class DefaultCommandSettings : CommandSettings {
     [CommandOption("--log-profiling")]
     public bool LogProfiling { get; set; } = false;
 
+    [Description("Invalidates caches to force a rebuild of the workspace")]
+    [CommandOption("--api-invalidate-build-cache")]
+    [DefaultValue(false)]
+    public bool APIInvalidateBuildCache { get; set; }
+
     public LogOptions ToLogOptions() {
         return new LogOptions(Quiet, Verbose, Structured, StackTrace, LogProfiling);
     }

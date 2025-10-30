@@ -215,14 +215,15 @@ public sealed class Manila(
                     await _services.ArtifactManager.CacheArtifactAsync(artifact, config, artifact.Project, success.Outputs);
                     break;
 
-                case BuildExitCodeCached c:
+                case BuildExitCodeCached cached:
                     if (artifact.LogCache is { } cache) {
                         _services.Logger.Debug($"Replaying log cache for artifact '{artifact.Name}' in project '{artifact.Project.Identifier}'.");
-                        _services.ArtifactManager.UpdateCacheAccessTime(c);
+                        _services.ArtifactManager.UpdateCacheAccessTime(cached);
                         cache.Replay(_services.Logger, _services.Logger.LogContext.CurrentContextID ?? Guid.Empty);
                     } else {
                         _services.Logger.Warning($"Cached artifact '{artifact.Name}' was missing its log cache.");
                     }
+                    _services.Logger.Info("Artifact build skipped (cached).");
                     break;
 
                 case BuildExitCodeFailed failed:

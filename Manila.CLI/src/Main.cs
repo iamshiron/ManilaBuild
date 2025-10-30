@@ -70,6 +70,9 @@ public static class ManilaCli {
             args.Contains(CommandOptions.StackTrace),
             args.Contains(CommandOptions.LogProfiling)
         );
+        var apiOptions = new {
+            InvalidateBuildCache = args.Contains(CommandOptions.APIInvalidateBuildCache)
+        };
 
         var commands = CommandUtils.GetCommandNames(args);
         var isApiCommand = commands.Length > 0 && commands[0] == "api";
@@ -106,7 +109,9 @@ public static class ManilaCli {
             new FileHashCache(baseServiceContainer.Profiler, Directories)
         );
 
-        serviceContainer.ArtifactManager.LoadCache();
+        if (!apiOptions.InvalidateBuildCache)
+            serviceContainer.ArtifactManager.LoadCache();
+
         if (Directory.Exists(Directories.Plugins)) {
             logger.Debug("Initializing extensions...");
             await InitExtensions(baseServiceContainer, serviceContainer);

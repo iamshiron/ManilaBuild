@@ -54,8 +54,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
 
     public async Task CacheArtifactAsync(ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
         _logger.Debug($"Caching artifact {artifact.Name}...");
-        if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
-        _ = await _cacheLoadTask;
+        if (_cacheLoadTask != null) _ = await _cacheLoadTask;
 
         if (artifact.ArtifactType is null)
             throw new ManilaException("Artifact does not have an associated ArtifactType. Please ensure the artifact is properly built before caching it.");
@@ -74,8 +73,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
 
     public async Task<ICreatedArtifact> AppendCachedDataAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
         _logger.Debug($"Appending cached data to artifact {artifact.Name}...");
-        if (_cacheLoadTask == null) throw new ManilaException("Cache load task is not initialized. Please call LoadCache() before caching artifacts.");
-        _ = await _cacheLoadTask;
+        if (_cacheLoadTask != null) _ = await _cacheLoadTask;
 
         var fingerprint = artifact.GetFingerprint(project, config);
         if (_artifacts.TryGetValue(fingerprint, out var entry)) {
@@ -178,7 +176,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
                 _ = consumeMethod?.Invoke(artifact, [dependency, entry.Output, dependency.Project.Resolve(), artifact]);
             }
 
-            _logger.Debug($"Building artifact {createdArtifact.Name} with fingerprint {fingerprint} at {artifactRoot}");
+            _logger.Debug($"Building artifact {createdArtifact.Name} with fingerprint {fingerprint.Split("_")[1][0..8]}");
             return artifactBuildable.Build(new(artifactRoot), project, config);
         } finally {
             _ = gate.Release();

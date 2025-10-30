@@ -79,6 +79,7 @@ public static class CLIConstants {
         public static readonly string Project = "--project";
         public static readonly string Detailed = "--detailed";
         public static readonly string LogProfiling = "--log-profiling";
+        public static readonly string APIInvalidateBuildCache = "--api-invalidate-build-cache";
     }
 
     // Project type identifiers

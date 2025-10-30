@@ -54,8 +54,6 @@ public class ZipArtifact : IArtifactBuildable, IArtifactConsumable<ZipArtifact> 
                         );
                     }
                 }
-
-                instance.Info($"Created zip artifact at {zipFile} with {set.Files.Length} files.");
             }
 
             return new BuildExitCodeSuccess(builder);

@@ -49,6 +49,8 @@ public static class AnsiConsoleRenderer {
     private static readonly ConcurrentDictionary<string, TreeNode> _executionNodes = [];
     private static ILogger? _logger;
 
+    public const int MinProfilingDuration = 10;
+
     private static readonly object _lock = new();
 
     /// <summary>
@@ -187,12 +189,25 @@ public static class AnsiConsoleRenderer {
             case NugetManagerDownloadCompleteEntry log:
                 _logger?.Info($"Completed download of NuGet package [yellow]{log.Package}[/] version [yellow]{log.Version}[/]");
                 break;
+            case NuGetPackageLoadingLogEntry log:
+                _logger?.Info($"Loading NuGet package [yellow]{log.PackageID}[/] version [yellow]{log.PackageVersion}[/]");
+                break;
+            case NuGetSubPackageLoadingEntry log:
+                _logger?.Info($"Loading NuGet package [yellow]{log.PackageID}[/] version [yellow]{log.PackageVersion}[/]");
+                break;
 
             case ProfileCompleteLogEntry log:
                 HandleProfilingCompleteLogEntry(log);
                 break;
             case ProfilingLogEntry:
                 // Ignore general profiling log entries
+                break;
+
+            case LoadingPluginsLogEntry log:
+                _logger?.Info($"Loading Manila plugins from [yellow]{log.PluginPath}[/]");
+                break;
+            case LoadingPluginLogEntry log:
+                _logger?.Info($"Loading Manila plugin [yellow]{log.Plugin}[/]");
                 break;
 
             default:
@@ -336,6 +351,7 @@ public static class AnsiConsoleRenderer {
     }
 
     private static void HandleProfilingCompleteLogEntry(ProfileCompleteLogEntry entry) {
+        if (entry.Duration < MinProfilingDuration) return; // Ignore profiling entries that took less than 10ms
         PushLog($"[grey]Profiling event [green]{entry.Name}[/] completed. Duration: [yellow]{entry.Duration}[/]ms[/]");
     }
 

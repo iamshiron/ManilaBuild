@@ -85,8 +85,6 @@ public sealed class ScriptContext : IScriptContext {
     }
 
     private async Task<string> CreateScriptCode() {
-        _logger.Log(new ScriptUsingEntriesLogEntry(ScriptPath, ContextID));
-
         var code = @$"
             async function main() {{
                 {await File.ReadAllTextAsync(ScriptPath)}
@@ -98,9 +96,6 @@ public sealed class ScriptContext : IScriptContext {
                 __Manila_signalError(err.message);
             }});
         ";
-
-        _logger.Log(new ScriptCodeCreatedLogEntry(ScriptPath, code, ContextID));
-
         return code;
     }
 
