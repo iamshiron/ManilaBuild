@@ -200,6 +200,15 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             ? throw new ManilaException($"No cached artifacts found for project '{name}'.")
             : candidates.OrderByDescending(t => t.Item2).First().Item1;
     }
+
+    public IExitCode RunTransient(IArtifactBlueprint artifact, Project project, BuildConfig config, string? sourceSet = null) {
+        var set = (sourceSet == null ? project.SourceSets.FirstOrDefault().Value : project.SourceSets.FirstOrDefault(p => p.Key == sourceSet).Value)
+            ?? throw new ConfigurationException($"Unable to find source set '{sourceSet}' or project got no source sets.");
+
+        return artifact is not IArtifactTransientExecutable executable
+            ? throw new ConfigurationException($"Artifact '{artifact.GetType().FullName}' is not transiently executable.")
+            : executable.ExecuteTransient(project, config);
+    }
 }
 
 public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long createdAt, long lastAccessed, long size, LogCache logCache, ArtifactOutput output, IArtifactBlueprint artifactType) {

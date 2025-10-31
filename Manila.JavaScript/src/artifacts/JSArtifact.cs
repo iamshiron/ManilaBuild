@@ -16,4 +16,13 @@ public class JSArtifact : IArtifactBuildable, IArtifactTransientExecutable {
 
         return new BuildExitCodeSuccess(builder);
     }
+
+    public IExitCode ExecuteTransient(Project project, BuildConfig config) {
+        var instance = ManilaJS.Instance ?? throw new ManilaException("ManilaJS plugin instance is null.");
+        var jsConfig = (JSBuildConfig) config;
+
+        instance.Info($"Executing JavaScript Artifact transiently with runtime {jsConfig.Runtime}...");
+
+        return new ExitCodeSuccess();
+    }
 }

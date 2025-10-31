@@ -238,6 +238,12 @@ public sealed class Manila(
     /// <summary>Runs a specific, fully-resolved project's default `run` task.</summary>
     public void Run(ProjectScriptBridge project, UnresolvedArtifactScriptBridge artifact)
         => throw new NotImplementedException("This method is not yet implemented.");
+    public void RunTransient(ProjectScriptBridge project, BuildConfig config, UnresolvedArtifactScriptBridge artifact, string? sourceSet = null) {
+        var blueprint = _services.ExtensionManager.GetArtifact(artifact.PluginComponent)
+            ?? throw new ConfigurationException($"Artifact builder '{artifact.PluginComponent}' not found for artifact '{artifact.ArtifactID}'.");
+
+        _ = _services.ArtifactManager.RunTransient(blueprint, project._handle, config, sourceSet);
+    }
 
     #endregion
 

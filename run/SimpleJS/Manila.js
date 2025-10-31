@@ -11,22 +11,21 @@ project.SourceSets({
 project.Artifacts({
 	main: Manila.Artifact("shiron.manila:js/js", (artifact) => {
 		var config = Manila.GetConfig(artifact);
-		config.SetRuntime("Node");
+		config.SetRuntime("node");
 
 		artifact.Description("Simple JS artifac");
-		artifact.Dependencies([
-		]);
+		artifact.Dependencies([]);
 
 		Manila.Job("build")
 			.Description("Build the SimpleJS Application")
 			.Execute(async () => {
-                // Does nothing for now
+				// Does nothing for now
 			});
 
-        Manila.Job("run")
-            .Description("Run the SimpleJS Application")
-            .Execute(async () => {
-                await Manila.Run(project, config, artifact);
-            });
+		Manila.Job("run")
+			.Description("Run the SimpleJS Application")
+			.Execute(async () => {
+				await Manila.RunTransient(project, config, artifact, "main");
+			});
 	}),
 });

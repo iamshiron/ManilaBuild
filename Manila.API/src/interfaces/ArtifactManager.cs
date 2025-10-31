@@ -13,4 +13,5 @@ public interface IArtifactManager {
     void UpdateCacheAccessTime(BuildExitCodeCached cachedExitCode);
 
     IBuildExitCode BuildFromDependencies(IArtifactBlueprint artifact, ICreatedArtifact createdArtifact, Project project, BuildConfig config, bool invalidateCache);
+    IExitCode RunTransient(IArtifactBlueprint artifact, Project project, BuildConfig config, string? sourceSet = null);
 }

@@ -77,4 +77,6 @@ public interface IArtifactConsumable<T> : IArtifactBlueprint where T : IArtifact
     void Consume(ICreatedArtifact artifact, ArtifactOutput output, Project project, T artifactType);
 }
 public interface IArtifactExecutable : IArtifactBlueprint { }
-public interface IArtifactTransientExecutable : IArtifactBlueprint { }
+public interface IArtifactTransientExecutable : IArtifactBlueprint {
+    IExitCode ExecuteTransient(Project project, BuildConfig config);
+}
