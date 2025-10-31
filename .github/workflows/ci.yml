@@ -4,13 +4,13 @@ on:
   push:
     branches:
     - main
-    - feature/*
+    - '!feature/*'
     - '!dev'
     - '!internal/*'
   pull_request:
     branches:
     - main
-    - feature/*
+    - '!feature/*'
     - '!dev'
     - '!internal/*'
 
