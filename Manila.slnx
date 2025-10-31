@@ -7,6 +7,7 @@
   <Project Path="Manila.API/Manila.API.csproj" />
   <Project Path="Manila.CLI/Manila.CLI.csproj" />
   <Project Path="Manila.Discord/Manila.Discord.csproj" />
+  <Project Path="Manila.JavaScript/Manila.JavaScript.csproj" />
   <Project Path="Manila.Logging/Manila.Logging.csproj" />
   <Project Path="Manila.Profiling/Manila.Profiling.csproj" />
   <Project Path="Manila.Tests/Manila.Tests.csproj" />
