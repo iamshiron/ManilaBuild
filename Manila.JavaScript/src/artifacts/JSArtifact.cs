@@ -30,11 +30,7 @@ public class JSArtifact : IArtifactBuildable, IArtifactTransientExecutable {
 
         instance.Info($"Loading JavaScript file: {file}...");
         instance.Info($"Executing JavaScript Artifact transiently with runtime {jsConfig.Runtime}...");
-        _ = ShellUtils.Run(executable, [file], null, (output) => {
-            instance.Info(Markup.Escape(output));
-        }, (error) => {
-            instance.Error(Markup.Escape(error));
-        });
+        _ = instance.RunCommand(executable, [file], null);
 
         return new ExitCodeSuccess();
     }
