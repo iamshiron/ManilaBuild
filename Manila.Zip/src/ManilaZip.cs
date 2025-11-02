@@ -14,12 +14,7 @@ public class ManilaZip : ManilaPlugin {
     public static ManilaZip? Instance { get; private set; }
 
     public override void Init() {
-        _ = ShellUtils.Run("echo", ["Manila Zip Plugin Initialized"], null, (msg) => {
-            Info(msg);
-        }, (msg) => {
-            Error(msg);
-        });
-
+        Debug("Init");
         RegisterArtifact("zip", typeof(ZipArtifact));
         RegisterProjectTemplate(DefaultTemplate.Create());
     }
