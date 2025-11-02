@@ -1,5 +1,6 @@
 using Shiron.Manila.API.Attributes;
 using Shiron.Manila.API.Ext;
+using Shiron.Manila.Utils;
 using Shiron.Manila.Zip.Artifacts;
 using Shiron.Manila.Zip.Templates;
 
@@ -13,7 +14,12 @@ public class ManilaZip : ManilaPlugin {
     public static ManilaZip? Instance { get; private set; }
 
     public override void Init() {
-        Debug("Init");
+        _ = ShellUtils.Run("echo", ["Manila Zip Plugin Initialized"], null, (msg) => {
+            Info(msg);
+        }, (msg) => {
+            Error(msg);
+        });
+
         RegisterArtifact("zip", typeof(ZipArtifact));
         RegisterProjectTemplate(DefaultTemplate.Create());
     }
