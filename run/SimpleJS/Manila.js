@@ -11,7 +11,7 @@ project.SourceSets({
 project.Artifacts({
 	main: Manila.Artifact("shiron.manila:js/js", (artifact) => {
 		var config = Manila.GetConfig(artifact);
-		config.SetRuntime("node");
+		config.SetRuntime("bun");
 
 		artifact.Description("Simple JS artifac");
 		artifact.Dependencies([]);

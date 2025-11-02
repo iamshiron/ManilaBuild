@@ -4,6 +4,8 @@ using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Interfaces;
 using Shiron.Manila.JS;
+using Shiron.Manila.Utils;
+using Spectre.Console;
 
 namespace Shiron.Manila.JS.Artifacts;
 
@@ -21,7 +23,18 @@ public class JSArtifact : IArtifactBuildable, IArtifactTransientExecutable {
         var instance = ManilaJS.Instance ?? throw new ManilaException("ManilaJS plugin instance is null.");
         var jsConfig = (JSBuildConfig) config;
 
+        var executable = ManilaJS.GetExecutableFromRuntime(jsConfig.Runtime);
+        var sourceSet = project.SourceSets["main"] ?? throw new ManilaException("Main source set not found in project.");
+        var entryFile = sourceSet.FileHandles.First() ?? throw new ManilaException("No source files found in main source set.");
+        var file = Path.GetRelativePath(Directory.GetCurrentDirectory(), entryFile.Get());
+
+        instance.Info($"Loading JavaScript file: {file}...");
         instance.Info($"Executing JavaScript Artifact transiently with runtime {jsConfig.Runtime}...");
+        _ = ShellUtils.Run(executable, [file], null, (output) => {
+            instance.Info(Markup.Escape(output));
+        }, (error) => {
+            instance.Error(Markup.Escape(error));
+        });
 
         return new ExitCodeSuccess();
     }

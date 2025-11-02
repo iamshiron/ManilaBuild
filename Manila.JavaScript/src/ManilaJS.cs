@@ -19,4 +19,12 @@ public class ManilaJS : ManilaPlugin {
     public override void Release() {
         Debug("Release");
     }
+
+    public static string GetExecutableFromRuntime(Runtime runtime) {
+        return runtime switch {
+            Runtime.Node => "node",
+            Runtime.Bun => "bun",
+            _ => throw new ArgumentOutOfRangeException(nameof(runtime), $"Unsupported runtime: {runtime}")
+        };
+    }
 }
