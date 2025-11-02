@@ -29,6 +29,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     internal ILogger? _logger { get; private set; }
 
     public void SetLogger(ILogger logger) {
+        if (_logger != null) throw new ManilaException("Logger already set for this plugin.");
         _logger = logger;
     }
 
@@ -68,6 +69,17 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     public void Critical(params object[] args) { _logger?.Log(new BasicPluginLogEntry(this, string.Join(" ", args), LogLevel.Critical)); }
 
     /// <summary>
+    /// Execute a shell command, logging output to the plugin logger.
+    /// </summary>
+    /// <param name="command">The command</param>
+    /// <param name="args">The arguments</param>
+    /// <param name="workingDir">The working directory</param>
+    /// <returns>Exit code of the command</returns>
+    public int RunCommand(string command, string[]? args = null, string? workingDir = null) {
+        return ShellUtils.Run(command, args, workingDir, (msg) => Info(msg), (msg) => Error(msg));
+    }
+
+    /// <summary>
     /// Registers a component to the plugin.
     /// </summary>
     /// <param name="component">The instance the component</param>
@@ -82,10 +94,29 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// </summary>
     /// <typeparam name="T">The class type</typeparam>
     public void RegisterEnum<T>() => Enums.Add(typeof(T));
+    /// <summary>
+    /// Registers a dependency type to the plugin.
+    /// </summary>
+    /// <typeparam name="T">The dependency type</typeparam>
     public void RegisterDependency<T>() => Dependencies.Add(typeof(T));
+    /// <summary>
+    /// Registers an API type to the plugin.
+    /// </summary>
+    /// <typeparam name="T">The API type</typeparam>
+    /// <param name="name">The name of the API type</param>
     public void RegisterAPIType<T>(string name) => APIClasses.Add(name, typeof(T));
+    /// <summary>
+    /// Registers an artifact builder type to the plugin.
+    /// </summary>
+    /// <param name="name">The name of the artifact builder</param>
+    /// <param name="builder">The artifact builder type</param>
     public void RegisterArtifact(string name, Type builder) => ArtifactBuilderTypes.Add(Tuple.Create(name, builder));
 
+    /// <summary>
+    /// Registers a project template to the plugin.
+    /// </summary>
+    /// <param name="template">The project template</param>
+    /// <exception cref="ManilaException">Project template with the same name already registered</
     public void RegisterProjectTemplate(ProjectTemplate template) {
         var name = template.Name;
         if (ProjectTemplates.ContainsKey(name)) {
