@@ -5,6 +5,7 @@ using Shiron.Manila.API.Logging;
 using Shiron.Manila.Exceptions;
 using Shiron.Manila.Logging;
 using Shiron.Manila.Utils;
+using Spectre.Console;
 
 namespace Shiron.Manila.API.Ext;
 
@@ -76,7 +77,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// <param name="workingDir">The working directory</param>
     /// <returns>Exit code of the command</returns>
     public int RunCommand(string command, string[]? args = null, string? workingDir = null) {
-        return ShellUtils.Run(command, args, workingDir, (msg) => Info(msg), (msg) => Error(msg));
+        return ShellUtils.Run(command, args, workingDir, (msg) => Info(Markup.Escape(msg)), (msg) => Error(Markup.Escape(msg)));
     }
 
     /// <summary>
