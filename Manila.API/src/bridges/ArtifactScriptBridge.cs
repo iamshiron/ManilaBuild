@@ -10,14 +10,29 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API.Bridges;
 
+/// <summary>
+/// Represents a bridge for unresolved artifact scripts.
+/// </summary>
+/// <param name="project">The parent project.</param>
+/// <param name="builder">The artifact builder.</param>
+/// <param name="artifactID">The unique identifier for the artifact.</param>
+/// <param name="pluginComponent">The plugin component match information.</param>
 public class UnresolvedArtifactScriptBridge(Project project, ArtifactBuilder builder, string artifactID, RegexUtils.PluginComponentMatch pluginComponent) : ScriptBridge {
     public readonly string ArtifactID = artifactID;
     public readonly RegexUtils.PluginComponentMatch PluginComponent = pluginComponent;
     private readonly Project _parentProject = project;
 
+    /// <summary>
+    /// Sets the description for the artifact.
+    /// </summary>
+    /// <param name="description">The description text.</param>
     public void Description(string description) {
         builder.Description = description;
     }
+    /// <summary>
+    /// Sets the dependencies for the artifact.
+    /// </summary>
+    /// <param name="obj">The script object containing dependencies within an array.</param>
     public void Dependencies(ScriptObject obj) {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var i in (IList<object>) obj) {
@@ -35,6 +50,11 @@ public class UnresolvedArtifactScriptBridge(Project project, ArtifactBuilder bui
         }
     }
 
+    /// <summary>
+    /// Resolves the unresolved artifact to a concrete created artifact.
+    /// </summary>
+    /// <returns>The resolved created artifact.</returns>
+    /// <exception cref="ManilaException">Thrown if the artifact cannot be resolved.</exception>
     public ICreatedArtifact Resolve() {
         return _parentProject.Artifacts.TryGetValue(ArtifactID, out var artifact)
             ? artifact
