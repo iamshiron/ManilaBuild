@@ -17,6 +17,7 @@ project.Artifacts({
 		artifact.Dependencies([
 			Manila.Artifact(Manila.GetProject("zip2"), "main"),
 			Manila.Artifact(Manila.GetProject("zip3"), "main"),
+            Manila.TestDependency("package", "1.0.0", "artifact")
 		]);
 
 		Manila.Job("build")

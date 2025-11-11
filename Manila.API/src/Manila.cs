@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ClearScript;
@@ -33,7 +35,7 @@ public sealed class Manila(
         Workspace workspace,
         ProjectScriptBridge? projectBridge,
         Project? project
-) {
+) : DynamicObject {
     public readonly ManilaAPIFlags Flags = flags;
     private readonly APIServiceContainer _services = services;
     private readonly IScriptContext _context = context;
@@ -42,7 +44,14 @@ public sealed class Manila(
     private readonly ProjectScriptBridge? _projectBridge = projectBridge;
     private readonly WorkspaceScriptBridge _workspaceBridge = workspaceBridge;
 
-    // A private record for storing project filters and their associated actions.
+    /// <summary>Defines functions for creating dependencies in script code. Builtin dependencies will be fined as their own function.</summary>
+    public static readonly ConcurrentDictionary<string, Func<object?[]?, object>> DependencyLambdas = [];
+
+    /// <summary>
+    /// A record representing a hook to run on projects matching a filter.
+    /// </summary>
+    /// <param name="Filter">The filter</param>
+    /// <param name="Action">The action to perform on matching projects</param>
     private record ProjectHook(ProjectFilter Filter, Action<Project> Action);
 
     /// <summary>Gets the list of job builders defined at the project or workspace level.</summary>
@@ -291,11 +300,30 @@ public sealed class Manila(
 
     #endregion
 
-    #region Dependencies
-
     public IDependency Artifact(UnresolvedProject project, string artifact) {
         return new ArtifactDependency(project, artifact);
     }
 
+    #region Dynamic Dependency Invocation
+
+    public override bool TryInvokeMember(InvokeMemberBinder binder, object?[]? args, out object? result) {
+        _services.Logger.Debug($"Attempting to invoke script lambda: {binder.Name}");
+
+        result = null;
+
+        var lambda = DependencyLambdas.GetValueOrDefault(binder.Name);
+        if (lambda is null) return false;
+
+        try {
+            result = lambda.Invoke(args);
+            return true;
+        } catch (Exception e) {
+            throw new ScriptEngineException($"An error occurred while invoking script lambda '{binder.Name}': {e.Message}", e);
+        }
+    }
+    public override IEnumerable<string> GetDynamicMemberNames() {
+        _services.Logger.Debug("Getting dynamic member names for script lambdas.");
+        return DependencyLambdas.Keys;
+    }
     #endregion
 }

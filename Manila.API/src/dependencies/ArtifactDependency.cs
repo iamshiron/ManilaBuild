@@ -20,4 +20,14 @@ public class ArtifactDependency(UnresolvedProject project, string artifact) : ID
         );
         artifact.DependentArtifacts.Add(dependency);
     }
+
+    public static IDependency Parse(object?[]? args) {
+        return args == null || args.Length != 2
+            ? throw new ManilaException("ArtifactDependency requires exactly 2 arguments: UnresolvedProject and artifact name.")
+            : args[0] is not UnresolvedProject proj
+            ? throw new ManilaException("First argument to ArtifactDependency must be of type UnresolvedProject.")
+            : args[1] is not string artifactName
+            ? throw new ManilaException("Second argument to ArtifactDependency must be a string representing the artifact name.")
+            : (IDependency) new ArtifactDependency(proj, artifactName);
+    }
 }

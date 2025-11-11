@@ -17,6 +17,7 @@ public class ManilaZip : ManilaPlugin {
         Debug("Init");
         RegisterArtifact("zip", typeof(ZipArtifact));
         RegisterProjectTemplate(DefaultTemplate.Create());
+        RegisterDependency<TestDependency>();
     }
 
     public override void Release() {

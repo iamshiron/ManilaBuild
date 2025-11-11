@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Shiron.Manila.API;
 using Shiron.Manila.API.Attributes;
 using Shiron.Manila.API.Ext;
 using Shiron.Manila.API.Interfaces;
@@ -175,6 +176,14 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             foreach (var plugin in Plugins) {
                 using (new ProfileScope(_profiler, $"InitPlugin: {plugin.Name}")) { // Profile each plugin's Init
                     plugin.Init();
+
+                    foreach (var dep in plugin.Dependencies) {
+                        var parseFunc = dep.GetMethod("Parse", BindingFlags.Public | BindingFlags.Static) ?? throw new ManilaException($"Dependency type '{dep.FullName}' does not have a static Parse method.");
+                        _logger.Debug($"Registering script lambda for dependency type: {dep.FullName} in plugin {plugin.Name} as '{dep.Name}'");
+                        API.Manila.DependencyLambdas[dep.Name] = (args) => {
+                            return parseFunc.Invoke(null, new object?[] { args }) ?? throw new ManilaException($"Parse method for dependency '{dep.Name}' returned null.");
+                        };
+                    }
                 }
             }
         }
