@@ -9,11 +9,13 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Registries;
 
+/// <summary>Thread-safe job registry.</summary>
 public class JobRegistry(IProfiler profiler) : IJobRegistry {
     private readonly IProfiler _profiler = profiler;
     private readonly ConcurrentDictionary<string, Job> _jobs = [];
     private readonly Lock _lock = new();
 
+    /// <summary>Register new job.</summary>
     public void RegisterJob(Job job) {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             lock (_lock) {
@@ -27,12 +29,17 @@ public class JobRegistry(IProfiler profiler) : IJobRegistry {
         }
     }
 
+    /// <summary>Get job by full uri.</summary>
     public Job? GetJob(string uri) => _jobs.TryGetValue(uri, out var job) ? job : null;
 
+    /// <summary>Try get job (bool result).</summary>
     public bool TryGetJob(string name, out Job? job) => _jobs.TryGetValue(name, out job);
 
+    /// <summary>Check existence.</summary>
     public bool HasJob(string name) => _jobs.ContainsKey(name);
 
+    /// <summary>All jobs.</summary>
     public IEnumerable<Job> Jobs => _jobs.Values;
+    /// <summary>All job keys.</summary>
     public IEnumerable<string> JobKeys => _jobs.Keys;
 }

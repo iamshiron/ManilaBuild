@@ -8,15 +8,24 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
-[Description("Lists available project templates.")]
+/// <summary>
+/// Lists project templates exposed by plugins
+/// </summary>
+[Description("List available project templates")]
 public class TemplatesCommand(BaseServiceContainer baseServices, ServiceContainer? services = null) :
     BaseManilaCommand<TemplatesCommand.Settings>(baseServices) {
 
     private readonly ServiceContainer? _services = services;
     private readonly BaseServiceContainer _baseServices = baseServices;
 
+    /// <summary>
+    /// Command settings (no additional options)
+    /// </summary>
     public sealed class Settings : DefaultCommandSettings { }
 
+    /// <summary>
+    /// Renders template listing table
+    /// </summary>
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
         if (_services == null) {
             _baseServices.Logger.Error(Messages.ManilaEngineNotInitialized);

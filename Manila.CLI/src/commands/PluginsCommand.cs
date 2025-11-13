@@ -6,15 +6,24 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
-[Description("List all available plugins in the current workspace")]
+/// <summary>
+/// Lists loaded plugins with metadata
+/// </summary>
+[Description("List loaded plugins")]
 internal sealed class PluginsCommand(BaseServiceContainer baseServices, ServiceContainer? services = null) :
     BaseManilaCommand<PluginsCommand.Settings>(baseServices) {
 
     private readonly ServiceContainer? _services = services;
     private readonly BaseServiceContainer _baseServices = baseServices;
 
+    /// <summary>
+    /// Command settings (no additional options)
+    /// </summary>
     public class Settings : DefaultCommandSettings { }
 
+    /// <summary>
+    /// Renders plugin metadata table
+    /// </summary>
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
         if (_services == null) {
             _baseServices.Logger.Error(Messages.ManilaEngineNotInitialized);

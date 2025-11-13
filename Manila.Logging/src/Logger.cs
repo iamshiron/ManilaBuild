@@ -3,36 +3,16 @@ using System.Linq;
 
 namespace Shiron.Manila.Logging;
 
-/// <summary>
-/// Provides a way to manage a stack of logging contexts for an execution flow.
-/// </summary>
-/// <remarks>
-/// This implementation is thread-safe and avoids race conditions by treating the
-/// context stack as immutable. It uses <see cref="AsyncLocal{T}"/> to maintain a separate
-/// context stack for each asynchronous control flow (e.g., an async method or a thread).
-/// </remarks>
+/// <summary>Async-local context GUID stack.</summary>
 public class LogContext {
-    /// <summary>
-    /// Stores the stack of context GUIDs for the current asynchronous control flow.
-    /// </summary>
+    /// <summary>Async-local stack.</summary>
     private readonly AsyncLocal<Stack<Guid>> _contextStack = new();
 
     public Guid? CurrentContextID => _contextStack.Value?.Count > 0 ? _contextStack.Value.Peek() : null;
 
-    /// <summary>
-    /// Pushes a new context ID onto the stack in a thread-safe manner.
-    /// </summary>
-    /// <param name="contextId">The ID of the context to push.</param>
-    /// <returns>An <see cref="IDisposable"/> that will restore the previous context when disposed.</returns>
-    /// <example>
-    /// <code>
-    /// using (LogContext.PushContext(Guid.NewGuid()))
-    /// {
-    ///     // All logs within this block will be associated with the new context.
-    /// }
-    /// // The context is automatically restored here.
-    /// </code>
-    /// </example>
+    /// <summary>Push context.</summary>
+    /// <param name="contextId">Context GUID.</param>
+    /// <returns>Disposable restorer.</returns>
     public IDisposable PushContext(Guid contextId) {
         var originalStack = _contextStack.Value;
         var newStack = originalStack == null
@@ -44,56 +24,35 @@ public class LogContext {
         return new ContextRestorer(this, originalStack ?? new Stack<Guid>());
     }
 
-    public IDisposable PushContext(out Guid contextID) {
-        contextID = Guid.NewGuid();
-        return PushContext(contextID);
-    }
+    /// <summary>Generate + push GUID.</summary>
+    /// <param name="contextID">Generated GUID.</param>
+    /// <returns>Disposable restorer.</returns>
+    public IDisposable PushContext(out Guid contextID) { contextID = Guid.NewGuid(); return PushContext(contextID); }
 
-    /// <summary>
-    /// A private helper class that restores the previous context stack when disposed.
-    /// This enables a 'using' pattern for safe context management.
-    /// </summary>
+    /// <summary>Restorer disposable.</summary>
     private sealed class ContextRestorer(LogContext context, Stack<Guid> stackToRestore) : IDisposable {
         private readonly LogContext _owner = context;
         private readonly Stack<Guid> _stackToRestore = stackToRestore;
 
-        /// <summary>
-        /// Restores the previous context stack for the current async context.
-        /// </summary>
-        public void Dispose() {
-            _owner._contextStack.Value = _stackToRestore;
-        }
+        /// <summary>Restore stack.</summary>
+        public void Dispose() { _owner._contextStack.Value = _stackToRestore; }
     }
 }
 
-/// <summary>
-/// The internal logger for Manila. Plugins should use their own logger.
-/// </summary>
-/// <remarks>
-/// See <c>PluginInfo(Attributes.ManilaPlugin, object[])</c> as an example.
-/// </remarks>
+/// <summary>Internal Manila logger.</summary>
 public class Logger(string? loggerPrefix) : ILogger {
-    /// <summary>
-    /// Event that is raised whenever a log entry is created.
-    /// Subscribers can handle this event to process log entries, such as writing them to a file or displaying them in the console.
-    /// </summary>
+    /// <summary>Entry event.</summary>
     public event Action<ILogEntry>? OnLogEntry;
 
-    /// <summary>
-    /// A concurrent dictionary holding the currently active log injectors, keyed by their unique ID.
-    /// Using a thread-safe collection prevents race conditions when jobs log in parallel while
-    /// injectors are being added/removed.
-    /// </summary>
+    /// <summary>Injector map.</summary>
     private readonly ConcurrentDictionary<Guid, LogInjector> _activeInjectors = new();
     public LogContext LogContext { get; } = new();
 
     public string? LoggerPrefix => loggerPrefix;
 
-    /// <summary>
-    /// Registers a log injector to receive all log entries.
-    /// </summary>
-    /// <param name="id">The unique identifier of the injector.</param>
-    /// <param name="injector">The log injector instance.</param>
+    /// <summary>Add injector.</summary>
+    /// <param name="id">Injector ID.</param>
+    /// <param name="injector">Injector instance.</param>
     /// <exception cref="InvalidOperationException">Thrown if an injector with the same ID already exists.</exception>
     public void AddInjector(Guid id, LogInjector injector) {
         if (!_activeInjectors.TryAdd(id, injector)) {
@@ -101,10 +60,8 @@ public class Logger(string? loggerPrefix) : ILogger {
         }
     }
 
-    /// <summary>
-    /// Removes a log injector, preventing it from receiving future log entries.
-    /// </summary>
-    /// <param name="id">The unique identifier of the injector to remove.</param>
+    /// <summary>Remove injector.</summary>
+    /// <param name="id">Injector ID.</param>
     /// <exception cref="InvalidOperationException">Thrown if no injector with the specified ID is found.</exception>
     public void RemoveInjector(Guid id) {
         if (!_activeInjectors.TryRemove(id, out _)) {
@@ -114,10 +71,8 @@ public class Logger(string? loggerPrefix) : ILogger {
         }
     }
 
-    /// <summary>
-    /// Logs a log entry by invoking the main <see cref="OnLogEntry"/> event and all active injectors.
-    /// </summary>
-    /// <param name="entry">The log entry to process.</param>
+    /// <summary>Emit entry.</summary>
+    /// <param name="entry">Entry object.</param>
     public void Log(ILogEntry entry) {
         if (entry.ParentContextID == null && LogContext.CurrentContextID != null)
             entry.ParentContextID = LogContext.CurrentContextID;
@@ -129,71 +84,49 @@ public class Logger(string? loggerPrefix) : ILogger {
         }
     }
 
-    /// <summary>
-    /// Logs a message as a markup line at the Info level.
-    /// </summary>
-    /// <param name="message">The message to log.</param>
+    /// <summary>Markup info line.</summary>
+    /// <param name="message">Message text.</param>
     public void MarkupLine(string message, bool logAlways = false) {
         Log(new MarkupLogEntry(message, logAlways, loggerPrefix));
     }
 
-    /// <summary>
-    /// Logs a message at the Info level.
-    /// </summary>
-    /// <param name="message">The message to log.</param>
+    /// <summary>Info.</summary>
     public void Info(string message) {
         Log(new BasicLogEntry(message, LogLevel.Info, loggerPrefix));
     }
 
-    /// <summary>
-    /// Logs a message at the Debug level.
-    /// </summary>
-    /// <param name="message">The message to log.</param>
+    /// <summary>Debug.</summary>
     public void Debug(string message) {
         Log(new BasicLogEntry(message, LogLevel.Debug, loggerPrefix));
     }
 
-    /// <summary>
-    /// Logs a message at the Warning level.
-    /// </summary>
-    /// <param name="message">The message to log.</param>
+    /// <summary>Warning.</summary>
     public void Warning(string message) {
         Log(new BasicLogEntry(message, LogLevel.Warning, loggerPrefix));
     }
 
-    /// <summary>
-    /// Logs a message at the Error level.
-    /// </summary>
-    /// <param name="message">The message to log.</param>
+    /// <summary>Error.</summary>
     public void Error(string message) {
         Log(new BasicLogEntry(message, LogLevel.Error, loggerPrefix));
     }
 
-    /// <summary>
-    /// Logs a message at the Critical level.
-    /// </summary>
-    /// <param name="message">The message to log.</param>
+    /// <summary>Critical.</summary>
     public void Critical(string message) {
         Log(new BasicLogEntry(message, LogLevel.Critical, loggerPrefix));
     }
 
-    /// <summary>
-    /// Logs a message at the System level.
-    /// </summary>
-    /// <param name="message">The message to log.</param>
+    /// <summary>System.</summary>
     public void System(string message) {
         Log(new BasicLogEntry(message, LogLevel.System, loggerPrefix));
     }
 }
 
+/// <summary>Logger extensions.</summary>
 public static class LoggerExtensions {
-    /// <summary>
-    /// Creates a LogInjector that only receives entries matching the provided ParentContextID.
-    /// </summary>
-    /// <param name="logger">The logger to attach to.</param>
-    /// <param name="onLog">Callback to handle matching entries.</param>
-    /// <param name="contextId">The context identifier to filter on.</param>
-    public static LogInjector CreateContextInjector(this ILogger logger, Action<ILogEntry> onLog, Guid contextId) {
-        return new LogInjector(logger, onLog, entry => entry.ParentContextID == contextId);
-    }
+    /// <summary>Create context injector.</summary>
+    /// <param name="logger">Logger.</param>
+    /// <param name="onLog">Callback.</param>
+    /// <param name="contextId">Context GUID.</param>
+    /// <returns>Injector instance.</returns>
+    public static LogInjector CreateContextInjector(this ILogger logger, Action<ILogEntry> onLog, Guid contextId) => new(logger, onLog, entry => entry.ParentContextID == contextId);
 }

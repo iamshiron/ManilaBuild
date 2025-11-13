@@ -11,9 +11,7 @@ using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.Services;
 
-/// <summary>
-/// A concrete implementation of an <see cref="ExecutableObject"/> that performs no operation.
-/// </summary>
+/// <summary>No-op executable placeholder.</summary>
 public class NoOpExecutableObject : ExecutableObject {
     public override bool IsBlocking() { return true; }
     public override async Task RunAsync() {
@@ -21,29 +19,18 @@ public class NoOpExecutableObject : ExecutableObject {
     }
 }
 
-/// <summary>
-/// Represents a directed acyclic graph of executable objects, capable of resolving
-/// complex dependency chains and calculating parallel execution layers.
-/// </summary>
+/// <summary>Execution DAG for jobs.</summary>
 public class ExecutionGraph(ILogger logger, IProfiler profiler) {
     private readonly ILogger _logger = logger;
     private readonly IProfiler _profiler = profiler;
 
-    /// <summary>
-    /// Represents a node within the <see cref="ExecutionGraph"/>, containing an <see cref="ExecutableObject"/>
-    /// and its relationships to other nodes.
-    /// </summary>
-    /// <param name="obj">The executable object this node represents.</param>
-    /// <param name="children">A list of nodes that depend on this node.</param>
-    /// <param name="parents">A list of nodes that this node depends on.</param>
+    /// <summary>Graph node (object + relations).</summary>
     public class ExecutionNode(ExecutableObject obj, List<ExecutionNode>? children = null, List<ExecutionNode>? parents = null) {
         public ExecutableObject ExecutableObject { get; } = obj;
         public List<ExecutionNode> Children { get; } = children ?? [];
         public List<ExecutionNode> Parents { get; } = parents ?? [];
 
-        /// <summary>
-        /// Delegates the string representation to the contained ExecutableObject.
-        /// </summary>
+        /// <summary>Delegates to object.</summary>
         public override string ToString() => ExecutableObject.ToString();
     }
     public class ExecutionLayer(ExecutableObject[] items) {
@@ -56,9 +43,7 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
     /// </summary>
     private readonly Dictionary<ExecutableObject, ExecutionNode> _nodes = new();
 
-    /// <summary>
-    /// Retrieves an existing ExecutionNode for a given object or creates a new one if it doesn't exist.
-    /// </summary>
+    /// <summary>Get or create node.</summary>
     private ExecutionNode GetOrCreateNode(ExecutableObject obj) {
         if (!_nodes.TryGetValue(obj, out var node)) {
             node = new ExecutionNode(obj);
@@ -67,9 +52,7 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
         return node;
     }
 
-    /// <summary>
-    /// Recursively finds all unique descendants (children, grandchildren, etc.) of a given node.
-    /// </summary>
+    /// <summary>Collect all descendants.</summary>
     private void GetAllDescendants(ExecutionNode startNode, HashSet<ExecutionNode> descendants) {
         foreach (var child in startNode.Children) {
             if (descendants.Add(child)) {
@@ -78,9 +61,7 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
         }
     }
 
-    /// <summary>
-    /// Recursively finds all unique ancestors (parents, grandparents, etc.) of a given node.
-    /// </summary>
+    /// <summary>Collect all ancestors.</summary>
     private void GetAllAncestors(ExecutionNode startNode, HashSet<ExecutionNode> ancestors) {
         foreach (var parent in startNode.Parents) {
             if (ancestors.Add(parent)) {
@@ -89,12 +70,9 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
         }
     }
 
-    /// <summary>
-    /// Attaches an object and its direct dependencies to the graph. This method correctly
-    /// resolves and updates both direct and transitive parent/child relationships.
-    /// </summary>
-    /// <param name="main">The main object to be added or updated in the graph.</param>
-    /// <param name="dependencies">A list of objects that the main object directly depends on.</param>
+    /// <summary>Attach object and dependencies.</summary>
+    /// <param name="main">Primary executable.</param>
+    /// <param name="dependencies">Direct dependencies.</param>
     public void Attach(ExecutableObject main, List<ExecutableObject> dependencies) {
         _logger.Debug($"Attaching {((Job) main).GetIdentifier()}");
 
@@ -125,11 +103,8 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
         }
     }
 
-    /// <summary>
-    /// Generates a string representation of the entire execution graph,
-    /// detailing each node and its parent/child relationships.
-    /// </summary>
-    /// <returns>A formatted string visualizing the graph.</returns>
+    /// <summary>Debug string dump.</summary>
+    /// <returns>Graph formatted.</returns>
     public override string ToString() {
         var sb = new StringBuilder()
             .AppendLine("Execution Graph:")
@@ -153,11 +128,7 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Generates a Mermaid diagram string for the graph's direct dependencies.
-    /// This visualizes the direct parent-to-child relationships.
-    /// </summary>
-    /// <returns>A string formatted for use with Mermaid.js.</returns>
+    /// <summary>Mermaid graph text.</summary>
     public string ToMermaid() {
         var sb = new StringBuilder()
             .AppendLine("graph TD"); // TD = Top Down
@@ -185,12 +156,8 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Finds a node in the graph associated with a specific job identifier.
-    /// Note: This requires the ExecutableObject to be of a specific 'Job' type.
-    /// </summary>
-    /// <param name="jobID">The unique identifier of the job to find.</param>
-    /// <returns>The corresponding <see cref="ExecutionNode"/>, or null if not found.</returns>
+    /// <summary>Find node by job id.</summary>
+    /// <returns>Node or null.</returns>
     public ExecutionNode? GetByJob(string jobID) {
         foreach (var o in _nodes.Keys) {
             if (o is Job job) {
@@ -200,15 +167,9 @@ public class ExecutionGraph(ILogger logger, IProfiler profiler) {
         return null;
     }
 
-    /// <summary>
-    /// Calculates the execution layers for a given job using a topological sort.
-    /// Each layer contains nodes that can be run in parallel. The calculation is based on the
-    /// subgraph containing only the target job and its direct and indirect dependencies.
-    /// </summary>
-    /// <param name="job">The identifier of the final job to be executed.</param>
-    /// <returns>An array of arrays, where each inner array is a layer of <see cref="ExecutionNode"/> that can be run in parallel.</returns>
-    /// <exception cref="Exception">Thrown if the specified job is not found in the graph.</exception>
-    /// <exception cref="InvalidOperationException">Thrown if a cycle is detected in the dependency graph for the job.</exception>
+    /// <summary>Topological parallel layers for job.</summary>
+    /// <param name="job">Final job id.</param>
+    /// <returns>Ordered layers.</returns>
     public ExecutionLayer[] GetExecutionLayers(string job) {
         var targetNode = GetByJob(job) ?? throw new ManilaException($"Job '{job}' not inside graph!");
         var subgraphNodes = new HashSet<ExecutionNode> {

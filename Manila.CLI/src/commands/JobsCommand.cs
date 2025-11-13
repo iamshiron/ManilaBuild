@@ -8,15 +8,24 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
-[Description("Lists all available jobs in the current workspace")]
+/// <summary>
+/// Lists jobs for workspace, projects and artifacts
+/// </summary>
+[Description("List jobs across workspace, projects, artifacts")]
 internal sealed class JobsCommand(BaseServiceContainer baseServices, Workspace? workspace = null) :
     BaseManilaCommand<JobsCommand.Settings>(baseServices) {
 
     private readonly Workspace? _workspace = workspace;
     private readonly BaseServiceContainer _baseServices = baseServices;
 
+    /// <summary>
+    /// Command settings (no additional options)
+    /// </summary>
     public sealed class Settings : DefaultCommandSettings { }
 
+    /// <summary>
+    /// Renders job tables grouped by scope
+    /// </summary>
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
         if (_workspace == null) {
             _baseServices.Logger.Error(Messages.NoWorkspace);

@@ -6,10 +6,7 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Services;
 
-/// <summary>
-/// Used if no manila workspace was detected.
-/// This cache implementation does not store any file hashes and always considers files as changed.
-/// </summary>
+/// <summary>Disabled hash cache (always changed).</summary>
 public class EmptyFileHashCache : IFileHashCache {
     /// <inheritdoc/>
     public void AddOrUpdate(string path, string hash) {
@@ -27,9 +24,7 @@ public class EmptyFileHashCache : IFileHashCache {
     }
 }
 
-/// <summary>
-/// An implementation of IFileHashCache that uses a SQLite database for storage.
-/// </summary>
+/// <summary>SQLite-backed file hash cache.</summary>
 public class FileHashCache : IFileHashCache {
     private readonly string _connectionString;
     private readonly string _root;
@@ -57,7 +52,7 @@ public class FileHashCache : IFileHashCache {
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>Add or update relative path hash.</summary>
     public void AddOrUpdate(string path, string hash) {
         if (Path.IsPathFullyQualified(path)) path = Path.GetRelativePath(_root, path);
 
@@ -77,7 +72,7 @@ public class FileHashCache : IFileHashCache {
         _ = command.ExecuteNonQuery();
     }
 
-    /// <inheritdoc/>
+    /// <summary>Check if file changed.</summary>
     public bool HasChanged(string path, string hash) {
         if (Path.IsPathFullyQualified(path)) path = Path.GetRelativePath(_root, path);
 
@@ -96,6 +91,7 @@ public class FileHashCache : IFileHashCache {
         return existingHash != hash;
     }
 
+    /// <summary>Get changed paths among set.</summary>
     public async Task<IEnumerable<string>> HasChangedAnyAsync(IEnumerable<string> paths) {
         paths = [.. paths
             .Select(p => Path.IsPathFullyQualified(p) ? Path.GetRelativePath(_root, p) : p)

@@ -13,20 +13,14 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
-/// <summary>
-/// Defines a single, executable step within a <see cref="Job"/>.
-/// </summary>
+/// <summary>Executable job action step.</summary>
 public interface IJobAction {
-    /// <summary>
-    /// Executes the action asynchronously.
-    /// </summary>
+    /// <summary>Run action.</summary>
     Task ExecuteAsync();
 }
 
-/// <summary>
-/// An action that executes a JavaScript function provided as a <see cref="ScriptObject"/>.
-/// </summary>
-/// <param name="scriptObject">The script object representing the function to invoke.</param>
+/// <summary>Invoke JS function.</summary>
+/// <param name="handle">Script function object.</param>
 public class JobAsyncScriptAction(ScriptObject handle) : IJobAction {
     private readonly ScriptObject _handle = handle;
 
@@ -38,12 +32,13 @@ public class JobAsyncScriptAction(ScriptObject handle) : IJobAction {
                 await task;
             }
         } catch (Exception e) {
-            // Wrap script engine errors in a more specific exception type.
             throw new ScriptExecutionException("A script error occurred during job execution.", e);
         }
     }
 }
 
+/// <summary>Invoke JS function (sync or async).</summary>
+/// <param name="handle">Script function object.</param>
 public class JobScriptAction(ScriptObject handle) : IJobAction {
     private readonly ScriptObject _handle = handle;
 
@@ -55,16 +50,14 @@ public class JobScriptAction(ScriptObject handle) : IJobAction {
                 await task;
             }
         } catch (Exception e) {
-            // Wrap script engine errors in a more specific exception type.
             throw new ScriptExecutionException("A script error occurred during job execution.", e);
         }
     }
 }
 
-/// <summary>
-/// An action that executes a command in the system's shell.
-/// </summary>
-/// <param name="commandInfo">The details of the command to execute.</param>
+/// <summary>Execute shell command.</summary>
+/// <param name="logger">Logger.</param>
+/// <param name="commandInfo">Command info.</param>
 public class JobShellAction(ILogger logger, ShellUtils.CommandInfo commandInfo) : IJobAction {
     private readonly ILogger _logger = logger;
     private readonly ShellUtils.CommandInfo _commandInfo = commandInfo;
@@ -72,25 +65,21 @@ public class JobShellAction(ILogger logger, ShellUtils.CommandInfo commandInfo) 
     /// <inheritdoc/>
     public async Task ExecuteAsync() {
         try {
-            // Run the command on a thread pool thread and await completion to ensure proper ordering.
             var exitCode = await Task.Run(() => ShellUtils.Run(_commandInfo, _logger));
             if (exitCode != 0) {
                 throw new BuildProcessException($"Shell command failed with exit code {exitCode}: '{_commandInfo.Command}'");
             }
         } catch (Exception e) {
-            // Wrap any process execution errors in a BuildProcessException.
             throw new BuildProcessException($"Shell command failed: '{_commandInfo.Command}'", e);
         }
     }
 }
 
-/// <summary>
-/// An action that logs a message using the Manila logging system.
-/// </summary>
-/// <param name="logger">The logger instance.</param>
-/// <param name="message">The message to log.</param>
-/// <param name="scriptPath">The path of the script that generated this action.</param>
-/// <param name="scriptContextId">The context ID of the script execution.</param>
+/// <summary>Log script message.</summary>
+/// <param name="logger">Logger.</param>
+/// <param name="message">Message text.</param>
+/// <param name="scriptPath">Script path.</param>
+/// <param name="scriptContextId">Context ID.</param>
 public class PrintAction(ILogger logger, string message, string scriptPath, Guid scriptContextId) : IJobAction {
     private readonly ILogger _logger = logger;
     private readonly string _message = message;
@@ -99,63 +88,61 @@ public class PrintAction(ILogger logger, string message, string scriptPath, Guid
 
     /// <inheritdoc/>
     public Task ExecuteAsync() {
-        // Logging is a fast, synchronous operation; no need for a real async task.
         _logger.Log(new ScriptLogEntry(_scriptPath, _message, _scriptContextId));
         return Task.CompletedTask;
     }
 }
 
-/// <summary>
-/// Represents an executable unit of work with defined dependencies and actions.
-/// </summary>
+/// <summary>Executable job definition.</summary>
+/// <param name="logger">Logger instance.</param>
+/// <param name="jobRegistry">Job registry.</param>
+/// <param name="builder">Builder data.</param>
 public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) : ExecutableObject {
     private readonly IJobRegistry _jobRegistry = jobRegistry;
     private readonly ILogger _logger = logger;
 
-    /// <summary>Gets the simple name of the job.</summary>
+    /// <summary>Job name.</summary>
     public readonly string Name = builder.Name;
 
-    /// <summary>Gets the list of identifiers for jobs that must be completed before this one.</summary>
+    /// <summary>Dependency job IDs.</summary>
     public readonly List<string> Dependencies = builder.Dependencies;
 
-    /// <summary>Gets the sequence of actions this job will perform when executed.</summary>
+    /// <summary>Execution actions.</summary>
     public readonly IJobAction[] Actions = builder.Actions;
 
-    /// <summary>Gets the script context in which this job was defined.</summary>
+    /// <summary>Defining script context.</summary>
     [JsonIgnore]
     public readonly IScriptContext Context = builder.ScriptContext;
 
-    /// <summary>Gets the component (e.g., Project or Workspace) this job belongs to.</summary>
+    /// <summary>Owning component.</summary>
     [JsonIgnore]
     public readonly Component Component = builder.Component;
 
-    /// <summary>Gets the user-provided description of the job.</summary>
+    /// <summary>User description.</summary>
     public readonly string Description = builder.JobDescription;
 
-    /// <summary>Gets a value indicating whether this job must run serially.</summary>
+    /// <summary>Blocking flag.</summary>
     public readonly bool Blocking = builder.Blocking;
 
-    /// <summary>Gets the name of the artifact this job contributes to, if any.</summary>
+    /// <summary>Target artifact name (optional).</summary>
     public readonly string? ArtifactName = builder.ArtifactBuilder?.Name;
 
-    /// <summary>Gets the unique runtime ID for an instance of this job execution.</summary>
+    /// <summary>Runtime execution ID.</summary>
     public readonly string JobID = Guid.NewGuid().ToString();
 
-    /// <summary>
-    /// Generates the canonical, unique identifier for the job.
-    /// </summary>
-    /// <returns>A unique string identifier for the job definition.</returns>
+    /// <summary>Compute canonical identifier.</summary>
+    /// <returns>Identifier string.</returns>
     public string GetIdentifier() {
         var componentId = (Component is Workspace) ? null : Component.GetIdentifier();
         return new RegexUtils.JobMatch(componentId, ArtifactName, Name).Format();
     }
 
-    /// <inheritdoc/>
+    /// <summary>Blocking check.</summary>
     public override bool IsBlocking() {
         return Blocking;
     }
 
-    /// <inheritdoc/>
+    /// <summary>Run job actions.</summary>
     public override async Task RunAsync() {
         _logger.Log(new JobExecutionStartedLogEntry(this, ExecutableID));
         using (_logger.LogContext.PushContext(ExecutableID)) {
@@ -171,12 +158,12 @@ public class Job(ILogger logger, IJobRegistry jobRegistry, JobBuilder builder) :
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>Identifier for execution system.</summary>
     public override string GetID() {
         return GetIdentifier();
     }
 
-    /// <inheritdoc/>
+    /// <summary>Debug string.</summary>
     public override string ToString() {
         return $"Job({GetIdentifier()})";
     }

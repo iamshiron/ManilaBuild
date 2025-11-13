@@ -15,9 +15,7 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Services;
 
-/// <summary>
-/// Manages the loading, retrieval, and lifecycle of plugins. This is a global singleton.
-/// </summary>
+/// <summary>Plugin loader & registry (singleton).</summary>
 public class ExtensionManager(ILogger logger, IProfiler profiler, string _pluginDir, INuGetManager nuGetManager) : IExtensionManager {
     private readonly ILogger _logger = logger;
     private readonly IProfiler _profiler = profiler;
@@ -25,36 +23,24 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
 
     private readonly INuGetManager _nuGetManager = nuGetManager;
 
-    /// <summary>
-    /// The default group assigned to plugins that do not specify one.
-    /// </summary>
+    /// <summary>Default plugin group.</summary>
     public static readonly string DEFAULT_GROUP = "shiron.manila";
 
-    /// <summary>
-    /// Matches plugin keys in the format: "group:name@version". Version is optional.
-    /// </summary>
+    /// <summary>Regex: group:name@version.</summary>
     public static readonly Regex PluginPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?", RegexOptions.Compiled);
 
-    /// <summary>
-    /// Matches component keys in the format: "group:name@version:component". Version is optional.
-    /// </summary>
+    /// <summary>Regex: group:name@version:component.</summary>
     public static readonly Regex ComponentPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?:(?<component>[\w.\d]+)", RegexOptions.Compiled);
 
-    /// <summary>
-    /// Matches API class keys in the format: "group:name@version/class". Version is optional.
-    /// </summary>
+    /// <summary>Regex: group:name@version/class.</summary>
     public static readonly Regex APIClassPattern = new(@"(?<group>[\w.\d]+):(?<name>[\w.\d]+)(?:@(?<version>[\w.\d]+))?/(?<class>[\w.\d]+)", RegexOptions.Compiled);
 
-    /// <summary>
-    /// Matches NuGet dependencies in the format: "Package.Name@1.2.3".
-    /// </summary>
+    /// <summary>Regex: Package.Name@1.2.3.</summary>
     public static readonly Regex NugetDependencyPattern = new(@"(?<package>[\w.\d]+)@(?<version>[\w.\d-]+)", RegexOptions.Compiled);
     public List<ManilaPlugin> Plugins { get; } = [];
     public List<Assembly> Assemblies { get; } = [];
 
-    /// <summary>
-    /// Lists all types that are exposed by plugins.
-    /// </summary>
+    /// <summary>Types annotated with <see cref="ManilaExpose"/>.</summary>
     public List<Type> ExposedTypes { get; } = [];
 
     private readonly string[] _knownAssemblies = [
@@ -64,9 +50,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         "Manila.Utils.dll"
     ];
 
-    /// <summary>
-    /// Discovers and loads all plugins from the specified plugin directory.
-    /// </summary>
+    /// <summary>Load all plugin assemblies in directory.</summary>
     public async Task LoadPluginsAsync() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             _logger.Log(new LoadingPluginsLogEntry(_pluginDir, Guid.NewGuid()));
@@ -168,9 +152,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
             .ForEach(prop => prop.SetValue(null, plugin));
     }
 
-    /// <summary>
-    /// Calls the Init() method on all loaded plugins.
-    /// </summary>
+    /// <summary>Invoke Init() on each plugin.</summary>
     public void InitPlugins() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             foreach (var plugin in Plugins) {
@@ -189,9 +171,7 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         }
     }
 
-    /// <summary>
-    /// Calls the Release() method on all loaded plugins.
-    /// </summary>
+    /// <summary>Invoke Release() on each plugin.</summary>
     public void ReleasePlugins() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             foreach (var plugin in Plugins) {
@@ -202,18 +182,24 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         }
     }
 
+    /// <summary>Get plugin by type.</summary>
+    /// <typeparam name="T">Plugin subclass.</typeparam>
+    /// <returns>Plugin instance.</returns>
     public T GetPlugin<T>() where T : ManilaPlugin {
         var plugin = Plugins.FirstOrDefault(p => p is T);
         return plugin is T typedPlugin ? typedPlugin : throw new ManilaException($"Plugin of type {typeof(T).FullName} not found.");
     }
+    /// <summary>Get plugin by runtime <see cref="Type"/>.</summary>
     public ManilaPlugin GetPlugin(Type type) {
         var plugin = Plugins.FirstOrDefault(p => p.GetType() == type);
         return plugin ?? throw new ManilaException($"Plugin of type {type.FullName} not found.");
     }
 
+    /// <summary>Get plugin via URI pattern.</summary>
     public ManilaPlugin GetPlugin(string uri) {
         return GetPlugin(RegexUtils.MatchPlugin(uri) ?? throw new ManilaException(uri));
     }
+    /// <summary>Get plugin via parsed match.</summary>
     public ManilaPlugin GetPlugin(RegexUtils.PluginMatch match) {
         var plugin = Plugins.FirstOrDefault(p =>
             p.Group == match.Group && p.Name == match.Plugin && (p.Version == match.Version || match.Version == null)
@@ -221,9 +207,11 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         return plugin ?? throw new ManilaException($"Plugin not found for match: {match}");
     }
 
+    /// <summary>Get component via URI.</summary>
     public PluginComponent GetPluginComponent(string uri) {
         return GetPluginComponent(RegexUtils.MatchPluginComponent(uri) ?? throw new ManilaException(uri));
     }
+    /// <summary>Get component via parsed match.</summary>
     public PluginComponent GetPluginComponent(RegexUtils.PluginComponentMatch match) {
         var plugin = GetPlugin(match.ToPluginMatch());
         var component = plugin.Components.FirstOrDefault(c =>
@@ -233,9 +221,11 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         return component.Value ?? throw new ManilaException($"Component '{match.Component}' not found in plugin '{plugin.Name}' with match: {match}");
     }
 
+    /// <summary>Get artifact blueprint via URI.</summary>
     public IArtifactBlueprint GetArtifact(string uri) => GetArtifact(
         RegexUtils.MatchPluginComponent(uri) ?? throw new ManilaException(uri)
     );
+    /// <summary>Get artifact blueprint via match.</summary>
     public IArtifactBlueprint GetArtifact(RegexUtils.PluginComponentMatch match) {
         var plugin = GetPlugin(match.ToPluginMatch());
         var builder = plugin.ArtifactBuilderTypes.FirstOrDefault(b =>
@@ -250,9 +240,11 @@ public class ExtensionManager(ILogger logger, IProfiler profiler, string _plugin
         return instance is IArtifactBlueprint blueprint ? blueprint : throw new ManilaException($"Failed to create instance of artifact builder '{match.Component}' in plugin '{plugin.Name}' with match: {match}");
     }
 
+    /// <summary>Get exposed API type via URI.</summary>
     public Type GetAPIType(string uri) {
         return GetAPIType(RegexUtils.MatchPluginApiClass(uri) ?? throw new ManilaException(uri));
     }
+    /// <summary>Get exposed API type via match.</summary>
     public Type GetAPIType(RegexUtils.PluginApiClassMatch match) {
         var plugin = GetPlugin(match.ToPluginMatch());
         var apiType = plugin.APIClasses.FirstOrDefault(a =>

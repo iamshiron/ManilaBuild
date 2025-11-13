@@ -60,3 +60,6 @@ ManilaBuild is built around a few core concepts:
 ## Dive Deeper
 
 While the build system is still rapidly evolving, you can check out more examples inside the `run/` directory to see how new features are tested and implemented.
+
+## License
+Currently in evaluation phase (no formal license declared yet). All rights reserved until license finalized.

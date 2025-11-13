@@ -12,13 +12,19 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
-[Description("Creates a new project based on a template.")]
+/// <summary>
+/// Creates a new project from a plugin template
+/// </summary>
+[Description("Create new project from template")]
 public class NewCommand(BaseServiceContainer baseServices, ServiceContainer? services = null) :
     BaseAsyncManilaCommand<NewCommand.Settings>(baseServices) {
 
     private readonly ServiceContainer? _services = services;
     private readonly BaseServiceContainer _baseServices = baseServices;
 
+    /// <summary>
+    /// Command settings specifying name and template
+    /// </summary>
     public sealed class Settings : DefaultCommandSettings {
         [CommandArgument(0, "<name>")]
         public string Name { get; set; } = string.Empty;
@@ -27,6 +33,9 @@ public class NewCommand(BaseServiceContainer baseServices, ServiceContainer? ser
         public string Template { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Creates project using resolved template
+    /// </summary>
     protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         if (_services == null) {
             _baseServices.Logger.Error(Messages.ManilaEngineNotInitialized);

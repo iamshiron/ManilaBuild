@@ -7,15 +7,24 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
-[Description("Lists all available projects in the current workspace")]
+/// <summary>
+/// Lists projects and their artifacts
+/// </summary>
+[Description("List projects with artifacts")]
 internal sealed class ProjectsCommand(BaseServiceContainer baseServices, Workspace? workspace = null) :
     BaseManilaCommand<ProjectsCommand.Settings>(baseServices) {
 
     private readonly Workspace? _workspace = workspace;
     private readonly BaseServiceContainer _baseServices = baseServices;
 
+    /// <summary>
+    /// Command settings (no additional options)
+    /// </summary>
     public sealed class Settings : DefaultCommandSettings { }
 
+    /// <summary>
+    /// Renders projects table with nested artifact table
+    /// </summary>
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
         if (_workspace == null) {
             _baseServices.Logger.Error(Messages.NoWorkspace);

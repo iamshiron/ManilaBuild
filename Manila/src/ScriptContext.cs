@@ -12,10 +12,10 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila;
 
-public interface IScriptEntry {
-    Task ExecuteAsync(API.Manila Manila);
-}
+/// <summary>Script entry contract.</summary>
+public interface IScriptEntry { Task ExecuteAsync(API.Manila Manila); }
 
+/// <summary>Per-script execution context (engine + env).</summary>
 public sealed class ScriptContext : IScriptContext {
     private readonly ILogger _logger;
     private readonly IProfiler _profiler;
@@ -27,14 +27,20 @@ public sealed class ScriptContext : IScriptContext {
     [JsonIgnore]
     private Task<V8ScriptEngine>? _scriptEngine;
 
+    /// <summary>Absolute script file path.</summary>
     public string ScriptPath { get; private set; }
+    /// <summary>Content hash (SHA256 truncated usage).</summary>
     public readonly string ScriptHash;
 
+    /// <summary>Unique context ID.</summary>
     public Guid ContextID { get; } = Guid.NewGuid();
     private Dictionary<string, string> EnvironmentVariables { get; } = [];
+    /// <summary>Enum types exposed.</summary>
     public List<Type> EnumComponents { get; } = [];
+    /// <summary>Bound Manila API instance.</summary>
     public API.Manila? ManilaAPI { get; private set; } = null;
 
+    /// <summary>Create context for script file.</summary>
     public ScriptContext(ILogger logger, IProfiler profiler, IExtensionManager extensionManager, string rootDir, string scriptPath) {
         _logger = logger;
         _profiler = profiler;
@@ -57,17 +63,20 @@ public sealed class ScriptContext : IScriptContext {
         // Engine will be lazily created after ManilaAPI is set.
     }
 
+    /// <summary>Compiled cache file path.</summary>
     public string GetCompiledFilePath() {
         var fileName = $"{ScriptHash[0..16]}.bin";
         return Path.Join(_dataDir, "compiled", fileName);
     }
 
+    /// <summary>Initialize with Manila API.</summary>
     public void Init(API.Manila manilaAPI, ScriptBridge bridge, Component component) {
         ManilaAPI = manilaAPI;
         // Initialize the script engine after ManilaAPI is set to ensure host objects are valid.
         _scriptEngine ??= Task.Run(() => CreateScriptEngine());
     }
 
+    /// <summary>Create V8 engine instance.</summary>
     private V8ScriptEngine CreateScriptEngine() {
         using (new ProfileScope(_profiler, "Creating V8 Script Engine")) {
             var engine = new V8ScriptEngine(V8ScriptEngineFlags.EnableTaskPromiseConversion) {
@@ -84,6 +93,7 @@ public sealed class ScriptContext : IScriptContext {
         }
     }
 
+    /// <summary>Generate wrapper JS code.</summary>
     private async Task<string> CreateScriptCode() {
         var code = @$"
             async function main() {{
@@ -99,6 +109,7 @@ public sealed class ScriptContext : IScriptContext {
         return code;
     }
 
+    /// <summary>Load .env variables.</summary>
     private async Task LoadEnvironmentVariablesAsync() {
         using (new ProfileScope(_profiler, MethodBase.GetCurrentMethod()!)) {
             EnvironmentVariables.Clear();
@@ -131,14 +142,17 @@ public sealed class ScriptContext : IScriptContext {
         }
     }
 
+    /// <summary>Get env var or null.</summary>
     public string? GetEnvironmentVariable(string key) {
         return EnvironmentVariables.TryGetValue(key, out string? value) ? value : null;
     }
 
+    /// <summary>Set env var value.</summary>
     public void SetEnvironmentVariable(string key, string value) {
         EnvironmentVariables[key] = value;
     }
 
+    /// <summary>Execute script; finalize component.</summary>
     public async Task ExecuteAsync(IFileHashCache cache, Component component) {
         if (ManilaAPI == null) {
             throw new InternalLogicException("ManilaAPI is not initialized. Call Init() before executing the script.");
@@ -207,6 +221,7 @@ public sealed class ScriptContext : IScriptContext {
         }
     }
 
+    /// <summary>Compare cached hash vs current.</summary>
     private bool CheckForScriptChanges(IFileHashCache cache) {
         return cache.HasChanged(ScriptPath, ScriptHash);
     }

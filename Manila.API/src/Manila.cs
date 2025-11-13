@@ -20,21 +20,31 @@ using Shiron.Manila.Profiling;
 
 namespace Shiron.Manila.API;
 
+/// <summary>Global API flags.</summary>
 public sealed class ManilaAPIFlags {
+    /// <summary>Force rebuild; ignore cache.</summary>
     public bool InvalidateBuildCache { get; set; } = false;
 }
 
 /// <summary>
 /// Defines the primary, script-facing API for interacting with the Manila build system.
 /// </summary>
+/// <summary>Main script DSL entry point.</summary>
+/// <param name="flags">API flags.</param>
+/// <param name="services">Service container.</param>
+/// <param name="context">Script context.</param>
+/// <param name="workspaceBridge">Workspace bridge.</param>
+/// <param name="workspace">Workspace handle.</param>
+/// <param name="projectBridge">Project bridge (optional).</param>
+/// <param name="project">Project handle (optional).</param>
 public sealed class Manila(
-        ManilaAPIFlags flags,
-        APIServiceContainer services,
-        IScriptContext context,
-        WorkspaceScriptBridge workspaceBridge,
-        Workspace workspace,
-        ProjectScriptBridge? projectBridge,
-        Project? project
+    ManilaAPIFlags flags,
+    APIServiceContainer services,
+    IScriptContext context,
+    WorkspaceScriptBridge workspaceBridge,
+    Workspace workspace,
+    ProjectScriptBridge? projectBridge,
+    Project? project
 ) : DynamicObject {
     public readonly ManilaAPIFlags Flags = flags;
     private readonly APIServiceContainer _services = services;
@@ -143,9 +153,9 @@ public sealed class Manila(
         return jobBuilder;
     }
 
-    public void Log(string message) {
-        _services.Logger.Log(new ScriptLogEntry(_context.ScriptPath, message, _context.ContextID));
-    }
+    /// <summary>Log message via script logger.</summary>
+    /// <param name="message">Message text.</param>
+    public void Log(string message) => _services.Logger.Log(new ScriptLogEntry(_context.ScriptPath, message, _context.ContextID));
 
     /// <summary>Creates a file set builder for defining collections of files.</summary>
     /// <param name="origin">The root directory for the source set, relative to the project root.</param>
@@ -300,12 +310,19 @@ public sealed class Manila(
 
     #endregion
 
-    public IDependency Artifact(UnresolvedProject project, string artifact) {
-        return new ArtifactDependency(project, artifact);
-    }
+    /// <summary>Create artifact dependency reference.</summary>
+    /// <param name="project">Unresolved project.</param>
+    /// <param name="artifact">Artifact name.</param>
+    /// <returns>Dependency handle.</returns>
+    public IDependency Artifact(UnresolvedProject project, string artifact) => new ArtifactDependency(project, artifact);
 
     #region Dynamic Dependency Invocation
 
+    /// <summary>Invoke registered dependency lambda.</summary>
+    /// <param name="binder">Member binder.</param>
+    /// <param name="args">Arguments array.</param>
+    /// <param name="result">Invocation result.</param>
+    /// <returns>True if matched.</returns>
     public override bool TryInvokeMember(InvokeMemberBinder binder, object?[]? args, out object? result) {
         _services.Logger.Debug($"Attempting to invoke script lambda: {binder.Name}");
 
@@ -321,6 +338,8 @@ public sealed class Manila(
             throw new ScriptEngineException($"An error occurred while invoking script lambda '{binder.Name}': {e.Message}", e);
         }
     }
+    /// <summary>Expose dynamic lambda names.</summary>
+    /// <returns>Enumerable of names.</returns>
     public override IEnumerable<string> GetDynamicMemberNames() {
         _services.Logger.Debug("Getting dynamic member names for script lambdas.");
         return DependencyLambdas.Keys;

@@ -17,6 +17,7 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Services;
 
+/// <summary>Artifact build + cache manager.</summary>
 public class ArtifactManager(ILogger logger, IProfiler profiler, string artifactsDir, string artifactsCacheFile) : IArtifactManager {
     private readonly ILogger _logger = logger;
     private readonly IProfiler _profiler = profiler;
@@ -42,6 +43,8 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
     };
 
+    /// <summary>Compute artifact root directory.</summary>
+    /// <returns>Absolute path.</returns>
     public string GetArtifactRoot(BuildConfig config, Project project, ICreatedArtifact artifact) {
         return Path.Join(
             ArtifactsDir,
@@ -52,6 +55,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         );
     }
 
+    /// <summary>Persist cached artifact metadata.</summary>
     public async Task CacheArtifactAsync(ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output) {
         _logger.Debug($"Caching artifact {artifact.Name}...");
         if (_cacheLoadTask != null) _ = await _cacheLoadTask;
@@ -62,6 +66,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         _artifacts[artifact.GetFingerprint(project, config)] = ArtifactCacheEntry.FromArtifact(this, artifact, config, project, output, artifact.ArtifactType);
     }
 
+    /// <summary>Update last access time on cached entry.</summary>
     public void UpdateCacheAccessTime(BuildExitCodeCached cachedExitCode) {
         _logger.Debug($"Updating access time for cached artifact with fingerprint {cachedExitCode.CacheKey}...");
         if (_artifacts.TryGetValue(cachedExitCode.CacheKey, out var entry)) {
@@ -71,6 +76,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         }
     }
 
+    /// <summary>Attach cached log data if present.</summary>
     public async Task<ICreatedArtifact> AppendCachedDataAsync(ICreatedArtifact artifact, BuildConfig config, Project project) {
         _logger.Debug($"Appending cached data to artifact {artifact.Name}...");
         if (_cacheLoadTask != null) _ = await _cacheLoadTask;
@@ -84,10 +90,12 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         return artifact;
     }
 
+    /// <summary>Begin async cache load.</summary>
     public void LoadCache() {
         _cacheLoadTask = PerformCacheLoadAsync();
     }
 
+    /// <summary>Load cache file from disk.</summary>
     private async Task<bool> PerformCacheLoadAsync() {
         _logger.Debug("Loading artifacts cache from disk...");
 
@@ -113,6 +121,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         }
     }
 
+    /// <summary>Write cache file to disk.</summary>
     public void FlushCacheToDisk() {
         _logger.Debug("Flushing artifacts cache to disk...");
 
@@ -132,6 +141,9 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
             )
         );
     }
+    /// <summary>Build artifact (dependency consumption + production).</summary>
+    /// <param name="invalidateCache">Force rebuild ignore cache.</param>
+    /// <returns>Exit code object.</returns>
     public IBuildExitCode BuildFromDependencies(IArtifactBlueprint artifact, ICreatedArtifact createdArtifact, Project project, BuildConfig config, bool invalidateCache = false) {
         if (artifact is not IArtifactBuildable artifactBuildable) {
             throw new ConfigurationException($"Artifact '{artifact.GetType().FullName}' is not buildable.");
@@ -186,6 +198,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
         }
     }
 
+    /// <summary>Get most recent cached artifact for project.</summary>
     public ArtifactCacheEntry GetRecentCachedArtifactForProject(Project project) {
         var name = project.Name;
 
@@ -202,6 +215,7 @@ public class ArtifactManager(ILogger logger, IProfiler profiler, string artifact
     }
 }
 
+/// <summary>Artifact cache metadata entry.</summary>
 public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long createdAt, long lastAccessed, long size, LogCache logCache, ArtifactOutput output, IArtifactBlueprint artifactType) {
     public string ArtifactRoot { get; set; } = artifactRoot;
     public string Fringerprint { get; } = fingerprint;
@@ -212,6 +226,7 @@ public class ArtifactCacheEntry(string artifactRoot, string fingerprint, long cr
     public ArtifactOutput Output { get; set; } = output;
     public IArtifactBlueprint ArtifactType { get; set; } = artifactType;
 
+    /// <summary>Create entry from built artifact.</summary>
     public static ArtifactCacheEntry FromArtifact(IArtifactManager artifactManager, ICreatedArtifact artifact, BuildConfig config, Project project, ArtifactOutput output, IArtifactBlueprint artifactType) {
         return new(
             artifactManager.GetArtifactRoot(config, project, artifact),

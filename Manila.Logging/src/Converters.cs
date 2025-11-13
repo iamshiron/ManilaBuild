@@ -6,10 +6,7 @@ using Newtonsoft.Json.Serialization;
 
 namespace Shiron.Manila.Logging;
 
-/// <summary>
-/// Custom JSON converter for <see cref="Exception"/> types. Serializes key properties
-/// of an exception, including its inner exception. Deserialization is not supported.
-/// </summary>
+/// <summary>Serialize <see cref="Exception"/> (no read).</summary>
 public class ExceptionConverter : JsonConverter {
     public override bool CanConvert(Type objectType) {
         return typeof(Exception).IsAssignableFrom(objectType);
@@ -35,23 +32,15 @@ public class ExceptionConverter : JsonConverter {
         jo.WriteTo(writer);
     }
 
-    public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
-        throw new Exception("Deserializing exceptions is not supported by this converter.");
-    }
+    public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) => throw new Exception("Deserializing exceptions not supported.");
 }
 
-/// <summary>
-/// Custom JSON converter for <see cref="ILogEntry"/>. Serializes log entries into a
-/// structured format with a 'type' discriminator and a nested 'data' object for
-/// all custom properties. Deserialization is not supported.
-/// </summary>
+/// <summary>Serialize <see cref="ILogEntry"/> structured (no read).</summary>
 public class LogEntryConverter : JsonConverter<ILogEntry> {
     public override bool CanWrite => true;
     public override bool CanRead => false;
 
-    public override ILogEntry ReadJson(JsonReader reader, Type objectType, ILogEntry? existingValue, bool hasExistingValue, JsonSerializer serializer) {
-        throw new Exception("Deserialization of ILogEntry is not supported by this converter.");
-    }
+    public override ILogEntry ReadJson(JsonReader reader, Type objectType, ILogEntry? existingValue, bool hasExistingValue, JsonSerializer serializer) => throw new Exception("Deserialization not supported.");
 
     public override void WriteJson(JsonWriter writer, ILogEntry? value, JsonSerializer serializer) {
         if (value == null) {

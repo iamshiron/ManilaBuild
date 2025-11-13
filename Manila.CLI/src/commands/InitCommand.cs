@@ -7,13 +7,19 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
-[Description("Initializes a new Manila workspace")]
+/// <summary>
+/// Initializes a new workspace directory structure and script
+/// </summary>
+[Description("Initialize new Manila workspace")]
 internal sealed class InitCommand(IDirectories directories, BaseServiceContainer baseServices) :
     BaseManilaCommand<InitCommand.Settings>(baseServices) {
 
     private readonly IDirectories _directories = directories;
     private readonly BaseServiceContainer _baseServices = baseServices;
 
+    /// <summary>
+    /// Command settings for workspace initialization
+    /// </summary>
     public sealed class Settings : DefaultCommandSettings {
         [CommandOption("--force")]
         [Description("Forces the initialization, overwriting existing files if necessary.")]
@@ -21,6 +27,9 @@ internal sealed class InitCommand(IDirectories directories, BaseServiceContainer
         public bool Force { get; set; }
     }
 
+    /// <summary>
+    /// Creates workspace directories and default script file
+    /// </summary>
     protected override int ExecuteCommand(CommandContext context, Settings settings) {
         var workspaceFound = Directory.Exists(_directories.Data) || File.Exists(Path.Join(_directories.Root, "Manila.js"));
 

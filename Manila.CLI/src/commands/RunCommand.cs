@@ -7,6 +7,9 @@ using static Shiron.Manila.CLI.CLIConstants;
 
 namespace Shiron.Manila.CLI.Commands;
 
+/// <summary>
+/// Runs a single job in current workspace
+/// </summary>
 [Description("Runs a job in the current workspace")]
 internal sealed class RunCommand(BaseServiceContainer baseServices, ManilaEngine? engine = null, ServiceContainer? services = null, Workspace? workspace = null) :
     BaseAsyncManilaCommand<RunCommand.Settings>(baseServices) {
@@ -16,13 +19,22 @@ internal sealed class RunCommand(BaseServiceContainer baseServices, ManilaEngine
     private readonly Workspace? _workspace = workspace;
     private readonly BaseServiceContainer _baseServices = baseServices;
 
+    /// <summary>
+    /// Command settings for job execution
+    /// </summary>
     public class Settings : DefaultCommandSettings {
+        /// <summary>
+        /// Target job identifier
+        /// </summary>
         [CommandArgument(0, "<job>")]
         [Description("The job to run")]
         [Required]
         public string Job { get; set; } = "";
     }
 
+    /// <summary>
+    /// Executes job with provided identifier
+    /// </summary>
     protected override async Task<int> ExecuteCommandAsync(CommandContext context, Settings settings) {
         if (_engine == null || _services == null || _workspace == null) {
             _baseServices.Logger.Error(Messages.ManilaEngineNotInitialized);

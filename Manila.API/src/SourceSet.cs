@@ -5,9 +5,14 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.API;
 
+/// <summary>Builder for file source set.</summary>
+/// <param name="root">Root directory path.</param>
 public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
+    /// <summary>Root directory.</summary>
     public readonly string Root = root;
+    /// <summary>Include glob patterns.</summary>
     public List<string> Includes { get; private set; } = [];
+    /// <summary>Exclude glob patterns.</summary>
     public List<string> Excludes { get; private set; } = [];
 
     public SourceSetBuilder(string root, List<string> includes, List<string> excludes) : this(root) {
@@ -15,29 +20,23 @@ public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
         Excludes = excludes;
     }
 
-    /// <summary>
-    /// Include a list of files in the source set.
-    /// </summary>
-    /// <param name="globs">The pattern for the file matcher</param>
-    /// <returns>SourceSet instance for chaining calls</returns>
+    /// <summary>Add include glob patterns.</summary>
+    /// <param name="globs">Glob strings.</param>
+    /// <returns>Builder (chain).</returns>
     public SourceSetBuilder Include(params string[] globs) {
         Includes.AddRange(globs);
         return this;
     }
-    /// <summary>
-    /// Exclude a list of files from the source set.
-    /// </summary>
-    /// <param name="globs">The pattern for the file matcher</param>
-    /// <returns>SourceSet instance for chaining calls</returns>
+    /// <summary>Add exclude glob patterns.</summary>
+    /// <param name="globs">Glob strings.</param>
+    /// <returns>Builder (chain).</returns>
     public SourceSetBuilder Exclude(params string[] globs) {
         Excludes.AddRange(globs);
         return this;
     }
 
-    /// <summary>
-    /// Return a list of files in the source set.
-    /// </summary>
-    /// <returns>List of files complying to the includes and excludes</returns>
+    /// <summary>Resolve matched files.</summary>
+    /// <returns>File handles.</returns>
     public FileHandle[] Files() {
         var matcher = new Matcher();
         foreach (var include in Includes) {
@@ -51,21 +50,27 @@ public class SourceSetBuilder(string root) : IBuildable<SourceSet> {
         return result.Files.Select(f => new FileHandle(Root, f.Path)).ToArray();
     }
 
-    public SourceSet Build() {
-        return new(this);
-    }
+    /// <summary>Build immutable source set.</summary>
+    /// <returns>Source set.</returns>
+    public SourceSet Build() => new(this);
 }
 
-/// <summary>
-/// Represents a set of files mostly used for source sets.
-/// </summary>
+/// <summary>Immutable resolved source file set.</summary>
+/// <param name="builder">Source set builder.</param>
 public class SourceSet(SourceSetBuilder builder) {
+    /// <summary>Root directory.</summary>
     public readonly string Root = builder.Root;
+    /// <summary>Include patterns.</summary>
     public readonly string[] Includes = [.. builder.Includes];
+    /// <summary>Exclude patterns.</summary>
     public readonly string[] Excluded = [.. builder.Excludes];
+    /// <summary>Resolved file handles.</summary>
     public readonly FileHandle[] FileHandles = [.. builder.Files()];
+    /// <summary>Resolved file paths.</summary>
     public readonly string[] Files = [.. builder.Files().Select(f => f.Handle)];
 
+    /// <summary>Latest last-write time (ms).</summary>
+    /// <returns>Unix ms timestamp.</returns>
     public long LastModified() {
         long lastModified = 0;
         foreach (var f in FileHandles) {
@@ -73,7 +78,7 @@ public class SourceSet(SourceSetBuilder builder) {
         }
         return lastModified;
     }
-    public string Fingerprint() {
-        return HashUtils.CreateFileSetHash(Files);
-    }
+    /// <summary>Deterministic hash over file paths.</summary>
+    /// <returns>SHA256 hex string.</returns>
+    public string Fingerprint() => HashUtils.CreateFileSetHash(Files);
 }

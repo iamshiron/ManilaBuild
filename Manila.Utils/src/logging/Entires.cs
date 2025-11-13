@@ -6,9 +6,7 @@ namespace Shiron.Manila.Utils.Logging;
 
 #region Command Execution Log Entries
 
-/// <summary>
-/// Logged when an external command is about to be executed.
-/// </summary>
+/// <summary>Command start.</summary>
 public class CommandExecutionLogEntry : BaseLogEntry {
     public override LogLevel Level => LogLevel.Debug;
     public string ContextID { get; }
@@ -25,9 +23,7 @@ public class CommandExecutionLogEntry : BaseLogEntry {
     }
 }
 
-/// <summary>
-/// Logged when an external command finishes successfully.
-/// </summary>
+/// <summary>Command finished (success).</summary>
 public class CommandExecutionFinishedLogEntry : BaseLogEntry {
     public override LogLevel Level => LogLevel.Debug;
     public string ContextID { get; }
@@ -46,9 +42,7 @@ public class CommandExecutionFinishedLogEntry : BaseLogEntry {
     }
 }
 
-/// <summary>
-/// Logged when an external command fails.
-/// </summary>
+/// <summary>Command failed.</summary>
 public class CommandExecutionFailedLogEntry : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
     public string ContextID { get; }
@@ -67,9 +61,7 @@ public class CommandExecutionFailedLogEntry : BaseLogEntry {
     }
 }
 
-/// <summary>
-/// Represents a standard output message from an executed command.
-/// </summary>
+/// <summary>Command stdout line.</summary>
 public class CommandStdOutLogEntry : BaseLogEntry {
     public override LogLevel Level => LogLevel.Info;
     public string ContextID { get; }
@@ -84,9 +76,7 @@ public class CommandStdOutLogEntry : BaseLogEntry {
     }
 }
 
-/// <summary>
-/// Represents a standard error message from an executed command.
-/// </summary>
+/// <summary>Command stderr line.</summary>
 public class CommandStdErrLogEntry : BaseLogEntry {
     public override LogLevel Level => LogLevel.Error;
     public string ContextID { get; }

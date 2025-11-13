@@ -3,23 +3,17 @@ using System.Text.RegularExpressions;
 
 namespace Shiron.Manila.Utils;
 
-/// <summary>
-/// A utility class for handling specific string formats using regular expressions.
-/// </summary>
+/// <summary>Regex helpers for DSL identifiers.</summary>
 public static partial class RegexUtils {
     /// <summary>
     /// Regex for the format: [[project[/artifact]:]]job
     /// </summary>
     public static readonly Regex JobRegex = JobRegexGenerator();
 
-    /// <summary>
-    /// Represents a successful match for a job string.
-    /// </summary>
+    /// <summary>Matched job identifier.</summary>
     public record JobMatch(string? Project, string? Artifact, string Job) {
-        /// <summary>
-        /// Reconstructs the string identifier from this JobMatch object.
-        /// </summary>
-        /// <returns>The formatted job string.</returns>
+        /// <summary>Format canonical string.</summary>
+        /// <returns>Lower-cased job spec.</returns>
         public string Format() {
             var builder = new StringBuilder();
             if (Project != null) {
@@ -33,19 +27,15 @@ public static partial class RegexUtils {
             return builder.ToString().ToLower();
         }
 
-        /// <summary>
-        /// Returns a string representation of the JobMatch object, including null parameters and the class name.
-        /// </summary>
+        /// <summary>Debug string.</summary>
         public override string ToString() {
             return $"JobMatch(Project: {Project ?? "null"}, Artifact: {Artifact ?? "null"}, Job: {Job})";
         }
     }
 
-    /// <summary>
-    /// Matches a string against the JobRegex.
-    /// </summary>
-    /// <param name="s">The input string.</param>
-    /// <returns>A <see cref="JobMatch"/> record if the match is successful; otherwise, null.</returns>
+    /// <summary>Try match job spec.</summary>
+    /// <param name="s">Input string.</param>
+    /// <returns>Match or null.</returns>
     public static JobMatch? MatchJobs(string s) {
         var match = JobRegex.Match(s.Trim());
         if (!match.Success) return null;
@@ -57,11 +47,9 @@ public static partial class RegexUtils {
         );
     }
 
-    /// <summary>
-    /// Checks if a string is a valid job identifier.
-    /// </summary>
-    /// <param name="s">The string to validate.</param>
-    /// <returns>True if the string matches the job format; otherwise, false.</returns>
+    /// <summary>Validate job spec.</summary>
+    /// <param name="s">Input.</param>
+    /// <returns>True if valid.</returns>
     public static bool IsValidJob(string s) => JobRegex.IsMatch(s.Trim());
 
     [GeneratedRegex(@"^(?:(?<project>\w+)(?:\/(?<artifact>\w+))?:)?(?<job>\w+)$", RegexOptions.Compiled)]
@@ -72,14 +60,10 @@ public static partial class RegexUtils {
     /// </summary>
     public static readonly Regex PluginRegex = PluginRegexGenerator();
 
-    /// <summary>
-    /// Represents a successful match for a plugin string.
-    /// </summary>
+    /// <summary>Matched plugin identifier.</summary>
     public record PluginMatch(string? Group, string Plugin, string? Version) {
-        /// <summary>
-        /// Reconstructs the string identifier from this PluginMatch object.
-        /// </summary>
-        /// <returns>The formatted plugin string.</returns>
+        /// <summary>Format canonical string.</summary>
+        /// <returns>Plugin spec.</returns>
         public string Format() {
             var builder = new StringBuilder();
             if (Group != null) {
@@ -92,19 +76,15 @@ public static partial class RegexUtils {
             return builder.ToString();
         }
 
-        /// <summary>
-        /// Returns a string representation of the PluginMatch object, including null parameters and the class name.
-        /// </summary>
+        /// <summary>Debug string.</summary>
         public override string ToString() {
             return $"PluginMatch(Group: {Group ?? "null"}, Plugin: {Plugin}, Version: {Version ?? "null"})";
         }
     }
 
-    /// <summary>
-    /// Matches a string against the PluginRegex.
-    /// </summary>
-    /// <param name="s">The input string.</param>
-    /// <returns>A <see cref="PluginMatch"/> record if the match is successful; otherwise, null.</returns>
+    /// <summary>Try match plugin spec.</summary>
+    /// <param name="s">Input string.</param>
+    /// <returns>Match or null.</returns>
     public static PluginMatch? MatchPlugin(string s) {
         var match = PluginRegex.Match(s.Trim());
         if (!match.Success) return null;
@@ -116,11 +96,9 @@ public static partial class RegexUtils {
         );
     }
 
-    /// <summary>
-    /// Checks if a string is a valid plugin identifier.
-    /// </summary>
-    /// <param name="s">The string to validate.</param>
-    /// <returns>True if the string matches the plugin format; otherwise, false.</returns>
+    /// <summary>Validate plugin spec.</summary>
+    /// <param name="s">Input.</param>
+    /// <returns>True if valid.</returns>
     public static bool IsValidPlugin(string s) => PluginRegex.IsMatch(s.Trim());
 
     [GeneratedRegex(@"^(?:(?<group>[^:@/]+):)?(?<plugin>[^:@/]+)(?:@(?<version>\d+(?:\.\d+)*))?$", RegexOptions.Compiled)]
@@ -131,13 +109,9 @@ public static partial class RegexUtils {
     /// </summary>
     public static readonly Regex PluginComponentRegex = PluginComponentRegexGenerator();
 
-    /// <summary>
-    /// Represents a successful match for a plugin component string.
-    /// </summary>
+    /// <summary>Matched plugin component.</summary>
     public record PluginComponentMatch(string? Group, string Plugin, string? Version, string Component) {
-        /// <summary>
-        /// Reconstructs the string identifier from this PluginComponentMatch record.
-        /// </summary>
+        /// <summary>Format canonical string.</summary>
         public string Format() {
             var builder = new StringBuilder();
             if (Group != null) {
@@ -151,26 +125,20 @@ public static partial class RegexUtils {
             return builder.ToString();
         }
 
-        /// <summary>
-        /// Converts this PluginComponentMatch to a PluginMatch.
-        /// </summary>
+        /// <summary>Convert to plugin match.</summary>
         public PluginMatch ToPluginMatch() {
             return new PluginMatch(Group, Plugin, Version);
         }
 
-        /// <summary>
-        /// Returns a string representation of the PluginComponentMatch object.
-        /// </summary>
+        /// <summary>Debug string.</summary>
         public override string ToString() {
             return $"PluginComponentMatch(Group: {Group ?? "null"}, Plugin: {Plugin}, Version: {Version ?? "null"}, Component: {Component})";
         }
     }
 
-    /// <summary>
-    /// Matches a string against the PluginComponentRegex.
-    /// </summary>
-    /// <param name="s">The input string.</param>
-    /// <returns>A <see cref="PluginComponentMatch"/> record if the match is successful; otherwise, null.</returns>
+    /// <summary>Try match plugin component.</summary>
+    /// <param name="s">Input string.</param>
+    /// <returns>Match or null.</returns>
     public static PluginComponentMatch? MatchPluginComponent(string s) {
         var match = PluginComponentRegex.Match(s.Trim());
         if (!match.Success) return null;
@@ -183,9 +151,7 @@ public static partial class RegexUtils {
         );
     }
 
-    /// <summary>
-    /// Checks if a string is a valid plugin component identifier.
-    /// </summary>
+    /// <summary>Validate plugin component.</summary>
     public static bool IsValidPluginComponent(string s) => PluginComponentRegex.IsMatch(s.Trim()) && MatchPluginComponent(s.Trim())!.Component != null;
 
     [GeneratedRegex(@"^(?:(?<group>[^:@\/]+):)?(?<plugin>[^:@\/]+)(?:@(?<version>\d+(?:\.\d+)*))?\/(?<component>[\w-]+)$", RegexOptions.Compiled)]
@@ -196,13 +162,9 @@ public static partial class RegexUtils {
     /// </summary>
     public static readonly Regex PluginApiClassRegex = PluginApiClassRegexGenerator();
 
-    /// <summary>
-    /// Represents a successful match for a plugin API class string.
-    /// </summary>
+    /// <summary>Matched plugin API class.</summary>
     public record PluginApiClassMatch(string? Group, string Plugin, string? Version, string ApiClass) {
-        /// <summary>
-        /// Reconstructs the string identifier from this PluginApiClassMatch record.
-        /// </summary>
+        /// <summary>Format canonical string.</summary>
         public string Format() {
             var builder = new StringBuilder();
             if (Group != null) {
@@ -220,19 +182,15 @@ public static partial class RegexUtils {
             return new PluginMatch(Group, Plugin, Version);
         }
 
-        /// <summary>
-        /// Returns a string representation of the PluginApiClassMatch object.
-        /// </summary>
+        /// <summary>Debug string.</summary>
         public override string ToString() {
             return $"PluginApiClassMatch(Group: {Group ?? "null"}, Plugin: {Plugin}, Version: {Version ?? "null"}, ApiClass: {ApiClass})";
         }
     }
 
-    /// <summary>
-    /// Matches a string against the PluginApiClassRegex.
-    /// </summary>
-    /// <param name="s">The input string.</param>
-    /// <returns>A <see cref="PluginApiClassMatch"/> record if the match is successful; otherwise, null.</returns>
+    /// <summary>Try match plugin API class.</summary>
+    /// <param name="s">Input string.</param>
+    /// <returns>Match or null.</returns>
     public static PluginApiClassMatch? MatchPluginApiClass(string s) {
         var match = PluginApiClassRegex.Match(s.Trim());
         if (!match.Success) return null;
@@ -245,9 +203,7 @@ public static partial class RegexUtils {
         );
     }
 
-    /// <summary>
-    /// Checks if a string is a valid plugin API class identifier.
-    /// </summary>
+    /// <summary>Validate plugin API class.</summary>
     public static bool IsValidPluginApiClass(string s) => PluginApiClassRegex.IsMatch(s.Trim());
 
     [GeneratedRegex(@"^(?:(?<group>[^:@\/]+):)?(?<plugin>[^:@\/]+)(?:@(?<version>\d+(?:\.\d+)*))?\/(?<apiclass>[\w-]+)$", RegexOptions.Compiled)]
@@ -258,31 +214,23 @@ public static partial class RegexUtils {
     /// </summary>
     public static readonly Regex TemplateRegex = TemplateRegexGenerator();
 
-    /// <summary>
-    /// Represents a successful match for a template string.
-    /// </summary>
+    /// <summary>Matched template identifier.</summary>
     public record TemplateMatch(string Plugin, string Template) {
-        /// <summary>
-        /// Reconstructs the string identifier from this TemplateMatch object.
-        /// </summary>
-        /// <returns>The formatted template string.</returns>
+        /// <summary>Format canonical string.</summary>
+        /// <returns>Template spec.</returns>
         public string Format() {
             return $"{Plugin}:{Template}";
         }
 
-        /// <summary>
-        /// Returns a string representation of the TemplateMatch object.
-        /// </summary>
+        /// <summary>Debug string.</summary>
         public override string ToString() {
             return $"TemplateMatch(Plugin: {Plugin}, Template: {Template})";
         }
     }
 
-    /// <summary>
-    /// Matches a string against the TemplateRegex.
-    /// </summary>
-    /// <param name="s">The input string.</param>
-    /// <returns>A <see cref="TemplateMatch"/> record if the match is successful; otherwise, null.</returns>
+    /// <summary>Try match template spec.</summary>
+    /// <param name="s">Input string.</param>
+    /// <returns>Match or null.</returns>
     public static TemplateMatch? MatchTemplate(string s) {
         var match = TemplateRegex.Match(s.Trim());
         if (!match.Success) return null;
@@ -293,18 +241,14 @@ public static partial class RegexUtils {
         );
     }
 
-    /// <summary>
-    /// Checks if a string is a valid template identifier.
-    /// </summary>
-    /// <param name="s">The string to validate.</param>
-    /// <returns>True if the string matches the template format; otherwise, false.</returns>
+    /// <summary>Validate template spec.</summary>
+    /// <param name="s">Input.</param>
+    /// <returns>True if valid.</returns>
     public static bool IsValidTemplate(string s) => TemplateRegex.IsMatch(s.Trim());
 
     [GeneratedRegex(@"^(?<plugin>[^:@/]+):(?<template>[\w-]+)$", RegexOptions.Compiled)]
     private static partial Regex TemplateRegexGenerator();
 
-    /// <summary>
-    /// Helper to get a group's value, or null if the group was not captured.
-    /// </summary>
+    /// <summary>Group value or null.</summary>
     private static string? GetValueOrNull(Group group) => group.Success ? group.Value : null;
 }
