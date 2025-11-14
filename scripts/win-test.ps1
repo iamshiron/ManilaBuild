@@ -4,6 +4,7 @@ $ErrorActionPreference = "Stop"
 # --- Configuration ---
 $RepoRoot = Get-Location
 $SolutionFile = Join-Path $RepoRoot "Manila.slnx"
+$DocsFolder = Join-Path $RepoRoot "docs"
 
 # --- Functions ---
 function Write-Header($Message) {
@@ -46,10 +47,15 @@ try {
 
     # 5. Build documentation
     Write-Header "Building documentation..."
-    & .\win-build-docs.ps1
+    cd $DocsFolder
+    docfx metadata
+    docfx build -o _site
+
     if ($LASTEXITCODE -ne 0) {
         throw "Documentation build failed."
     }
+
+    cd $RepoRoot
 
     # 6. Success
     Write-Host "========================================" -ForegroundColor Cyan
@@ -59,5 +65,6 @@ try {
 
 } catch {
     Write-Failure "A step failed. See output above for details."
+    cd $RepoRoot
     exit 1
 }

@@ -15,7 +15,7 @@ using Shiron.Manila.Utils;
 
 namespace Shiron.Manila.Services;
 
-/// <summary>Plugin loader & registry (singleton).</summary>
+/// <summary>Plugin loader and registry (singleton).</summary>
 public class ExtensionManager(ILogger logger, IProfiler profiler, string _pluginDir, INuGetManager nuGetManager) : IExtensionManager {
     private readonly ILogger _logger = logger;
     private readonly IProfiler _profiler = profiler;

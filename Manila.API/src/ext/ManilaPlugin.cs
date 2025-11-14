@@ -90,11 +90,6 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
         component._plugin = this;
     }
     /// <summary>
-    /// Registers an enum to the plugin. The class requires the <see cref="ScriptEnum"/> attribute.
-    /// </summary>
-    /// <typeparam name="T">The class type</typeparam>
-    public void RegisterEnum<T>() => Enums.Add(typeof(T));
-    /// <summary>
     /// Registers a dependency type to the plugin.
     /// </summary>
     /// <typeparam name="T">The dependency type</typeparam>
@@ -116,7 +111,7 @@ public abstract class ManilaPlugin(string group, string name, string version, Li
     /// Registers a project template to the plugin.
     /// </summary>
     /// <param name="template">The project template</param>
-    /// <exception cref="ManilaException">Project template with the same name already registered</
+    /// <exception cref="ManilaException">Project template with the same name already registered</exception>
     public void RegisterProjectTemplate(ProjectTemplate template) {
         var name = template.Name;
         if (ProjectTemplates.ContainsKey(name)) {

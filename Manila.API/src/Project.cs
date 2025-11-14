@@ -46,7 +46,7 @@ public class Project(ILogger logger, string name, string projectRoot, string roo
         return $"Project({GetIdentifier()})";
     }
 
-    /// <summary>Build artifacts & source sets.</summary>
+    /// <summary>Build artifacts and source sets.</summary>
     /// <param name="manilaAPI">Manila API context.</param>
     public override void Finalize(Manila manilaAPI) {
         base.Finalize(manilaAPI);
