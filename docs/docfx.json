@@ -1,0 +1,36 @@
+{
+    "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+    "metadata": [
+        {
+            "src": [
+                {
+                    "files": ["**/*.csproj"],
+                    "exclude": ["**/bin/**", "**/obj/**"],
+                    "src": "../"
+                }
+            ],
+            "output": "api"
+        }
+    ],
+    "build": {
+        "content": [
+            {
+                "files": ["**/*.{md,yml}"],
+                "exclude": ["_site/**"]
+            }
+        ],
+        "resource": [
+            {
+                "files": ["images/**"]
+            }
+        ],
+        "output": "_site",
+        "template": ["default", "modern"],
+        "globalMetadata": {
+            "_appName": "manilabuild",
+            "_appTitle": "manilabuild",
+            "_enableSearch": true,
+            "pdf": true
+        }
+    }
+}

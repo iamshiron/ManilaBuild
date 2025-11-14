@@ -5,25 +5,25 @@ project.Version("1.0.0");
 project.Description("Demo Project Core");
 
 project.SourceSets({
-	main: Manila.SourceSet(project.GetPath().Join("main")).Include("**/*"),
+    main: Manila.SourceSet(project.GetPath().Join("main")).Include("**/*"),
 });
 
 project.Artifacts({
-	main: Manila.Artifact("shiron.manila:zip/zip", (artifact) => {
-		var config = Manila.GetConfig(artifact);
-		config.SetSubFolder(Manila.GetEnv("MANILA_SUB_FOLDER", "sub"));
+    main: Manila.Artifact("shiron.manila:zip/zip", (artifact) => {
+        var config = Manila.GetConfig(artifact);
+        config.SetSubFolder(Manila.GetEnv("MANILA_SUB_FOLDER", "sub"));
 
-		artifact.Description("Zip Main Artifact");
-		artifact.Dependencies([
-			Manila.Artifact(Manila.GetProject("zip2"), "main"),
-			Manila.Artifact(Manila.GetProject("zip3"), "main"),
-            Manila.TestDependency("package", "1.0.0", "artifact")
-		]);
+        artifact.Description("Zip Main Artifact");
+        artifact.Dependencies([
+            Manila.Artifact(Manila.GetProject("zip2"), "main"),
+            Manila.Artifact(Manila.GetProject("zip3"), "main"),
+            Manila.TestDependency("package", "1.0.0", "artifact"),
+        ]);
 
-		Manila.Job("build")
-			.Description("Create the Zip File")
-			.Execute(async () => {
-				await Manila.Build(project, config, artifact);
-			});
-	}),
+        Manila.Job("build")
+            .Description("Create the Zip File")
+            .Execute(async () => {
+                await Manila.Build(project, config, artifact);
+            });
+    }),
 });

@@ -44,7 +44,14 @@ try {
         throw "Tests failed."
     }
 
-    # 5. Success
+    # 5. Build documentation
+    Write-Header "Building documentation..."
+    & .\win-build-docs.ps1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Documentation build failed."
+    }
+
+    # 6. Success
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "✅ All checks passed successfully!" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
