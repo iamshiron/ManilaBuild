@@ -30,7 +30,7 @@
             "_appName": "manilabuild",
             "_appTitle": "manilabuild",
             "_enableSearch": true,
-            "pdf": true
+            "pdf": false
         }
     }
 }
