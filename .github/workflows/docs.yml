@@ -27,7 +27,23 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.x'
+          cache: true
+          cache-dependency-path: '**/Directory.Build.props'
+      - name: Cache .NET tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-${{ hashFiles('**/.config/dotnet-tools.json') }}
+          restore-keys: |
+            ${{ runner.os }}-dotnet-tools-
       - run: dotnet tool update -g docfx
+      - name: Cache DocFX metadata
+        uses: actions/cache@v4
+        with:
+          path: docs/api
+          key: ${{ runner.os }}-docfx-metadata-${{ hashFiles('**/*.csproj', '**/*.cs') }}
+          restore-keys: |
+            ${{ runner.os }}-docfx-metadata-
       - run: docfx docs/docfx.json --disableGitFeatures
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
