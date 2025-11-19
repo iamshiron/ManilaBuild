@@ -6,7 +6,7 @@
                 {
                     "files": ["**/*.csproj"],
                     "exclude": ["**/bin/**", "**/obj/**"],
-                    "src": "../"
+                    "src": "../src/"
                 }
             ],
             "output": "api"

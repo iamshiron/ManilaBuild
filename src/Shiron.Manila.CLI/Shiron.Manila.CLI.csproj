@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Shiron.Manila\Shiron.Manila.csproj" />
+    <ProjectReference Include="..\..\external\lib\src\Shiron.Logging\Shiron.Logging.csproj" />
+    <ProjectReference Include="..\..\external\lib\src\Shiron.Profiling\Shiron.Profiling.csproj" />
+    <ProjectReference Include="..\..\external\lib\src\Shiron.Utils\Shiron.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.50.0" />
+    <PackageReference Include="Spectre.Console.Cli" Version="0.50.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseRidGraph>true</UseRidGraph>
+    <AssemblyName>manila</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <Optimize>true</Optimize>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <TieredPgo>true</TieredPgo>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
+  </PropertyGroup>
+</Project>
