@@ -4,9 +4,9 @@
         {
             "src": [
                 {
-                    "src": "../src",
                     "files": ["**/*.csproj"],
-                    "exclude": ["**/bin/**", "**/obj/**"]
+                    "exclude": ["**/bin/**", "**/obj/**"],
+                    "src": "../src/"
                 }
             ],
             "output": "api"
@@ -16,13 +16,7 @@
         "content": [
             {
                 "files": ["**/*.{md,yml}"],
-                "exclude": ["_site/**"],
-                "src": "md"
-            },
-            {
-                "files": ["**/*.yml"],
-                "src": "api",
-                "dest": "api"
+                "exclude": ["_site/**"]
             }
         ],
         "resource": [
@@ -30,8 +24,8 @@
                 "files": ["images/**"]
             }
         ],
-        "xref": ["https://iamshiron.github.io/lib/xrefmap.yml"],
         "output": "_site",
+        "xref": ["https://iamshiron.github.io/lib/xrefmap.yml"],
         "template": ["default", "modern"],
         "globalMetadata": {
             "_appName": "manilabuild",
