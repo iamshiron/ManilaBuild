@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Interfaces;
+using Shiron.Manila.API.Utils;
 using Shiron.Manila.Exceptions;
 using Shiron.Profiling;
 using Shiron.Utils;

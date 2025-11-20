@@ -1,6 +1,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using Shiron.Logging;
+using Shiron.Logging.Renderer;
 using Shiron.Manila.Exceptions;
 
 namespace Shiron.Manila.Mock;
@@ -29,6 +30,9 @@ public class MockLogger : ILogger {
     }
     public void RemoveInjector(Guid id) => throw new ManilaException();
     public void MarkupLine(string message, bool logAlways = false) { }
+
+    public void AddRenderer(ILogRenderer renderer) { }
+    public ILogger CreateSubLogger(string prefix) { return this; }
 }
 
 public class EmptyMockLogger : ILogger {
@@ -53,4 +57,7 @@ public class EmptyMockLogger : ILogger {
     public void Log(ILogEntry entry) { }
 
     public void MarkupLine(string message, bool logAlways = false) { }
+
+    public void AddRenderer(ILogRenderer renderer) { }
+    public ILogger CreateSubLogger(string prefix) { return this; }
 }

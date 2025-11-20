@@ -2,6 +2,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using Shiron.Logging;
+using Shiron.Logging.Renderer;
 
 namespace Shiron.Manila.CLI;
 
@@ -66,4 +67,15 @@ public class EmptyLogger : ILogger {
     /// Ignores warning log
     /// </summary>
     public void Warning(string message) { }
+
+    /// <summary>
+    /// Ignores renderer addition
+    /// </summary>
+    public void AddRenderer(ILogRenderer renderer) { }
+    /// <summary>
+    /// Creates a sub-logger with the same instance (no-op)
+    /// </summary>
+    public ILogger CreateSubLogger(string prefix) {
+        return this; // Return the same instance for sub-logger
+    }
 }

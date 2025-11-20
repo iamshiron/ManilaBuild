@@ -1,4 +1,4 @@
-using Shiron.Utils;
+using Shiron.Manila.API.Utils;
 
 namespace Shiron.Manila.API.Interfaces.Artifacts;
 

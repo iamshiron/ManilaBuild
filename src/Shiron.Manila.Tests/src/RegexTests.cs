@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Shiron.Utils;
+using Shiron.Manila.API.Utils;
 
 namespace Shiron.Manila.Tests.Utils;
 

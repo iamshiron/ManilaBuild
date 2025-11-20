@@ -4,6 +4,7 @@ using System.ComponentModel;
 using Shiron.Logging;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Ext;
+using Shiron.Manila.API.Utils;
 using Shiron.Manila.Exceptions;
 using Shiron.Utils;
 using Spectre.Console;

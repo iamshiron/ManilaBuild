@@ -26,7 +26,7 @@ public static class ManilaCli {
     public static ExecutionStage? ExecutionStage { get; private set; }
 
     public static void SetupBaseComponents(ILogger logger, LogOptions logOptions) {
-        AnsiConsoleRenderer.Init(logger, logOptions);
+        logger.AddRenderer(new AnsiConsoleRenderer(logOptions, logger));
     }
 
     private static async Task InitExtensions(BaseServiceContainer baseServices, ServiceContainer services) {

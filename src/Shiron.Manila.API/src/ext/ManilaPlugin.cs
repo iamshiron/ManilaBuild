@@ -3,6 +3,7 @@ using Shiron.Logging;
 using Shiron.Manila.API;
 using Shiron.Manila.API.Interfaces.Artifacts;
 using Shiron.Manila.API.Logging;
+using Shiron.Manila.API.Utils;
 using Shiron.Manila.Exceptions;
 using Shiron.Utils;
 
